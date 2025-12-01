@@ -136,14 +136,13 @@
         }
         
         .header-row .col-timeline {
-            display: flex;
-            flex-direction: column;
-            min-width: 0; /* Allow flex item to shrink below content size */
+            display: grid;
+            grid-template-rows: 40px 40px; /* month row + day row */
         }
         
         .month-header {
             display: grid;
-            height: 40px;
+            grid-row: 1;
             border-bottom: 1px solid #555;
         }
         
@@ -162,7 +161,7 @@
         
         .day-header {
             display: grid;
-            height: 40px;
+            grid-row: 2;
         }
         
         .day-column {
@@ -551,13 +550,22 @@
         const monthGridTemplate = months.map(m => `${m.days}fr`).join(' ');
         const dayGridTemplate = `repeat(${totalDays}, 1fr)`;
         
-        // Create header row
+        // Calculate month column spans (for unified grid)
+        let monthColStart = 1;
+        const monthSpans = months.map(m => {
+            const start = monthColStart;
+            const end = monthColStart + m.days;
+            monthColStart = end;
+            return { name: m.name, start, end };
+        });
+        
+        // Create header row - both month and day headers use the same dayGridTemplate
         let headerHTML = `
             <div class="gantt-row header-row">
                 <div class="col-task">Tasks</div>
-                <div class="col-timeline">
-                    <div class="month-header" style="grid-template-columns: ${monthGridTemplate}">
-                        ${months.map(m => `<div class="month-label">${m.name}</div>`).join('')}
+                <div class="col-timeline" style="grid-template-columns: ${dayGridTemplate}">
+                    <div class="month-header" style="grid-template-columns: ${dayGridTemplate}">
+                        ${monthSpans.map(m => `<div class="month-label" style="grid-column: ${m.start} / ${m.end};">${m.name}</div>`).join('')}
                     </div>
                     <div class="day-header" style="grid-template-columns: ${dayGridTemplate}">
                         ${days.map((d, i) => {
