@@ -207,16 +207,18 @@
             font-weight: 600;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
             margin: 0 1px;
-            padding: 4px 12px;
+            padding: 4px 16px;
             position: relative;
             z-index: 10;
-            min-width: 140px; /* Ensure enough space for "MMM ##–MMM ##" */
+            min-width: 160px; /* Increased to ensure "MMM ##–MMM ##" fits comfortably */
+            overflow: visible; /* Prevent content clipping */
         }
         
         .task-bar-date {
             font-size: 12px;
             line-height: 1.2;
             white-space: nowrap; /* Prevent date text from wrapping */
+            overflow: visible; /* Allow text to be visible */
         }
         
         .task-bar-hours {
