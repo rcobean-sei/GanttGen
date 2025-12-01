@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=1920, initial-scale=1.0">
     <title>Project Timeline - Gantt Chart</title>
     <style>
         * {
@@ -17,29 +17,37 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding: 20px;
-            background-color: #f5f5f5;
+            padding: 10px;
+            background-color: transparent;
         }
         
         .gantt-container {
-            background: white;
+            background: transparent;
             border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            max-width: 1400px;
+            padding: 15px;
+            box-shadow: none;
+            max-width: 1920px;
+            width: 100%;
             margin: 0 auto;
+            display: flex;
+            flex-direction: column;
         }
         
         h1 {
-            font-size: 48px;
+            font-size: 44px;
             font-weight: bold;
             color: #333;
-            margin: 0 0 40px 0;
+            margin: 0 0 15px 0;
             letter-spacing: -1px;
+            display: none; /* Hidden for PNG export */
         }
         
         .gantt-wrapper {
             position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         
         .gantt-chart {
@@ -49,6 +57,7 @@
             margin-bottom: 0;
             position: relative;
         }
+        
         
         .task-section {
             position: relative;
@@ -64,6 +73,7 @@
         .gantt-row {
             display: flex;
             border-bottom: 1px solid #ddd;
+            flex-shrink: 0;
         }
         
         .gantt-row:last-child {
@@ -71,9 +81,9 @@
         }
         
         .col-task {
-            width: 320px;
-            min-width: 320px;
-            padding: 16px 20px;
+            width: 380px;
+            min-width: 380px;
+            padding: 12px 16px;
             background: #f8f9fa;
             border-right: 1px solid #ddd;
             display: flex;
@@ -83,21 +93,21 @@
         
         .task-name {
             font-weight: 600;
-            font-size: 15px;
+            font-size: 21px;
             color: #333;
         }
         
         .subtasks {
-            margin-top: 8px;
+            margin-top: 6px;
             padding-left: 4px;
         }
         
         .subtask {
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 400;
             color: #555;
-            line-height: 1.4;
-            margin-bottom: 4px;
+            line-height: 1.3;
+            margin-bottom: 3px;
             padding-left: 12px;
             position: relative;
         }
@@ -115,7 +125,7 @@
         
         .col-timeline {
             flex: 1;
-            min-width: 700px;
+            min-width: 0;
             position: relative;
         }
         
@@ -142,7 +152,7 @@
         
         .month-header {
             display: grid;
-            height: 40px;
+            height: 36px;
             border-bottom: 1px solid #555;
         }
         
@@ -151,7 +161,7 @@
             align-items: center;
             justify-content: center;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 17px;
             border-right: 1px solid #555;
         }
         
@@ -161,28 +171,28 @@
         
         .day-numbers {
             display: grid;
-            height: 16px;
+            height: 14px;
         }
         
         .day-number {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 15px;
             color: #fff;
             font-weight: 500;
         }
         
         .day-header {
             display: grid;
-            height: 24px;
+            height: 22px;
         }
         
         .day-tick {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 14px;
             color: #fff;
             border-right: 1px solid rgba(255,255,255,0.15);
         }
@@ -207,7 +217,7 @@
             display: grid;
             align-items: center;
             background: #fafafa;
-            min-height: 60px;
+            min-height: 58px;
             position: relative;
         }
         
@@ -230,7 +240,7 @@
         }
         
         .task-bar {
-            height: 50px;
+            height: 48px;
             border-radius: 4px;
             display: flex;
             flex-direction: column;
@@ -240,21 +250,21 @@
             font-weight: 600;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
             margin: 0 1px;
-            padding: 6px 16px;
+            padding: 4px 12px;
             position: relative;
             z-index: 10;
             overflow: visible;
         }
         
         .task-bar-date {
-            font-size: 14px;
+            font-size: 17px;
             line-height: 1.2;
             white-space: nowrap; /* Prevent date text from wrapping */
             overflow: visible; /* Allow text to be visible */
         }
         
         .task-bar-hours {
-            font-size: 12px;
+            font-size: 15px;
             font-weight: 500;
             line-height: 1.2;
             margin-top: 2px;
@@ -298,19 +308,19 @@
         
         .milestone-row {
             display: flex;
-            margin-top: 20px;
+            margin-top: 15px;
         }
         
         .milestone-spacer {
-            width: 320px;
-            min-width: 320px;
+            width: 380px;
+            min-width: 380px;
         }
         
         .milestone-timeline {
             flex: 1;
-            min-width: 700px;
+            min-width: 0;
             display: grid;
-            height: 70px;
+            height: 65px;
             position: relative;
         }
         
@@ -328,7 +338,7 @@
             background: #fff;
             padding: 6px 10px;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 500;
             color: #495057;
             border: 2px solid var(--milestone-color, #0056b3);
@@ -351,6 +361,26 @@
             border-left: var(--connector-width, 2px) dotted var(--milestone-color, #0056b3);
             height: var(--connector-height, 0px);
             z-index: 1;
+        }
+        
+        /* Pause period overlay with diagonal hash pattern */
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 8px,
+                rgba(0, 0, 0, 0.08) 8px,
+                rgba(0, 0, 0, 0.08) 16px
+            );
+            pointer-events: none;
+            z-index: 5; /* Above grid lines but below task bars */
+        }
+        
+        .gantt-chart {
+            position: relative; /* Ensure pause overlay can be positioned relative to this */
         }
     </style>
 </head>
@@ -375,6 +405,15 @@
         // Timeline range (inclusive)
         timelineStart: "2025-12-01",
         timelineEnd: "2026-02-08",
+        
+        // Pause periods (optional) - periods to show with diagonal hash overlay
+        // Format: { start: "YYYY-MM-DD", end: "YYYY-MM-DD" }
+        pausePeriods: [
+            {
+                start: "2025-12-23",
+                end: "2026-01-04"
+            }
+        ],
         
         // Task definitions
         tasks: [
@@ -401,13 +440,6 @@
                     "Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)",
                     "Log and classify by purpose/category"
                 ]
-            },
-            {
-                name: "(Pause for holidays)",
-                start: "2025-12-23",
-                end: "2026-01-04",
-                color: "#6C757D",  // Gray
-                hours: 0
             },
             {
                 name: "Consent Mechanism Testing",
@@ -589,7 +621,7 @@
         let headerHTML = `
             <div class="gantt-row header-row">
                 <div class="col-task">Tasks</div>
-                <div class="col-timeline">
+                <div class="col-timeline" style="position: relative;">
                     <div class="month-header" style="grid-template-columns: ${monthGridTemplate}">
                         ${months.map(m => `<div class="month-label">${m.name}</div>`).join('')}
                     </div>
@@ -616,7 +648,7 @@
         `;
         
         // Create task rows
-        let tasksHTML = CONFIG.tasks.map((task, taskIndex) => {
+        let tasksHTML = CONFIG.tasks.map((task, originalIndex) => {
             const startCol = getDayIndex(task.start, CONFIG.timelineStart);
             const endCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
             const label = formatDateRange(task.start, task.end, CONFIG.dateFormat);
@@ -662,7 +694,7 @@
                 : '';
             
             return `
-                <div class="gantt-row task-row" data-task-index="${taskIndex}">
+                <div class="gantt-row task-row" data-task-index="${originalIndex}">
                     <div class="col-task">
                         <div class="task-name">${task.name}</div>
                         ${subtasksHTML}
@@ -672,7 +704,7 @@
                             ${gridLines}
                         </div>
                         ${monthBackgrounds.join('')}
-                        <div class="task-bar" data-task-index="${taskIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar" data-task-index="${originalIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
                             <div class="task-bar-date">${label}</div>
                             ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
                         </div>
@@ -682,6 +714,43 @@
         }).join('');
         
         document.getElementById('gantt-chart').innerHTML = headerHTML + `<div class="task-section">${tasksHTML}</div>`;
+        
+        // Add continuous pause period overlays spanning all rows (after layout)
+        if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
+            requestAnimationFrame(() => {
+                const ganttChart = document.getElementById('gantt-chart');
+                const firstTimelineCol = ganttChart.querySelector('.col-timeline');
+                if (firstTimelineCol && ganttChart) {
+                    const timelineRect = firstTimelineCol.getBoundingClientRect();
+                    const chartRect = ganttChart.getBoundingClientRect();
+                    const timelineLeft = timelineRect.left - chartRect.left;
+                    const timelineWidth = timelineRect.width;
+                    
+                    // Remove existing overlays if any
+                    const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
+                    existingOverlays.forEach(ov => ov.remove());
+                    
+                    // Create overlay for each pause period
+                    CONFIG.pausePeriods.forEach(pausePeriod => {
+                        const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
+                        const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
+                        const pauseLeftPercent = ((pauseStartCol - 1) / totalDays) * 100;
+                        const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / totalDays) * 100;
+                        
+                        const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
+                        const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
+                        
+                        const pauseOverlay = document.createElement('div');
+                        pauseOverlay.className = 'pause-overlay';
+                        pauseOverlay.style.left = `${overlayLeft}px`;
+                        pauseOverlay.style.width = `${overlayWidth}px`;
+                        pauseOverlay.style.top = '0';
+                        pauseOverlay.style.bottom = '0';
+                        ganttChart.appendChild(pauseOverlay);
+                    });
+                }
+            });
+        }
         
         // Create milestones
         if (CONFIG.showMilestones && CONFIG.milestones.length > 0) {
