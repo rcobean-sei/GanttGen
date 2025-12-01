@@ -224,12 +224,13 @@
             color: white;
             font-weight: 600;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
-            margin: 0 1px;
-            padding: 4px 16px;
+            margin: 0; /* remove horizontal margin so bars align with day columns */
+            padding: 6px 14px;
             position: relative;
             z-index: 10;
-            min-width: 160px; /* Increased to ensure "MMM ##–MMM ##" fits comfortably */
-            overflow: visible; /* Prevent content clipping */
+            min-width: 160px; /* Ensure "MMM ##–MMM ##" fits comfortably */
+            overflow: visible;
+            box-sizing: border-box; /* padding stays within grid columns */
         }
         
         .task-bar-date {
