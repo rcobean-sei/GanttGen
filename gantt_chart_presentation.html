@@ -256,6 +256,23 @@
             overflow: visible;
         }
         
+        /* Interrupted task bar segments - sharp edges on interrupted side */
+        .task-bar-segment-left {
+            border-radius: 4px 0 0 4px; /* Rounded only on left side */
+            box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
+                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
+        .task-bar-segment-right {
+            border-radius: 0 4px 4px 0; /* Rounded only on right side */
+            box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
+                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
         .task-bar-date {
             font-size: 17px;
             line-height: 1.2;
@@ -269,6 +286,24 @@
             line-height: 1.2;
             margin-top: 2px;
             opacity: 0.95;
+        }
+        
+        /* Break effect for task bars spanning pause periods */
+        .task-bar-stripe-connector {
+            position: absolute;
+            height: 48px; /* Same height as task bar */
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 11;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                45deg,
+                currentColor 0px,
+                currentColor 1px,
+                transparent 1px,
+                transparent 4px
+            );
+            opacity: 1;
         }
         
         /* Remove task bar connector - using milestone connector instead */
@@ -649,11 +684,25 @@
         
         // Create task rows
         let tasksHTML = CONFIG.tasks.map((task, originalIndex) => {
-            const startCol = getDayIndex(task.start, CONFIG.timelineStart);
-            const endCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+            const taskStart = new Date(task.start);
+            const taskEnd = new Date(task.end);
             const label = formatDateRange(task.start, task.end, CONFIG.dateFormat);
             const hours = task.hours !== undefined ? task.hours : 0;
             const hoursText = hours > 0 ? `${hours} hrs` : '';
+            
+            // Check if task spans across any pause period
+            let intersectingPause = null;
+            if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
+                for (const pause of CONFIG.pausePeriods) {
+                    const pauseStart = new Date(pause.start);
+                    const pauseEnd = new Date(pause.end);
+                    // Check if task spans across pause (starts before pause ends and ends after pause starts)
+                    if (taskStart < pauseEnd && taskEnd > pauseStart) {
+                        intersectingPause = pause;
+                        break;
+                    }
+                }
+            }
             
             // Create grid lines
             const gridLines = days.map((d, i) => {
@@ -693,6 +742,48 @@
                 ? `<div class="subtasks">${task.subtasks.map(st => `<div class="subtask">${st}</div>`).join('')}</div>`
                 : '';
             
+            // Render task bar(s) - split if spanning pause period
+            let taskBarsHTML = '';
+            if (intersectingPause) {
+                // Split task bar into two segments
+                const pauseStart = new Date(intersectingPause.start);
+                const pauseEnd = new Date(intersectingPause.end);
+                
+                // First segment: task start to pause start
+                const segment1StartCol = getDayIndex(task.start, CONFIG.timelineStart);
+                const segment1EndCol = getDayIndex(intersectingPause.start, CONFIG.timelineStart);
+                
+                // Second segment: pause end to task end
+                const segment2StartCol = getDayIndex(intersectingPause.end, CONFIG.timelineStart) + 1;
+                const segment2EndCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                
+                // Calculate stripe connector position and width (spans the gap between segments)
+                const connectorStartCol = segment1EndCol;
+                const connectorEndCol = segment2StartCol;
+                const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
+                const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
+                
+                taskBarsHTML = `
+                    <div class="task-bar task-bar-segment-left" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${label}</div>
+                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    </div>
+                    <div class="task-bar-stripe-connector" style="left: ${connectorLeft}%; width: ${connectorWidth}%; color: ${task.color};"></div>
+                    <div class="task-bar task-bar-segment-right" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                    </div>
+                `;
+            } else {
+                // Single continuous task bar
+                const startCol = getDayIndex(task.start, CONFIG.timelineStart);
+                const endCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                taskBarsHTML = `
+                    <div class="task-bar" data-task-index="${originalIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${label}</div>
+                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    </div>
+                `;
+            }
+            
             return `
                 <div class="gantt-row task-row" data-task-index="${originalIndex}">
                     <div class="col-task">
@@ -704,10 +795,7 @@
                             ${gridLines}
                         </div>
                         ${monthBackgrounds.join('')}
-                        <div class="task-bar" data-task-index="${originalIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
-                            <div class="task-bar-date">${label}</div>
-                            ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
-                        </div>
+                        ${taskBarsHTML}
                     </div>
                 </div>
             `;
