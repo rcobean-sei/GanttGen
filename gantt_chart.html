@@ -208,6 +208,25 @@
             align-items: center;
             background: #fafafa;
             min-height: 60px;
+            position: relative;
+        }
+        
+        .month-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .month-background.month-even {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+        
+        .month-background.month-odd {
+            background-color: transparent;
         }
         
         .task-bar {
@@ -298,9 +317,9 @@
         .milestone {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
+            align-items: center;
             justify-content: flex-end;
-            justify-self: start;
+            justify-self: center;
             position: relative;
             --milestone-color: #0056b3;
         }
@@ -355,7 +374,7 @@
         
         // Timeline range (inclusive)
         timelineStart: "2025-12-01",
-        timelineEnd: "2026-02-07",
+        timelineEnd: "2026-02-08",
         
         // Task definitions
         tasks: [
@@ -423,7 +442,7 @@
         // Milestone definitions
         milestones: [
             { name: "Project\nKickoff", date: "2025-12-02", taskIndex: 0 }, // Associated with first task (Planning & Preparation)
-            { name: "Testing\nComplete", date: "2026-01-19", taskIndex: 3 }, // Associated with Consent Mechanism Testing (end of bar)
+            { name: "Testing\nComplete", date: "2026-01-18", taskIndex: 3 }, // Associated with Consent Mechanism Testing (end of bar)
             { name: "Deliver\nFinal Report", date: "2026-02-02", taskIndex: 5 }  // Associated with Final Report
         ],
         
@@ -497,6 +516,7 @@
         let currentDate = new Date(start);
         let currentMonth = null;
         let monthDays = 0;
+        let monthIndex = -1;
         
         for (let i = 0; i < totalDays; i++) {
             const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
@@ -513,6 +533,7 @@
                 });
                 currentMonth = monthKey;
                 monthDays = 0;
+                monthIndex++;
             }
             
             const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
@@ -522,7 +543,8 @@
                 date: new Date(currentDate),
                 dayOfWeek: getDayOfWeek(currentDate),
                 isMonthEnd: false,
-                isWeekStart: isWeekStart
+                isWeekStart: isWeekStart,
+                monthIndex: monthIndex
             });
             
             monthDays++;
@@ -604,6 +626,31 @@
                 return `<div class="${classes.join(' ')}"></div>`;
             }).join('');
             
+            // Create month background cells (absolutely positioned)
+            const monthBackgrounds = [];
+            if (days.length > 0 && totalDays > 0) {
+                let currentMonthIndex = days[0].monthIndex;
+                let monthStartCol = 1;
+                
+                for (let i = 1; i <= days.length; i++) {
+                    const day = i < days.length ? days[i] : null;
+                    if (!day || day.monthIndex !== currentMonthIndex) {
+                        // End of month or last day
+                        const monthEndCol = i + 1;
+                        const monthClass = currentMonthIndex % 2 === 0 ? 'month-even' : 'month-odd';
+                        // Calculate percentage positions for absolute positioning
+                        const leftPercent = ((monthStartCol - 1) / totalDays) * 100;
+                        const widthPercent = ((monthEndCol - monthStartCol) / totalDays) * 100;
+                        monthBackgrounds.push(`<div class="month-background ${monthClass}" style="left: ${leftPercent}%; width: ${widthPercent}%;"></div>`);
+                        
+                        if (day) {
+                            currentMonthIndex = day.monthIndex;
+                            monthStartCol = i + 1;
+                        }
+                    }
+                }
+            }
+            
             // Create subtasks HTML if present
             const subtasksHTML = task.subtasks && task.subtasks.length > 0 
                 ? `<div class="subtasks">${task.subtasks.map(st => `<div class="subtask">${st}</div>`).join('')}</div>`
@@ -619,6 +666,7 @@
                         <div class="grid-lines" style="grid-template-columns: ${dayGridTemplate}">
                             ${gridLines}
                         </div>
+                        ${monthBackgrounds.join('')}
                         <div class="task-bar" data-task-index="${taskIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
                             <div class="task-bar-date">${label}</div>
                             ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
@@ -670,7 +718,8 @@
 
             const milestone = CONFIG.milestones[index];
             const col = getDayIndex(milestone.date, CONFIG.timelineStart);
-            const targetX = timelineRect.left + ((col - 1) * cellWidth);
+            // Calculate center of the day column
+            const targetX = timelineRect.left + ((col - 1) * cellWidth) + (cellWidth / 2);
 
             const labelRect = milestoneLabel.getBoundingClientRect();
             const labelCenter = labelRect.left + labelRect.width / 2;
