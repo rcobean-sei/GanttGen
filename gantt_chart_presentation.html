@@ -308,6 +308,19 @@
             justify-content: center; /* Match regular task bars */
         }
         
+        /* Text alignment within split segments */
+        .task-bar-segment-left .task-bar-date,
+        .task-bar-segment-left .task-bar-hours {
+            text-align: right;
+            width: 100%;
+        }
+        
+        .task-bar-segment-right .task-bar-date,
+        .task-bar-segment-right .task-bar-continued {
+            text-align: left;
+            width: 100%;
+        }
+        
         .task-bar-hours {
             font-size: 15px;
             font-weight: 500;
