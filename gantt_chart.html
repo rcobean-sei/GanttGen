@@ -138,6 +138,7 @@
         .header-row .col-timeline {
             display: flex;
             flex-direction: column;
+            min-width: 0; /* Allow flex item to shrink below content size */
         }
         
         .month-header {
@@ -160,13 +161,13 @@
         }
         
         .day-header {
-            display: flex;
-            flex-direction: column;
+            display: grid;
+            height: 40px;
         }
         
-        .day-numbers {
-            display: grid;
-            height: 16px;
+        .day-column {
+            display: flex;
+            flex-direction: column;
         }
         
         .day-number {
@@ -176,11 +177,8 @@
             font-size: 10px;
             color: #fff;
             font-weight: 500;
-        }
-        
-        .day-ticks {
-            display: grid;
-            height: 24px;
+            height: 16px;
+            min-width: 100%; /* Ensure number takes full column width */
         }
         
         .day-tick {
@@ -190,6 +188,7 @@
             font-size: 9px;
             color: #fff;
             border-right: 1px solid rgba(255,255,255,0.15);
+            height: 24px;
         }
         
         .day-tick.weekend {
@@ -560,25 +559,23 @@
                     <div class="month-header" style="grid-template-columns: ${monthGridTemplate}">
                         ${months.map(m => `<div class="month-label">${m.name}</div>`).join('')}
                     </div>
-                    <div class="day-header">
-                        <div class="day-numbers" style="grid-template-columns: ${dayGridTemplate}">
-                            ${days.map((d, i) => {
-                                const isMonday = d.date.getDay() === 1;
-                                const dayNum = isMonday ? d.date.getDate() : '';
-                                return `<div class="day-number">${dayNum}</div>`;
-                            }).join('')}
-                        </div>
-                        <div class="day-ticks" style="grid-template-columns: ${dayGridTemplate}">
-                            ${days.map((d, i) => {
-                                const highlight = CONFIG.highlightEvery > 0 && (i + 1) % CONFIG.highlightEvery === 0;
-                                const isWeekend = d.date.getDay() === 0 || d.date.getDay() === 6; // Sunday = 0, Saturday = 6
-                                const classes = ['day-tick'];
-                                if (highlight) classes.push('highlight');
-                                if (isWeekend) classes.push('weekend');
-                                if (d.isMonthEnd) classes.push('month-boundary');
-                                return `<div class="${classes.join(' ')}">${d.dayOfWeek}</div>`;
-                            }).join('')}
-                        </div>
+                    <div class="day-header" style="grid-template-columns: ${dayGridTemplate}">
+                        ${days.map((d, i) => {
+                            const isMonday = d.date.getDay() === 1;
+                            const dayNum = isMonday ? d.date.getDate() : '';
+                            const highlight = CONFIG.highlightEvery > 0 && (i + 1) % CONFIG.highlightEvery === 0;
+                            const isWeekend = d.date.getDay() === 0 || d.date.getDay() === 6;
+                            const tickClasses = ['day-tick'];
+                            if (highlight) tickClasses.push('highlight');
+                            if (isWeekend) tickClasses.push('weekend');
+                            if (d.isMonthEnd) tickClasses.push('month-boundary');
+                            return `
+                                <div class="day-column">
+                                    <div class="day-number">${dayNum}</div>
+                                    <div class="${tickClasses.join(' ')}">${d.dayOfWeek}</div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
             </div>
