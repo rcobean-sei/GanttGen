@@ -259,18 +259,40 @@
         /* Interrupted task bar segments - sharp edges on interrupted side */
         .task-bar-segment-left {
             border-radius: 4px 0 0 4px; /* Rounded only on left side */
-            box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border */
+            box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border only */
                         inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
                         inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
                         0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
         }
         
+        .task-bar-segment-left::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: inherit;
+            z-index: 2;
+        }
+        
         .task-bar-segment-right {
             border-radius: 0 4px 4px 0; /* Rounded only on right side */
-            box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border */
+            box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border only */
                         inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
                         inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
                         0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
+        .task-bar-segment-right::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: inherit;
+            z-index: 2;
         }
         
         .task-bar-date {
@@ -280,11 +302,25 @@
             overflow: visible; /* Allow text to be visible */
         }
         
+        /* Align dates in split segments to same vertical position as regular task bars */
+        .task-bar-segment-left,
+        .task-bar-segment-right {
+            justify-content: center; /* Match regular task bars */
+        }
+        
         .task-bar-hours {
             font-size: 15px;
             font-weight: 500;
             line-height: 1.2;
             margin-top: 2px;
+            opacity: 0.95;
+        }
+        
+        .task-bar-continued {
+            font-size: 15px;
+            font-style: italic;
+            font-weight: 500;
+            line-height: 1.2;
             opacity: 0.95;
         }
         
@@ -390,7 +426,7 @@
             content: '';
             position: absolute;
             bottom: 100%;
-            left: 50%;
+            left: var(--connector-line-x, 50%);
             transform: translateX(-50%);
             width: 0;
             border-left: var(--connector-width, 2px) dotted var(--milestone-color, #0056b3);
@@ -439,7 +475,7 @@
         
         // Timeline range (inclusive)
         timelineStart: "2025-12-01",
-        timelineEnd: "2026-02-13",
+        timelineEnd: "2026-02-14",
         
         // Pause periods (optional) - periods to show with diagonal hash overlay
         // Format: { start: "YYYY-MM-DD", end: "YYYY-MM-DD" }
@@ -515,7 +551,7 @@
         milestones: [
             { name: "Project\nKickoff", date: "2025-12-02", taskIndex: 0 }, // Associated with first task (Planning & Preparation)
             { name: "Testing\nComplete", date: "2026-01-25", taskIndex: 2 }, // Associated with Consent Mechanism Testing (end of bar)
-            { name: "Deliver\nFinal Report", date: "2026-02-13", taskIndex: 4 }  // Associated with Final Report
+            { name: "Deliver\nFinal Report", date: "2026-02-09", taskIndex: 4 }  // Associated with Final Report
         ],
         
         // Display options
@@ -554,6 +590,34 @@
             return `${sMonth} ${s.getDate()}–${e.getDate()}`;
         }
         return `${sMonth} ${s.getDate()}–${eMonth} ${e.getDate()}`;
+    }
+    
+    function formatStartDate(date, format) {
+        const d = parseDate(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `${d.getMonth()+1}/${d.getDate()}–`;
+        }
+        
+        // Short format
+        const month = months[d.getMonth()];
+        return `${month} ${d.getDate()}–`;
+    }
+    
+    function formatEndDate(date, format) {
+        const d = parseDate(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `–${d.getMonth()+1}/${d.getDate()}`;
+        }
+        
+        // Short format
+        const month = months[d.getMonth()];
+        return `–${month} ${d.getDate()}`;
     }
 
     function getDayOfWeek(date) {
@@ -763,13 +827,18 @@
                 const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
                 const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
                 
+                const startDateLabel = formatStartDate(task.start, CONFIG.dateFormat);
+                const endDateLabel = formatEndDate(task.end, CONFIG.dateFormat);
+                
                 taskBarsHTML = `
                     <div class="task-bar task-bar-segment-left" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
-                        <div class="task-bar-date">${label}</div>
+                        <div class="task-bar-date">${startDateLabel}</div>
                         ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
                     </div>
                     <div class="task-bar-stripe-connector" style="left: ${connectorLeft}%; width: ${connectorWidth}%; color: ${task.color};"></div>
                     <div class="task-bar task-bar-segment-right" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${endDateLabel}</div>
+                        <div class="task-bar-continued">continued</div>
                     </div>
                 `;
             } else {
@@ -870,6 +939,8 @@
         if (!milestoneTimeline || CURRENT_TOTAL_DAYS === 0) return;
         const timelineRect = milestoneTimeline.getBoundingClientRect();
         const cellWidth = timelineRect.width / CURRENT_TOTAL_DAYS;
+        const timelineRight = timelineRect.right;
+        const minPadding = cellWidth; // One day's column width as padding
 
         const milestoneElements = document.querySelectorAll('.milestone');
         milestoneElements.forEach((el, index) => {
@@ -880,19 +951,43 @@
 
             const milestone = CONFIG.milestones[index];
             const col = getDayIndex(milestone.date, CONFIG.timelineStart);
-            // Calculate center of the day column
-            const targetX = timelineRect.left + ((col - 1) * cellWidth) + (cellWidth / 2);
+            // Calculate center of the day column (where connector line should be - FIXED)
+            const connectorLineX = timelineRect.left + ((col - 1) * cellWidth) + (cellWidth / 2);
 
             const labelRect = milestoneLabel.getBoundingClientRect();
-            const labelCenter = labelRect.left + labelRect.width / 2;
-            const horizontalOffset = targetX - labelCenter;
+            const labelWidth = labelRect.width;
+            const labelCenter = labelRect.left + labelWidth / 2;
+            const timelineLeft = timelineRect.left;
+            
+            // Calculate where label would be if centered on connector line
+            const centeredLabelLeft = connectorLineX - (labelWidth / 2);
+            const centeredLabelRight = connectorLineX + (labelWidth / 2);
+            
+            // Check if centered label would extend past either edge
+            let labelOffset = connectorLineX - labelCenter;
+            if (centeredLabelLeft < timelineLeft + minPadding) {
+                // Adjust label to be at least one day's width from the left edge
+                const minLabelLeft = timelineLeft + minPadding;
+                const adjustedLabelCenter = minLabelLeft + (labelWidth / 2);
+                labelOffset = adjustedLabelCenter - labelCenter;
+            } else if (centeredLabelRight > timelineRight - minPadding) {
+                // Adjust label to be at least one day's width from the right edge
+                const maxLabelRight = timelineRight - minPadding;
+                const adjustedLabelCenter = maxLabelRight - (labelWidth / 2);
+                labelOffset = adjustedLabelCenter - labelCenter;
+            }
+            
+            // Calculate where connector line will be relative to the label's left edge
+            const finalLabelLeft = labelRect.left + labelOffset;
+            const connectorLineXRelative = connectorLineX - finalLabelLeft;
 
             const barRect = taskBar.getBoundingClientRect();
             const connectorHeight = Math.max(0, labelRect.top - barRect.bottom + 4);
 
             milestoneLabel.style.setProperty('--connector-height', `${connectorHeight}px`);
             milestoneLabel.style.setProperty('--milestone-color', getComputedStyle(taskBar).getPropertyValue('--task-line-color') || taskBar.style.backgroundColor);
-            milestoneLabel.style.setProperty('--connector-offset', `${horizontalOffset}px`);
+            milestoneLabel.style.setProperty('--connector-offset', `${labelOffset}px`);
+            milestoneLabel.style.setProperty('--connector-line-x', `${connectorLineXRelative}px`);
         });
     }
     
