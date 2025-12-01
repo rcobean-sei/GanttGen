@@ -210,11 +210,13 @@
             padding: 4px 12px;
             position: relative;
             z-index: 10;
+            min-width: 140px; /* Ensure enough space for "MMM ##–MMM ##" */
         }
         
         .task-bar-date {
             font-size: 12px;
             line-height: 1.2;
+            white-space: nowrap; /* Prevent date text from wrapping */
         }
         
         .task-bar-hours {
