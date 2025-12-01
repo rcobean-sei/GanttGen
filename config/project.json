@@ -1,0 +1,91 @@
+{
+  "title": "PROJECT TIMELINE",
+  "timelineStart": "2025-12-01",
+  "timelineEnd": "2026-02-14",
+  "pausePeriods": [
+    {
+      "start": "2025-12-23",
+      "end": "2026-01-04"
+    }
+  ],
+  "tasks": [
+    {
+      "name": "Planning & Preparation",
+      "start": "2025-12-02",
+      "end": "2025-12-14",
+      "color": "#E31E26",
+      "hours": 20,
+      "subtasks": [
+        "Define scope: URLs/Domains to audit; discovery and interviews",
+        "Determine test personas/scenarios",
+        "Baseline environment setup, any special access required"
+      ]
+    },
+    {
+      "name": "Initial Site Scans – Tracking System",
+      "start": "2025-12-15",
+      "end": "2026-01-11",
+      "color": "#2CABDB",
+      "hours": 20,
+      "subtasks": [
+        "Scan site and mobile app",
+        "Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)",
+        "Log and classify by purpose/category"
+      ]
+    },
+    {
+      "name": "Consent Mechanism Testing",
+      "start": "2026-01-12",
+      "end": "2026-01-25",
+      "color": "#0049A3",
+      "hours": 20,
+      "subtasks": [
+        "Opt out of all cookies, verify deactivation across user journeys",
+        "Audit site/app data flow compliance and messaging for GPC/DNSS signals"
+      ]
+    },
+    {
+      "name": "Analysis and Documentation",
+      "start": "2026-01-26",
+      "end": "2026-02-04",
+      "color": "#38155B",
+      "hours": 20,
+      "subtasks": [
+        "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
+      ]
+    },
+    {
+      "name": "Final Report and Recommendations",
+      "start": "2026-02-05",
+      "end": "2026-02-13",
+      "color": "#FF6B35",
+      "hours": 20,
+      "subtasks": [
+        "Compile, present, and deliver findings with prioritized remediation items by risk and impact.",
+        "Inventory artifacts with suggested categories",
+        "Revisions and clarifications as needed"
+      ]
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Project\nKickoff",
+      "date": "2025-12-02",
+      "taskIndex": 0
+    },
+    {
+      "name": "Testing\nComplete",
+      "date": "2026-01-25",
+      "taskIndex": 2
+    },
+    {
+      "name": "Deliver\nFinal Report",
+      "date": "2026-02-09",
+      "taskIndex": 4
+    }
+  ],
+  "showMilestones": true,
+  "highlightEvery": 5,
+  "dateFormat": "short"
+}
+

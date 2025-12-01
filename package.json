@@ -1,0 +1,13 @@
+{
+  "name": "ganttgen",
+  "version": "1.0.0",
+  "description": "Data-driven Gantt chart generator",
+  "scripts": {
+    "build": "node scripts/render.js",
+    "render": "node scripts/render.js"
+  },
+  "keywords": ["gantt", "chart", "timeline"],
+  "author": "",
+  "license": "ISC"
+}
+

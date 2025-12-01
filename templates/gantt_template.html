@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, initial-scale=1.0">
+    <title>Project Timeline - Gantt Chart</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        :root {
+            --connector-width: 2px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 10px;
+            background-color: transparent;
+        }
+        
+        .gantt-container {
+            background: transparent;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: none;
+            max-width: 1920px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            font-size: 44px;
+            font-weight: bold;
+            color: #333;
+            margin: 0 0 15px 0;
+            letter-spacing: -1px;
+            display: none; /* Hidden for PNG export */
+        }
+        
+        .gantt-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .gantt-chart {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 0;
+            position: relative;
+        }
+        
+        
+        .task-section {
+            position: relative;
+            overflow: visible; /* Allow connectors to extend past */
+        }
+        
+        /* Clip container for milestone connectors */
+        .milestone-clip-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gantt-row {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+        
+        .gantt-row:last-child {
+            border-bottom: none;
+        }
+        
+        .col-task {
+            width: 380px;
+            min-width: 380px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .task-name {
+            font-weight: 600;
+            font-size: 21px;
+            color: #333;
+        }
+        
+        .subtasks {
+            margin-top: 6px;
+            padding-left: 4px;
+        }
+        
+        .subtask {
+            font-size: 16px;
+            font-weight: 400;
+            color: #555;
+            line-height: 1.3;
+            margin-bottom: 3px;
+            padding-left: 12px;
+            position: relative;
+        }
+        
+        .subtask:last-child {
+            margin-bottom: 0;
+        }
+        
+        .subtask::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #999;
+        }
+        
+        .col-timeline {
+            flex: 1;
+            min-width: 0;
+            position: relative;
+        }
+        
+        /* Header row styling */
+        .header-row {
+            background: #333;
+            color: white;
+            border-bottom: 1px solid #555;
+            position: relative;
+            z-index: 20; /* Ensure header is above connector lines */
+        }
+        
+        .header-row .col-task {
+            background: #333;
+            border-right-color: #555;
+            color: white;
+            font-size: 16px;
+        }
+        
+        .header-row .col-timeline {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .month-header {
+            display: grid;
+            height: 36px;
+            border-bottom: 1px solid #555;
+        }
+        
+        .month-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 17px;
+            border-right: 1px solid #555;
+        }
+        
+        .month-label:last-child {
+            border-right: none;
+        }
+        
+        .day-numbers {
+            display: grid;
+            height: 14px;
+        }
+        
+        .day-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .day-header {
+            display: grid;
+            height: 22px;
+        }
+        
+        .day-tick {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+            border-right: 1px solid rgba(255,255,255,0.15);
+        }
+        
+        .day-tick.weekend {
+            color: #888;
+        }
+        
+        .day-tick.month-boundary {
+            border-right: 1px solid #555;
+        }
+        
+        .day-tick:last-child {
+            border-right: none;
+        }
+        
+        .day-tick.highlight {
+            font-weight: bold;
+        }
+        
+        .task-row .col-timeline {
+            display: grid;
+            align-items: center;
+            background: #fafafa;
+            min-height: 58px;
+            position: relative;
+        }
+        
+        .month-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .month-background.month-even {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+        
+        .month-background.month-odd {
+            background-color: transparent;
+        }
+        
+        .task-bar {
+            height: 48px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
+            margin: 0 1px;
+            padding: 4px 12px;
+            position: relative;
+            z-index: 10;
+            overflow: visible;
+        }
+        
+        /* Interrupted task bar segments - sharp edges on interrupted side */
+        .task-bar-segment-left {
+            border-radius: 4px 0 0 4px; /* Rounded only on left side */
+            box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border only */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
+                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
+        .task-bar-segment-left::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: inherit;
+            z-index: 2;
+        }
+        
+        .task-bar-segment-right {
+            border-radius: 0 4px 4px 0; /* Rounded only on right side */
+            box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border only */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
+                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
+        .task-bar-segment-right::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: inherit;
+            z-index: 2;
+        }
+        
+        .task-bar-date {
+            font-size: 17px;
+            line-height: 1.2;
+            white-space: nowrap; /* Prevent date text from wrapping */
+            overflow: visible; /* Allow text to be visible */
+        }
+        
+        /* Align dates in split segments to same vertical position as regular task bars */
+        .task-bar-segment-left,
+        .task-bar-segment-right {
+            justify-content: center; /* Match regular task bars */
+        }
+        
+        /* Text alignment within split segments */
+        .task-bar-segment-left .task-bar-date,
+        .task-bar-segment-left .task-bar-hours {
+            text-align: right;
+            width: 100%;
+        }
+        
+        .task-bar-segment-right .task-bar-date,
+        .task-bar-segment-right .task-bar-continued {
+            text-align: left;
+            width: 100%;
+        }
+        
+        .task-bar-hours {
+            font-size: 15px;
+            font-weight: 500;
+            line-height: 1.2;
+            margin-top: 2px;
+            opacity: 0.95;
+        }
+        
+        .task-bar-continued {
+            font-size: 15px;
+            font-style: italic;
+            font-weight: 500;
+            line-height: 1.2;
+            opacity: 0.95;
+        }
+        
+        /* Break effect for task bars spanning pause periods */
+        .task-bar-stripe-connector {
+            position: absolute;
+            height: 48px; /* Same height as task bar */
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 11;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                45deg,
+                currentColor 0px,
+                currentColor 1px,
+                transparent 1px,
+                transparent 4px
+            );
+            opacity: 1;
+        }
+        
+        /* Remove task bar connector - using milestone connector instead */
+        
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .grid-line {
+            border-right: 1px dashed rgba(0,0,0,0.08);
+        }
+        
+        .grid-line.week-boundary {
+            border-right: 1px dashed rgba(0,0,0,0.2);
+        }
+        
+        .grid-line.month-boundary {
+            border-right: 1px solid #ddd;
+        }
+        
+        .grid-line:last-child {
+            border-right: none;
+        }
+        
+        /* Milestones */
+        #milestone-section {
+            position: relative;
+            overflow: visible;
+        }
+        
+        .milestone-row {
+            display: flex;
+            margin-top: 15px;
+        }
+        
+        .milestone-spacer {
+            width: 380px;
+            min-width: 380px;
+        }
+        
+        .milestone-timeline {
+            flex: 1;
+            min-width: 0;
+            display: grid;
+            height: 65px;
+            position: relative;
+        }
+        
+        .milestone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            justify-self: center;
+            position: relative;
+            --milestone-color: #0056b3;
+        }
+        
+        .milestone-label {
+            background: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            color: #495057;
+            border: 2px solid var(--milestone-color, #0056b3);
+            text-align: center;
+            line-height: 1.3;
+            white-space: nowrap;
+            position: relative;
+            transform: translateX(var(--connector-offset, 0px));
+            --connector-height: 0px;
+        }
+        
+        /* Connector from top of milestone label up to task section */
+        .milestone-label::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: var(--connector-line-x, 50%);
+            transform: translateX(-50%);
+            width: 0;
+            border-left: var(--connector-width, 2px) dotted var(--milestone-color, #0056b3);
+            height: var(--connector-height, 0px);
+            z-index: 1;
+        }
+        
+        /* Pause period overlay with diagonal hash pattern */
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 8px,
+                rgba(0, 0, 0, 0.08) 8px,
+                rgba(0, 0, 0, 0.08) 16px
+            );
+            pointer-events: none;
+            z-index: 5; /* Above grid lines but below task bars */
+        }
+        
+        .gantt-chart {
+            position: relative; /* Ensure pause overlay can be positioned relative to this */
+        }
+    </style>
+</head>
+<body>
+    <div class="gantt-container">
+        <h1 id="chart-title">PROJECT TIMELINE</h1>
+        <div class="gantt-wrapper">
+            <div id="gantt-chart" class="gantt-chart"></div>
+            <div id="milestone-section"></div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // CONFIGURATION - Injected from JSON config file
+    // ============================================================
+    
+    const CONFIG = {{CONFIG}};
+    
+    let CURRENT_TOTAL_DAYS = 0;
+
+    // ============================================================
+    // CHART RENDERING ENGINE - No need to edit below this line
+    // ============================================================
+
+    // Utility functions
+    function parseDate(str) {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    function formatDateRange(start, end, format) {
+        const s = parseDate(start);
+        const e = parseDate(end);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `${s.getMonth()+1}/${s.getDate()}–${e.getMonth()+1}/${e.getDate()}`;
+        }
+        
+        // Short format
+        const sMonth = months[s.getMonth()];
+        const eMonth = months[e.getMonth()];
+        
+        if (s.getMonth() === e.getMonth()) {
+            return `${sMonth} ${s.getDate()}–${e.getDate()}`;
+        }
+        return `${sMonth} ${s.getDate()}–${eMonth} ${e.getDate()}`;
+    }
+    
+    function formatStartDate(date, format) {
+        const d = parseDate(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `${d.getMonth()+1}/${d.getDate()}–`;
+        }
+        
+        // Short format
+        const month = months[d.getMonth()];
+        return `${month} ${d.getDate()}–`;
+    }
+    
+    function formatEndDate(date, format) {
+        const d = parseDate(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `–${d.getMonth()+1}/${d.getDate()}`;
+        }
+        
+        // Short format
+        const month = months[d.getMonth()];
+        return `–${month} ${d.getDate()}`;
+    }
+
+    function getDayOfWeek(date) {
+        const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        return days[date.getDay()];
+    }
+
+    function daysBetween(start, end) {
+        const s = parseDate(start);
+        const e = parseDate(end);
+        return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    function getDayIndex(date, timelineStart) {
+        const d = parseDate(date);
+        const s = parseDate(timelineStart);
+        // Calculate days difference more precisely
+        const diffTime = d.getTime() - s.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays + 1; // +1 because grid columns are 1-indexed
+    }
+
+    // Build timeline data
+    function buildTimelineData() {
+        const start = parseDate(CONFIG.timelineStart);
+        const end = parseDate(CONFIG.timelineEnd);
+        const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        
+        const months = [];
+        const days = [];
+        
+        let currentDate = new Date(start);
+        let currentMonth = null;
+        let monthDays = 0;
+        let monthIndex = -1;
+        
+        for (let i = 0; i < totalDays; i++) {
+            const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+            
+            if (monthKey !== currentMonth) {
+                if (currentMonth !== null) {
+                    months[months.length - 1].days = monthDays;
+                }
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                months.push({
+                    name: `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
+                    days: 0
+                });
+                currentMonth = monthKey;
+                monthDays = 0;
+                monthIndex++;
+            }
+            
+            const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+            const isWeekStart = dayOfWeek === 0; // Sunday is week start (separator appears between S and M)
+            
+            days.push({
+                date: new Date(currentDate),
+                dayOfWeek: getDayOfWeek(currentDate),
+                isMonthEnd: false,
+                isWeekStart: isWeekStart,
+                monthIndex: monthIndex
+            });
+            
+            monthDays++;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Set last month's days
+        if (months.length > 0) {
+            months[months.length - 1].days = monthDays;
+        }
+        
+        // Mark month boundaries
+        let dayIndex = 0;
+        for (let m = 0; m < months.length - 1; m++) {
+            dayIndex += months[m].days;
+            if (dayIndex > 0 && dayIndex <= days.length) {
+                days[dayIndex - 1].isMonthEnd = true;
+            }
+        }
+        
+        return { months, days, totalDays };
+    }
+
+    // Render the chart
+    function renderChart() {
+        const { months, days, totalDays } = buildTimelineData();
+        CURRENT_TOTAL_DAYS = totalDays;
+        
+        // Set title
+        document.getElementById('chart-title').textContent = CONFIG.title;
+        
+        // Build month header grid template
+        const monthGridTemplate = months.map(m => `${m.days}fr`).join(' ');
+        const dayGridTemplate = `repeat(${totalDays}, 1fr)`;
+        
+        // Create header row
+        let headerHTML = `
+            <div class="gantt-row header-row">
+                <div class="col-task">Tasks</div>
+                <div class="col-timeline" style="position: relative;">
+                    <div class="month-header" style="grid-template-columns: ${monthGridTemplate}">
+                        ${months.map(m => `<div class="month-label">${m.name}</div>`).join('')}
+                    </div>
+                    <div class="day-numbers" style="grid-template-columns: ${dayGridTemplate}">
+                        ${days.map((d, i) => {
+                            const isMonday = d.date.getDay() === 1;
+                            const dayNum = isMonday ? d.date.getDate() : '';
+                            return `<div class="day-number">${dayNum}</div>`;
+                        }).join('')}
+                    </div>
+                    <div class="day-header" style="grid-template-columns: ${dayGridTemplate}">
+                        ${days.map((d, i) => {
+                            const highlight = CONFIG.highlightEvery > 0 && (i + 1) % CONFIG.highlightEvery === 0;
+                            const isWeekend = d.date.getDay() === 0 || d.date.getDay() === 6;
+                            const classes = ['day-tick'];
+                            if (highlight) classes.push('highlight');
+                            if (isWeekend) classes.push('weekend');
+                            if (d.isMonthEnd) classes.push('month-boundary');
+                            return `<div class="${classes.join(' ')}">${d.dayOfWeek}</div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Create task rows
+        let tasksHTML = CONFIG.tasks.map((task, originalIndex) => {
+            const taskStart = new Date(task.start);
+            const taskEnd = new Date(task.end);
+            const label = formatDateRange(task.start, task.end, CONFIG.dateFormat);
+            const hours = task.hours !== undefined ? task.hours : 0;
+            const hoursText = hours > 0 ? `${hours} hrs` : '';
+            
+            // Check if task spans across any pause period
+            let intersectingPause = null;
+            if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
+                for (const pause of CONFIG.pausePeriods) {
+                    const pauseStart = new Date(pause.start);
+                    const pauseEnd = new Date(pause.end);
+                    // Check if task spans across pause (starts before pause ends and ends after pause starts)
+                    if (taskStart < pauseEnd && taskEnd > pauseStart) {
+                        intersectingPause = pause;
+                        break;
+                    }
+                }
+            }
+            
+            // Create grid lines
+            const gridLines = days.map((d, i) => {
+                const classes = ['grid-line'];
+                if (d.isWeekStart) classes.push('week-boundary');
+                if (d.isMonthEnd) classes.push('month-boundary');
+                return `<div class="${classes.join(' ')}"></div>`;
+            }).join('');
+            
+            // Create month background cells (absolutely positioned)
+            const monthBackgrounds = [];
+            if (days.length > 0 && totalDays > 0) {
+                let currentMonthIndex = days[0].monthIndex;
+                let monthStartCol = 1;
+                
+                for (let i = 1; i <= days.length; i++) {
+                    const day = i < days.length ? days[i] : null;
+                    if (!day || day.monthIndex !== currentMonthIndex) {
+                        // End of month or last day
+                        const monthEndCol = i + 1;
+                        const monthClass = currentMonthIndex % 2 === 0 ? 'month-even' : 'month-odd';
+                        // Calculate percentage positions for absolute positioning
+                        const leftPercent = ((monthStartCol - 1) / totalDays) * 100;
+                        const widthPercent = ((monthEndCol - monthStartCol) / totalDays) * 100;
+                        monthBackgrounds.push(`<div class="month-background ${monthClass}" style="left: ${leftPercent}%; width: ${widthPercent}%;"></div>`);
+                        
+                        if (day) {
+                            currentMonthIndex = day.monthIndex;
+                            monthStartCol = i + 1;
+                        }
+                    }
+                }
+            }
+            
+            // Create subtasks HTML if present
+            const subtasksHTML = task.subtasks && task.subtasks.length > 0 
+                ? `<div class="subtasks">${task.subtasks.map(st => `<div class="subtask">${st}</div>`).join('')}</div>`
+                : '';
+            
+            // Render task bar(s) - split if spanning pause period
+            let taskBarsHTML = '';
+            if (intersectingPause) {
+                // Split task bar into two segments
+                const pauseStart = new Date(intersectingPause.start);
+                const pauseEnd = new Date(intersectingPause.end);
+                
+                // First segment: task start to pause start
+                const segment1StartCol = getDayIndex(task.start, CONFIG.timelineStart);
+                const segment1EndCol = getDayIndex(intersectingPause.start, CONFIG.timelineStart);
+                
+                // Second segment: pause end to task end
+                const segment2StartCol = getDayIndex(intersectingPause.end, CONFIG.timelineStart) + 1;
+                const segment2EndCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                
+                // Calculate stripe connector position and width (spans the gap between segments)
+                const connectorStartCol = segment1EndCol;
+                const connectorEndCol = segment2StartCol;
+                const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
+                const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
+                
+                const startDateLabel = formatStartDate(task.start, CONFIG.dateFormat);
+                const endDateLabel = formatEndDate(task.end, CONFIG.dateFormat);
+                
+                taskBarsHTML = `
+                    <div class="task-bar task-bar-segment-left" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${startDateLabel}</div>
+                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    </div>
+                    <div class="task-bar-stripe-connector" style="left: ${connectorLeft}%; width: ${connectorWidth}%; color: ${task.color};"></div>
+                    <div class="task-bar task-bar-segment-right" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${endDateLabel}</div>
+                        <div class="task-bar-continued">continued</div>
+                    </div>
+                `;
+            } else {
+                // Single continuous task bar
+                const startCol = getDayIndex(task.start, CONFIG.timelineStart);
+                const endCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                taskBarsHTML = `
+                    <div class="task-bar" data-task-index="${originalIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${label}</div>
+                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="gantt-row task-row" data-task-index="${originalIndex}">
+                    <div class="col-task">
+                        <div class="task-name">${task.name}</div>
+                        ${subtasksHTML}
+                    </div>
+                    <div class="col-timeline" style="grid-template-columns: ${dayGridTemplate}">
+                        <div class="grid-lines" style="grid-template-columns: ${dayGridTemplate}">
+                            ${gridLines}
+                        </div>
+                        ${monthBackgrounds.join('')}
+                        ${taskBarsHTML}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        document.getElementById('gantt-chart').innerHTML = headerHTML + `<div class="task-section">${tasksHTML}</div>`;
+        
+        // Add continuous pause period overlays spanning all rows (after layout)
+        if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
+            requestAnimationFrame(() => {
+                const ganttChart = document.getElementById('gantt-chart');
+                const firstTimelineCol = ganttChart.querySelector('.col-timeline');
+                if (firstTimelineCol && ganttChart) {
+                    const timelineRect = firstTimelineCol.getBoundingClientRect();
+                    const chartRect = ganttChart.getBoundingClientRect();
+                    const timelineLeft = timelineRect.left - chartRect.left;
+                    const timelineWidth = timelineRect.width;
+                    
+                    // Remove existing overlays if any
+                    const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
+                    existingOverlays.forEach(ov => ov.remove());
+                    
+                    // Create overlay for each pause period
+                    CONFIG.pausePeriods.forEach(pausePeriod => {
+                        const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
+                        const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
+                        const pauseLeftPercent = ((pauseStartCol - 1) / totalDays) * 100;
+                        const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / totalDays) * 100;
+                        
+                        const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
+                        const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
+                        
+                        const pauseOverlay = document.createElement('div');
+                        pauseOverlay.className = 'pause-overlay';
+                        pauseOverlay.style.left = `${overlayLeft}px`;
+                        pauseOverlay.style.width = `${overlayWidth}px`;
+                        pauseOverlay.style.top = '0';
+                        pauseOverlay.style.bottom = '0';
+                        ganttChart.appendChild(pauseOverlay);
+                    });
+                }
+            });
+        }
+        
+        // Create milestones
+        if (CONFIG.showMilestones && CONFIG.milestones.length > 0) {
+            const milestonesHTML = `
+                <div class="milestone-row">
+                    <div class="milestone-spacer"></div>
+                    <div class="milestone-timeline" style="grid-template-columns: ${dayGridTemplate}">
+                        ${CONFIG.milestones.map((m, index) => {
+                            const col = getDayIndex(m.date, CONFIG.timelineStart);
+                            const label = m.name.replace(/\n/g, '<br>');
+                            const associatedTask = CONFIG.tasks[m.taskIndex];
+                            const connectorColor = associatedTask ? associatedTask.color : '#0056b3';
+                            return `
+                                <div class="milestone" data-milestone-index="${index}" data-task-index="${m.taskIndex}" style="grid-column: ${col}; --milestone-color: ${connectorColor};">
+                                    <div class="milestone-label">${label}</div>
+                                </div>
+                            `;
+                        }).join('')}
+        </div>
+    </div>
+            `;
+            document.getElementById('milestone-section').innerHTML = milestonesHTML;
+            requestAnimationFrame(updateMilestoneConnectors);
+        }
+    }
+    
+    function updateMilestoneConnectors() {
+        const milestoneTimeline = document.querySelector('.milestone-timeline');
+        if (!milestoneTimeline || CURRENT_TOTAL_DAYS === 0) return;
+        const timelineRect = milestoneTimeline.getBoundingClientRect();
+        const cellWidth = timelineRect.width / CURRENT_TOTAL_DAYS;
+        const timelineRight = timelineRect.right;
+        const minPadding = cellWidth; // One day's column width as padding
+
+        const milestoneElements = document.querySelectorAll('.milestone');
+        milestoneElements.forEach((el, index) => {
+            const taskIndex = Number(el.getAttribute('data-task-index'));
+            const milestoneLabel = el.querySelector('.milestone-label');
+            const taskBar = document.querySelector(`.task-bar[data-task-index="${taskIndex}"]`);
+            if (!milestoneLabel || !taskBar) return;
+
+            const milestone = CONFIG.milestones[index];
+            const col = getDayIndex(milestone.date, CONFIG.timelineStart);
+            // Calculate center of the day column (where connector line should be - FIXED)
+            const connectorLineX = timelineRect.left + ((col - 1) * cellWidth) + (cellWidth / 2);
+
+            const labelRect = milestoneLabel.getBoundingClientRect();
+            const labelWidth = labelRect.width;
+            const labelCenter = labelRect.left + labelWidth / 2;
+            const timelineLeft = timelineRect.left;
+            
+            // Calculate where label would be if centered on connector line
+            const centeredLabelLeft = connectorLineX - (labelWidth / 2);
+            const centeredLabelRight = connectorLineX + (labelWidth / 2);
+            
+            // Check if centered label would extend past either edge
+            let labelOffset = connectorLineX - labelCenter;
+            if (centeredLabelLeft < timelineLeft + minPadding) {
+                // Adjust label to be at least one day's width from the left edge
+                const minLabelLeft = timelineLeft + minPadding;
+                const adjustedLabelCenter = minLabelLeft + (labelWidth / 2);
+                labelOffset = adjustedLabelCenter - labelCenter;
+            } else if (centeredLabelRight > timelineRight - minPadding) {
+                // Adjust label to be at least one day's width from the right edge
+                const maxLabelRight = timelineRight - minPadding;
+                const adjustedLabelCenter = maxLabelRight - (labelWidth / 2);
+                labelOffset = adjustedLabelCenter - labelCenter;
+            }
+            
+            // Calculate where connector line will be relative to the label's left edge
+            const finalLabelLeft = labelRect.left + labelOffset;
+            const connectorLineXRelative = connectorLineX - finalLabelLeft;
+
+            const barRect = taskBar.getBoundingClientRect();
+            const connectorHeight = Math.max(0, labelRect.top - barRect.bottom + 4);
+
+            milestoneLabel.style.setProperty('--connector-height', `${connectorHeight}px`);
+            milestoneLabel.style.setProperty('--milestone-color', getComputedStyle(taskBar).getPropertyValue('--task-line-color') || taskBar.style.backgroundColor);
+            milestoneLabel.style.setProperty('--connector-offset', `${labelOffset}px`);
+            milestoneLabel.style.setProperty('--connector-line-x', `${connectorLineXRelative}px`);
+        });
+    }
+    
+    window.addEventListener('resize', () => requestAnimationFrame(updateMilestoneConnectors));
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', renderChart);
+    </script>
+</body>
+</html>

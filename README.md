@@ -1,68 +1,79 @@
 # GanttGen
 
-A lightweight, data-driven Gantt chart generator using vanilla HTML, CSS, and JavaScript.
+A data-driven Gantt chart generator with configurable tasks, milestones, and pause periods.
 
-## Features
+## Structure
 
-- **Data-driven configuration**: Update tasks, dates, colors, and milestones through a simple JavaScript CONFIG object
-- **Color-coded milestones**: Visual connectors linking milestones to their associated tasks
-- **Responsive timeline**: Automatically calculates grid layout based on date ranges
-- **Subtasks support**: Add bullet-pointed subtasks under main tasks
-- **Week boundaries**: Visual markers for week starts
-- **No dependencies**: Pure HTML/CSS/JS - no external libraries required
+```
+GanttGen/
+├── config/
+│   └── project.json          # Configuration data (tasks, dates, colors, etc.)
+├── templates/
+│   └── gantt_template.html   # HTML template with {{CONFIG}} placeholder
+├── scripts/
+│   └── render.js             # Build script (reads JSON, generates HTML)
+├── output/
+│   └── gantt_chart.html      # Generated HTML file (ready to use)
+└── package.json              # npm scripts
+```
 
 ## Usage
 
-1. Open `gantt_chart.html` in your browser
-2. Edit the `CONFIG` object in the `<script>` section to customize:
-   - Timeline start/end dates
-   - Task names, dates, colors, and estimated hours
-   - Milestone dates and associations
-   - Subtasks for each task
+### 1. Edit Configuration
 
-## Configuration Example
+Edit `config/project.json` to customize your chart:
 
-```javascript
-const CONFIG = {
-    title: "PROJECT TIMELINE",
-    timelineStart: "2025-12-01",
-    timelineEnd: "2026-02-07",
-    
-    tasks: [
-        {
-            name: "Planning & Preparation",
-            start: "2025-12-02",
-            end: "2025-12-12",
-            color: "#dc3545",
-            hours: 20,
-            subtasks: [
-                "Define scope",
-                "Determine test scenarios",
-                "Baseline environment setup"
-            ]
-        }
-        // ... more tasks
-    ],
-    
-    milestones: [
-        { 
-            name: "Project\nKickoff", 
-            date: "2025-12-02", 
-            taskIndex: 0 
-        }
-        // ... more milestones
-    ]
-};
+```json
+{
+  "title": "PROJECT TIMELINE",
+  "timelineStart": "2025-12-01",
+  "timelineEnd": "2026-02-14",
+  "pausePeriods": [...],
+  "tasks": [...],
+  "milestones": [...]
+}
 ```
 
-## Export
+### 2. Generate HTML
 
-To use in presentations:
-1. Open the HTML file in a browser
-2. Take a screenshot or print to PDF
-3. Insert into PowerPoint or other presentation tools
+Run the render script:
 
-## License
+```bash
+npm run build
+# or
+node scripts/render.js
+```
 
-Created for project timeline visualization and planning.
+### 3. Preview
 
+Open `output/gantt_chart.html` in a browser to preview or export as PNG.
+
+## Configuration Schema
+
+### Tasks
+- `name`: Task name
+- `start`: Start date (YYYY-MM-DD)
+- `end`: End date (YYYY-MM-DD)
+- `color`: Hex color code
+- `hours`: Estimated hours (number)
+- `subtasks`: Array of subtask descriptions (optional)
+
+### Milestones
+- `name`: Milestone name (use `\n` for line breaks)
+- `date`: Milestone date (YYYY-MM-DD)
+- `taskIndex`: Index of associated task in tasks array
+
+### Pause Periods
+- `start`: Pause start date (YYYY-MM-DD)
+- `end`: Pause end date (YYYY-MM-DD)
+
+Tasks that span across pause periods will automatically show a break effect with diagonal stripes.
+
+## Features
+
+- ✅ Data-driven configuration (JSON)
+- ✅ Automatic break effects for tasks spanning pause periods
+- ✅ Milestone connectors with edge overflow protection
+- ✅ Responsive milestone positioning
+- ✅ Transparent background for easy export
+- ✅ Optimized for PowerPoint presentation (16:9 aspect ratio)
