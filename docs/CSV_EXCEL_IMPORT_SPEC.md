@@ -32,13 +32,13 @@ Single-row sheet with project-wide settings.
 | `timelineStart` | Start date (YYYY-MM-DD) | Yes | "2025-12-01" | - |
 | `timelineEnd` | End date (YYYY-MM-DD) | Yes | "2026-02-14" | - |
 | `showMilestones` | Show milestones (true/false) | No | true | true |
-| `highlightEvery` | Highlight every Nth day | No | 5 | 5 |
-| `dateFormat` | Date format ("short"/"long") | No | "short" | "short" |
+
+**Note:** `highlightEvery` (highlight every 5th day) and `dateFormat` ("short") are hard-coded in the rendering logic and do not need to be specified.
 
 **Example:**
 ```
-title              | timelineStart | timelineEnd | showMilestones | highlightEvery | dateFormat
-PROJECT TIMELINE   | 2025-12-01    | 2026-02-14  | true           | 5              | short
+title              | timelineStart | timelineEnd | showMilestones
+PROJECT TIMELINE   | 2025-12-01    | 2026-02-14  | true
 ```
 
 ---
@@ -132,8 +132,8 @@ Use section headers to separate data:
 
 ```csv
 # PROJECT
-title,timelineStart,timelineEnd,showMilestones,highlightEvery,dateFormat
-PROJECT TIMELINE,2025-12-01,2026-02-14,true,5,short
+title,timelineStart,timelineEnd,showMilestones
+PROJECT TIMELINE,2025-12-01,2026-02-14,true
 
 # TASKS
 name,start,end,color,hours,subtask1,subtask2,subtask3,subtask4,subtask5,subtask6,subtask7,subtask8,subtask9,subtask10
@@ -211,9 +211,9 @@ A template Excel file (`templates/gantt_template.xlsx`) will be provided with:
 - Data validation (where possible)
 - Color picker cells (where supported)
 
-### CSV Template
+### CSV Format
 
-A template CSV file (`templates/gantt_template.csv`) will be provided with example data.
+CSV format is supported for import, but the Excel template is recommended for the best user experience.
 
 ---
 

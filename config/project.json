@@ -1,91 +1,87 @@
 {
   "title": "PROJECT TIMELINE",
-  "timelineStart": "2025-12-01",
-  "timelineEnd": "2026-02-14",
-  "pausePeriods": [
-    {
-      "start": "2025-12-23",
-      "end": "2026-01-04"
-    }
-  ],
+  "timelineStart": "2025-01-06",
+  "timelineEnd": "2025-03-14",
+  "showMilestones": true,
   "tasks": [
     {
-      "name": "Planning & Preparation",
-      "start": "2025-12-02",
-      "end": "2025-12-14",
-      "color": "#E31E26",
-      "hours": 20,
+      "name": "Planning & Vendor Selection",
+      "start": "2025-01-06",
+      "end": "2025-01-24",
+      "hours": 30,
       "subtasks": [
-        "Define scope: URLs/Domains to audit; discovery and interviews",
-        "Determine test personas/scenarios",
-        "Baseline environment setup, any special access required"
-      ]
+        "Research beverage machine vendors and models",
+        "Compare features, pricing, and maintenance requirements",
+        "Schedule vendor demos and site visits",
+        "Evaluate compatibility with existing POS systems",
+        "Select vendor and negotiate contract terms"
+      ],
+      "color": "#E31E26"
     },
     {
-      "name": "Initial Site Scans – Tracking System",
-      "start": "2025-12-15",
-      "end": "2026-01-11",
-      "color": "#2CABDB",
-      "hours": 20,
+      "name": "Site Preparation & Installation",
+      "start": "2025-01-27",
+      "end": "2025-02-21",
+      "hours": 40,
       "subtasks": [
-        "Scan site and mobile app",
-        "Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)",
-        "Log and classify by purpose/category"
-      ]
+        "Coordinate with facilities team for electrical and plumbing requirements",
+        "Schedule installation during off-peak hours",
+        "Remove old beverage machine and dispose of equipment",
+        "Install new machine and connect to utilities",
+        "Test all connections and basic functionality"
+      ],
+      "color": "#2CABDB"
     },
     {
-      "name": "Consent Mechanism Testing",
-      "start": "2026-01-12",
-      "end": "2026-01-25",
-      "color": "#0049A3",
-      "hours": 20,
+      "name": "System Integration & Testing",
+      "start": "2025-02-24",
+      "end": "2025-03-07",
+      "hours": 25,
       "subtasks": [
-        "Opt out of all cookies, verify deactivation across user journeys",
-        "Audit site/app data flow compliance and messaging for GPC/DNSS signals"
-      ]
+        "Integrate new machine with POS system",
+        "Configure menu items and pricing",
+        "Test payment processing and receipt printing",
+        "Train staff on new machine operation",
+        "Conduct end-to-end testing with real orders"
+      ],
+      "color": "#38155B"
     },
     {
-      "name": "Analysis and Documentation",
-      "start": "2026-01-26",
-      "end": "2026-02-04",
-      "color": "#38155B",
+      "name": "Staff Training & Documentation",
+      "start": "2025-03-10",
+      "end": "2025-03-14",
       "hours": 20,
       "subtasks": [
-        "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
-      ]
-    },
-    {
-      "name": "Final Report and Recommendations",
-      "start": "2026-02-05",
-      "end": "2026-02-13",
-      "color": "#FF6B35",
-      "hours": 20,
-      "subtasks": [
-        "Compile, present, and deliver findings with prioritized remediation items by risk and impact.",
-        "Inventory artifacts with suggested categories",
-        "Revisions and clarifications as needed"
-      ]
+        "Conduct training sessions for all staff members",
+        "Create quick reference guide for common operations",
+        "Document troubleshooting procedures",
+        "Schedule follow-up training for new hires",
+        "Gather feedback and address concerns"
+      ],
+      "color": "#0049A3"
     }
   ],
   "milestones": [
     {
       "name": "Project\nKickoff",
-      "date": "2025-12-02",
+      "date": "2025-01-06",
       "taskIndex": 0
     },
     {
-      "name": "Testing\nComplete",
-      "date": "2026-01-25",
-      "taskIndex": 2
+      "name": "Installation\nComplete",
+      "date": "2025-02-21",
+      "taskIndex": 1
     },
     {
-      "name": "Deliver\nFinal Report",
-      "date": "2026-02-09",
-      "taskIndex": 4
+      "name": "Go Live",
+      "date": "2025-03-14",
+      "taskIndex": 3
     }
   ],
-  "showMilestones": true,
-  "highlightEvery": 5,
-  "dateFormat": "short"
+  "pausePeriods": [
+    {
+      "start": "2025-02-15",
+      "end": "2025-02-17"
+    }
+  ]
 }
-

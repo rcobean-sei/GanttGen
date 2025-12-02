@@ -1,6 +1,7 @@
 const ExcelJS = require('exceljs');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
 
 const outputPath = path.join(__dirname, '../templates/gantt_template.xlsx');
 
@@ -29,38 +30,45 @@ function assignTaskColors(numTasks) {
     return colors;
 }
 
-// Example task data (before color assignment)
+// Example task data (before color assignment) - Beverage Machine Upgrade Project
 const exampleTaskDataRaw = [
     {
-        name: 'Planning & Preparation',
-        start: '2025-12-02',
-        end: '2025-12-14',
-        hours: 20,
+        name: 'Planning & Vendor Selection',
+        start: '2025-01-06',
+        end: '2025-01-24',
+        hours: 30,
         subtasks: [
-            'Define scope: URLs/Domains to audit; discovery and interviews',
-            'Determine test personas/scenarios',
-            'Baseline environment setup, any special access required'
+            'Research beverage machine vendors and models',
+            'Compare features, pricing, and maintenance requirements',
+            'Schedule vendor demos and site visits',
+            'Evaluate compatibility with existing POS systems',
+            'Select vendor and negotiate contract terms'
         ]
     },
     {
-        name: 'Initial Site Scans – Tracking System',
-        start: '2025-12-15',
-        end: '2026-01-11',
-        hours: 20,
+        name: 'Site Preparation & Installation',
+        start: '2025-01-27',
+        end: '2025-02-21',
+        hours: 40,
         subtasks: [
-            'Scan site and mobile app',
-            'Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)',
-            'Log and classify by purpose/category'
+            'Coordinate with facilities team for electrical and plumbing requirements',
+            'Schedule installation during off-peak hours',
+            'Remove old beverage machine and dispose of equipment',
+            'Install new machine and connect to utilities',
+            'Test all connections and basic functionality'
         ]
     },
     {
-        name: 'Consent Mechanism Testing',
-        start: '2026-01-12',
-        end: '2026-01-25',
-        hours: 20,
+        name: 'System Integration & Testing',
+        start: '2025-02-24',
+        end: '2025-03-07',
+        hours: 25,
         subtasks: [
-            'Opt out of all cookies, verify deactivation across user journeys',
-            'Audit site/app data flow compliance and messaging for GPC/DNSS signals'
+            'Integrate new machine with POS system',
+            'Configure menu items and pricing',
+            'Test payment processing and receipt printing',
+            'Train staff on new machine operation',
+            'Conduct end-to-end testing with real orders'
         ]
     }
 ];
@@ -136,7 +144,7 @@ row++;
 instructionsSheet.mergeCells(`A${row}:F${row}`);
 instructionsSheet.getCell(`A${row}`).value = 'This template allows you to create a professional Gantt chart by filling in the data sheets below. Each sheet has a specific purpose:\n\n' +
     '• PROJECT: Set the overall timeline and chart settings\n' +
-    '• TASKS: Define your project tasks with dates, colors, and subtasks\n' +
+    '• TASKS: Define your project tasks with dates and subtasks (colors are assigned automatically)\n' +
     '• MILESTONES: Mark important project milestones\n' +
     '• PAUSE_PERIODS: Define any breaks or holidays (optional)';
 instructionsSheet.getCell(`A${row}`).style = infoStyle;
@@ -236,9 +244,9 @@ seiColors.forEach((color, idx) => {
     row++;
 });
 
-// Add note about using colors
+// Add note about automatic color assignment
 instructionsSheet.mergeCells(`A${row}:F${row}`);
-instructionsSheet.getCell(`A${row}`).value = '💡 TIP: Copy the hex codes above (including the #) into the "color" column in the Tasks sheet. You can use any of these colors or your own custom hex colors.';
+instructionsSheet.getCell(`A${row}`).value = '💡 TIP: Colors shown above are from the SEI palette. Task colors are automatically assigned from this palette when you import the data - no manual selection needed!';
 instructionsSheet.getCell(`A${row}`).style = {
     font: { size: 10, color: { argb: 'FF7F8C8D' }, italic: true },
     fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8F9FA' } },
@@ -258,13 +266,11 @@ row++;
 instructionsSheet.mergeCells(`A${row}:F${row}`);
 instructionsSheet.getCell(`A${row}`).value = 'Fill in ONE row with your project details:\n\n' +
     '• title: The chart title (e.g., "PROJECT TIMELINE")\n' +
-    '• timelineStart: Start date in YYYY-MM-DD format (e.g., "2025-12-01")\n' +
-    '• timelineEnd: End date in YYYY-MM-DD format (e.g., "2026-02-14")\n' +
-    '• showMilestones: true or false (default: true)\n' +
-    '• highlightEvery: Number of days between highlights (default: 5)\n' +
-    '• dateFormat: "short" or "long" (default: "short")';
+    '• timelineStart: Start date in YYYY-MM-DD format (e.g., "2025-01-06")\n' +
+    '• timelineEnd: End date in YYYY-MM-DD format (e.g., "2025-03-14")\n' +
+    '• showMilestones: true or false (default: true)';
 instructionsSheet.getCell(`A${row}`).style = infoStyle;
-instructionsSheet.getRow(row).height = 140;
+instructionsSheet.getRow(row).height = 120;
 row += 2;
 
 // Tasks Sheet Instructions
@@ -276,10 +282,10 @@ row++;
 
 instructionsSheet.mergeCells(`A${row}:F${row}`);
 instructionsSheet.getCell(`A${row}`).value = 'Add one row per task. Each task needs:\n\n' +
-    '• name: Task name (e.g., "Planning & Preparation")\n' +
-    '• start: Start date in YYYY-MM-DD format (e.g., "2025-12-02")\n' +
-    '• end: End date in YYYY-MM-DD format (e.g., "2025-12-14")\n' +
-    '• hours: Estimated hours (number, e.g., 20)\n' +
+    '• name: Task name (e.g., "Planning & Vendor Selection")\n' +
+    '• start: Start date in YYYY-MM-DD format (e.g., "2025-01-06")\n' +
+    '• end: End date in YYYY-MM-DD format (e.g., "2025-01-24")\n' +
+    '• hours: Estimated hours (number, e.g., 30)\n' +
     '• subtask1 through subtask10: Optional subtasks (up to 10 per task)\n\n' +
     '💡 TIP: Colors are automatically assigned! Each task gets a unique color from the SEI palette, and no two adjacent tasks will have the same color.\n' +
     '💡 TIP: Leave subtask columns empty if you have fewer than 10 subtasks.';
@@ -297,7 +303,7 @@ row++;
 instructionsSheet.mergeCells(`A${row}:F${row}`);
 instructionsSheet.getCell(`A${row}`).value = 'Add one row per milestone:\n\n' +
     '• name: Milestone name (use \\n for line breaks, e.g., "Project\\nKickoff")\n' +
-    '• date: Milestone date in YYYY-MM-DD format (e.g., "2025-12-02")\n' +
+    '• date: Milestone date in YYYY-MM-DD format (e.g., "2025-01-06")\n' +
     '• linkedTask: Select the associated task from the dropdown list (or leave blank)\n\n' +
     '💡 TIP: The linkedTask column has a dropdown menu showing all tasks from the Tasks sheet. Simply click the cell and select from the list!\n' +
     '💡 TIP: You can leave linkedTask blank if the milestone is not associated with a specific task.';
@@ -314,8 +320,8 @@ row++;
 
 instructionsSheet.mergeCells(`A${row}:F${row}`);
 instructionsSheet.getCell(`A${row}`).value = 'Add one row per pause/break period:\n\n' +
-    '• start: Pause start date in YYYY-MM-DD format (e.g., "2025-12-23")\n' +
-    '• end: Pause end date in YYYY-MM-DD format (e.g., "2026-01-04")\n\n' +
+    '• start: Pause start date in YYYY-MM-DD format (e.g., "2025-02-15")\n' +
+    '• end: Pause end date in YYYY-MM-DD format (e.g., "2025-02-17")\n\n' +
     '💡 TIP: Leave this sheet empty if you have no pause periods. Tasks that span a pause will automatically show a break effect.';
 instructionsSheet.getCell(`A${row}`).style = infoStyle;
 instructionsSheet.getRow(row).height = 120;
@@ -332,8 +338,8 @@ instructionsSheet.mergeCells(`A${row}:F${row}`);
 instructionsSheet.getCell(`A${row}`).value = '• Dates MUST be in YYYY-MM-DD format (e.g., "2025-12-01", not "12/1/2025")\n' +
     '• Task start dates must be before end dates\n' +
     '• All task dates must fall within the timeline range\n' +
-    '• Colors are assigned automatically - no need to set them manually\n' +
-    '• Milestone linking is automatic - the formula finds the matching task\n' +
+    '• Task colors are automatically assigned from the SEI palette - no manual selection needed\n' +
+    '• Milestone linking uses a dropdown - select the associated task from the list\n' +
     '• Use \\n in milestone names for line breaks (not actual line breaks)';
 instructionsSheet.getCell(`A${row}`).style = warningStyle;
 instructionsSheet.getRow(row).height = 140;
@@ -369,7 +375,7 @@ const projectSheet = workbook.addWorksheet('Project', {
 });
 
 // Header row
-projectSheet.getRow(1).values = ['title', 'timelineStart', 'timelineEnd', 'showMilestones', 'highlightEvery', 'dateFormat'];
+projectSheet.getRow(1).values = ['title', 'timelineStart', 'timelineEnd', 'showMilestones'];
 projectSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
 projectSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3498DB' } };
 projectSheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
@@ -377,14 +383,12 @@ projectSheet.getRow(1).height = 25;
 
 // Add comments/notes to header cells
 projectSheet.getCell('A1').note = 'Chart title (e.g., "PROJECT TIMELINE")';
-projectSheet.getCell('B1').note = 'Start date in YYYY-MM-DD format (e.g., "2025-12-01")';
-projectSheet.getCell('C1').note = 'End date in YYYY-MM-DD format (e.g., "2026-02-14")';
+projectSheet.getCell('B1').note = 'Start date in YYYY-MM-DD format (e.g., "2025-01-06")';
+projectSheet.getCell('C1').note = 'End date in YYYY-MM-DD format (e.g., "2025-03-14")';
 projectSheet.getCell('D1').note = 'Show milestones? (true or false)';
-projectSheet.getCell('E1').note = 'Highlight every Nth day (number, e.g., 5)';
-projectSheet.getCell('F1').note = 'Date format: "short" or "long"';
 
 // Example data row
-projectSheet.getRow(2).values = ['PROJECT TIMELINE', '2025-12-01', '2026-02-14', true, 5, 'short'];
+projectSheet.getRow(2).values = ['PROJECT TIMELINE', '2025-01-06', '2025-03-14', true];
 projectSheet.getRow(2).font = { color: { argb: 'FF2C3E50' } };
 projectSheet.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
 
@@ -393,8 +397,6 @@ projectSheet.getColumn('A').width = 25;
 projectSheet.getColumn('B').width = 18;
 projectSheet.getColumn('C').width = 18;
 projectSheet.getColumn('D').width = 18;
-projectSheet.getColumn('E').width = 18;
-projectSheet.getColumn('F').width = 15;
 
 // ============================================================
 // TASKS SHEET
@@ -518,9 +520,9 @@ const taskNamesRange = 'Tasks!$A$2:$A$1000';
 
 // Example data rows
 const exampleMilestones = [
-    ['Project\nKickoff', '2025-12-02', 'Planning & Preparation'],
-    ['Testing\nComplete', '2026-01-25', 'Consent Mechanism Testing'],
-    ['Deliver\nFinal Report', '2026-02-09', 'Final Report and Recommendations'],
+    ['Project\nKickoff', '2025-01-06', 'Planning & Vendor Selection'],
+    ['Installation\nComplete', '2025-02-21', 'Site Preparation & Installation'],
+    ['Go Live', '2025-03-14', 'Staff Training & Documentation'],
 ];
 
 exampleMilestones.forEach((milestone, idx) => {
@@ -591,7 +593,7 @@ pauseSheet.getCell('A1').note = 'Pause start date in YYYY-MM-DD format';
 pauseSheet.getCell('B1').note = 'Pause end date in YYYY-MM-DD format';
 
 // Example data row
-pauseSheet.getRow(2).values = ['2025-12-23', '2026-01-04'];
+pauseSheet.getRow(2).values = ['2025-02-15', '2025-02-17'];
 pauseSheet.getRow(2).font = { color: { argb: 'FF2C3E50' } };
 pauseSheet.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } };
 
@@ -612,7 +614,17 @@ async function generateTemplate() {
         console.log(`  • ✅ Tasks sheet with example tasks`);
         console.log(`  • 🎯 Milestones sheet with example milestones`);
         console.log(`  • ⏸️  PausePeriods sheet with example pause period`);
-        console.log(`\n  Open the file and follow the instructions!`);
+        console.log(`\n  Opening the file...`);
+        
+        // Open the Excel file
+        exec(`open "${outputPath}"`, (error) => {
+            if (error) {
+                console.warn(`  ⚠️  Could not automatically open the file: ${error.message}`);
+                console.log(`  Please manually open: ${outputPath}`);
+            } else {
+                console.log(`  ✓ Opened in Excel`);
+            }
+        });
     } catch (error) {
         console.error('Error generating template:', error);
         process.exit(1);

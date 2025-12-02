@@ -13,4 +13,5 @@ node_modules/
 ~$*.xlsx
 ~$*.xls
 
-~cd "/Users/rydercobean/Documents/Client Projects/2025/GanttGen" && echo "~$*.xlsx" >> .gitignore && git reset HEAD "templates/~$gantt_template.xlsx".xlsx
+# User input files (real project data)
+input/

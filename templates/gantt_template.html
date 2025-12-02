@@ -657,7 +657,7 @@
                     </div>
                     <div class="day-header" style="grid-template-columns: ${dayGridTemplate}">
                         ${days.map((d, i) => {
-                            const highlight = CONFIG.highlightEvery > 0 && (i + 1) % CONFIG.highlightEvery === 0;
+                            const highlight = (i + 1) % 5 === 0; // Highlight every 5th day
                             const isWeekend = d.date.getDay() === 0 || d.date.getDay() === 6;
                             const classes = ['day-tick'];
                             if (highlight) classes.push('highlight');
@@ -674,7 +674,7 @@
         let tasksHTML = CONFIG.tasks.map((task, originalIndex) => {
             const taskStart = new Date(task.start);
             const taskEnd = new Date(task.end);
-            const label = formatDateRange(task.start, task.end, CONFIG.dateFormat);
+            const label = formatDateRange(task.start, task.end, "short"); // Use short date format
             const hours = task.hours !== undefined ? task.hours : 0;
             const hoursText = hours > 0 ? `${hours} hrs` : '';
             
@@ -751,8 +751,8 @@
                 const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
                 const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
                 
-                const startDateLabel = formatStartDate(task.start, CONFIG.dateFormat);
-                const endDateLabel = formatEndDate(task.end, CONFIG.dateFormat);
+                const startDateLabel = formatStartDate(task.start, "short"); // Use short date format
+                const endDateLabel = formatEndDate(task.end, "short"); // Use short date format
                 
                 taskBarsHTML = `
                     <div class="task-bar task-bar-segment-left" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
