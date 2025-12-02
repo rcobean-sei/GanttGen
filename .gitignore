@@ -9,4 +9,8 @@ node_modules/
 *.swp
 *.swo
 
+# Excel temporary files (lock files created when Excel is open)
+~$*.xlsx
+~$*.xls
+
 ~cd "/Users/rydercobean/Documents/Client Projects/2025/GanttGen" && echo "~$*.xlsx" >> .gitignore && git reset HEAD "templates/~$gantt_template.xlsx".xlsx
