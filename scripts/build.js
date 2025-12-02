@@ -7,7 +7,98 @@
 
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+const os = require('os');
 const ExcelJS = require('exceljs');
+
+// Optional Puppeteer for PNG export
+let puppeteer;
+try {
+    puppeteer = require('puppeteer');
+} catch (e) {
+    // Puppeteer not installed - PNG export will be skipped
+    puppeteer = null;
+}
+
+// Find system-installed Chrome or Edge
+function findSystemBrowser() {
+    const platform = os.platform();
+    
+    const browserPaths = {
+        darwin: [
+            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+            '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
+            '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+            '/Applications/Chromium.app/Contents/MacOS/Chromium'
+        ],
+        win32: [
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+            (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
+            (process.env.LOCALAPPDATA || '') + '\\Microsoft\\Edge\\Application\\msedge.exe'
+        ],
+        linux: [
+            '/usr/bin/google-chrome',
+            '/usr/bin/google-chrome-stable',
+            '/usr/bin/chromium',
+            '/usr/bin/chromium-browser',
+            '/usr/bin/microsoft-edge',
+            '/usr/bin/microsoft-edge-stable'
+        ]
+    };
+    
+    const paths = browserPaths[platform] || [];
+    
+    // Check common installation paths
+    for (const browserPath of paths) {
+        if (browserPath && fs.existsSync(browserPath)) {
+            return browserPath;
+        }
+    }
+    
+    // Try to find via system commands
+    try {
+        if (platform === 'darwin') {
+            // Use mdfind on macOS
+            try {
+                const chrome = execSync('mdfind "kMDItemCFBundleIdentifier == \'com.google.Chrome\'" 2>/dev/null', { encoding: 'utf8' }).trim();
+                if (chrome) {
+                    const chromePath = chrome.split('\n')[0];
+                    return path.join(chromePath, 'Contents/MacOS/Google Chrome');
+                }
+            } catch (e) {}
+            
+            try {
+                const edge = execSync('mdfind "kMDItemCFBundleIdentifier == \'com.microsoft.edgemac\'" 2>/dev/null', { encoding: 'utf8' }).trim();
+                if (edge) {
+                    const edgePath = edge.split('\n')[0];
+                    return path.join(edgePath, 'Contents/MacOS/Microsoft Edge');
+                }
+            } catch (e) {}
+        } else if (platform === 'linux') {
+            // Use which command on Linux
+            try {
+                execSync('which google-chrome 2>/dev/null', { encoding: 'utf8' });
+                return 'google-chrome';
+            } catch (e) {
+                try {
+                    execSync('which chromium 2>/dev/null', { encoding: 'utf8' });
+                    return 'chromium';
+                } catch (e) {
+                    try {
+                        execSync('which microsoft-edge 2>/dev/null', { encoding: 'utf8' });
+                        return 'microsoft-edge';
+                    } catch (e) {}
+                }
+            }
+        }
+    } catch (e) {
+        // Ignore errors
+    }
+    
+    return null;
+}
 
 // SEI Color Palette (excluding gray for pause periods)
 const SEI_COLORS = ['#E31E26', '#2CABDB', '#38155B', '#0049A3', '#FF6B35'];
@@ -219,6 +310,64 @@ function generateHTML(config, templatePath, outputPath) {
     fs.writeFileSync(outputPath, output, 'utf8');
 }
 
+// Export HTML to PNG with transparent background
+async function exportPNG(htmlPath, pngPath) {
+    if (!puppeteer) {
+        throw new Error('Puppeteer is not installed');
+    }
+    
+    // Try to find system browser first
+    const systemBrowser = findSystemBrowser();
+    const launchOptions = {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+    };
+    
+    if (systemBrowser) {
+        launchOptions.executablePath = systemBrowser;
+        console.log(`   Using system browser: ${path.basename(systemBrowser)}`);
+    }
+    
+    let browser;
+    try {
+        browser = await puppeteer.launch(launchOptions);
+        
+        const page = await browser.newPage();
+        
+        // Set viewport to match the chart dimensions (16:9 aspect ratio, optimized for presentation)
+        await page.setViewport({
+            width: 1920,
+            height: 1080,
+            deviceScaleFactor: 2 // Higher DPI for better quality
+        });
+        
+        // Load the HTML file
+        const fileUrl = `file://${path.resolve(htmlPath)}`;
+        await page.goto(fileUrl, {
+            waitUntil: 'networkidle0',
+            timeout: 30000
+        });
+        
+        // Wait a bit for any animations or dynamic content to settle
+        await page.waitForTimeout(1000);
+        
+        // Take screenshot with transparent background
+        await page.screenshot({
+            path: pngPath,
+            type: 'png',
+            fullPage: true,
+            omitBackground: true // Transparent background
+        });
+        
+    } catch (error) {
+        throw new Error(`Failed to export PNG: ${error.message}`);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
 // Main function
 async function build(inputPath, outputPath) {
     const inputExt = path.extname(inputPath).toLowerCase();
@@ -257,6 +406,23 @@ async function build(inputPath, outputPath) {
     console.log('✓ Generating HTML...');
     generateHTML(config, templatePath, htmlOutputPath);
     console.log(`✓ Generated HTML at ${htmlOutputPath}`);
+    
+    // Generate PNG export with transparent background (if Puppeteer is available)
+    if (puppeteer) {
+        const pngOutputPath = htmlOutputPath.replace(/\.html$/, '.png');
+        console.log('✓ Exporting PNG...');
+        try {
+            await exportPNG(htmlOutputPath, pngOutputPath);
+            console.log(`✓ Generated PNG at ${pngOutputPath}`);
+        } catch (error) {
+            console.warn(`⚠️  PNG export failed: ${error.message}`);
+            console.warn('   (HTML file was generated successfully)');
+        }
+    } else {
+        console.log('ℹ️  Skipping PNG export (Puppeteer not installed)');
+        console.log('   Install with: npm install puppeteer');
+        console.log('   Will use system Chrome/Edge if available, or download Chromium');
+    }
     
     // Optionally save JSON config
     const jsonOutputPath = path.join(__dirname, '..', 'config', 'project.json');

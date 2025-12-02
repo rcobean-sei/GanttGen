@@ -16,7 +16,8 @@ GanttGen/
 │   ├── render.js             # Legacy render script (JSON → HTML)
 │   └── generate_template.js   # Excel template generator
 ├── output/
-│   └── gantt_chart.html      # Generated HTML file (ready to use)
+│   ├── gantt_chart.html      # Generated HTML file (ready to use)
+│   └── gantt_chart.png       # Generated PNG export (transparent background)
 └── package.json              # npm scripts
 ```
 
@@ -68,9 +69,13 @@ GanttGen/
    node scripts/build.js --input config/project.json
    ```
 
-### Preview
+### Output
 
-Open `output/gantt_chart.html` in a browser to preview or export as PNG.
+The build process automatically generates:
+- **HTML file**: `output/gantt_chart.html` - Interactive chart for preview
+- **PNG file**: `output/gantt_chart.png` - High-resolution export with transparent background (same name as HTML, different extension)
+
+Open the HTML file in a browser to preview, or use the PNG file directly in presentations.
 
 ## Configuration Schema
 
@@ -100,7 +105,7 @@ Tasks that span across pause periods will automatically show a break effect with
 - ✅ Automatic break effects for tasks spanning pause periods
 - ✅ Milestone connectors with edge overflow protection
 - ✅ Responsive milestone positioning
-- ✅ Transparent background for easy export
+- ✅ Automatic PNG export with transparent background
 - ✅ Optimized for PowerPoint presentation (16:9 aspect ratio)
 
 ## Commands

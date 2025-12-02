@@ -253,7 +253,8 @@
             padding: 4px 12px;
             position: relative;
             z-index: 10;
-            overflow: visible;
+            overflow: hidden; /* Prevent text overflow */
+            box-sizing: border-box; /* Include padding in height calculation */
         }
         
         /* Interrupted task bar segments - sharp edges on interrupted side */
@@ -296,46 +297,42 @@
         }
         
         .task-bar-date {
-            font-size: 17px;
-            line-height: 1.2;
+            font-size: 17px; /* Fixed size - do not increase */
+            line-height: 1.1; /* Tighter line height to fit within padding */
             white-space: nowrap; /* Prevent date text from wrapping */
-            overflow: visible; /* Allow text to be visible */
+            overflow: hidden; /* Prevent overflow */
+        }
+        
+        /* Content positioning for split segments */
+        .task-bar-content {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            white-space: nowrap;
+            z-index: 1;
+            /* Ensure text doesn't overflow segment boundaries */
+            max-width: calc(100% - 32px); /* Leave padding on both sides */
         }
         
         /* Align dates in split segments to same vertical position as regular task bars */
         .task-bar-segment-left,
         .task-bar-segment-right {
             justify-content: center; /* Match regular task bars */
-        }
-        
-        /* Text alignment within split segments */
-        .task-bar-segment-left .task-bar-date,
-        .task-bar-segment-left .task-bar-hours {
-            text-align: right;
-            width: 100%;
-        }
-        
-        .task-bar-segment-right .task-bar-date,
-        .task-bar-segment-right .task-bar-continued {
-            text-align: left;
-            width: 100%;
+            position: relative; /* Allow absolute positioning of content */
         }
         
         .task-bar-hours {
-            font-size: 15px;
+            font-size: 15px; /* Fixed size - do not increase */
             font-weight: 500;
-            line-height: 1.2;
-            margin-top: 2px;
+            line-height: 1.1; /* Tighter line height to fit within padding */
+            margin-top: 1px; /* Reduced margin to fit better */
             opacity: 0.95;
+            overflow: hidden; /* Prevent overflow */
         }
         
-        .task-bar-continued {
-            font-size: 15px;
-            font-style: italic;
-            font-weight: 500;
-            line-height: 1.2;
-            opacity: 0.95;
-        }
         
         /* Break effect for task bars spanning pause periods */
         .task-bar-stripe-connector {
@@ -354,6 +351,18 @@
             );
             opacity: 1;
         }
+        
+        /* Ensure task bar content fits within available space */
+        /* With 48px height and 4px top/bottom padding, available content height is 40px */
+        /* Two lines: date (17px * 1.1 = 18.7px) + margin (1px) + hours (15px * 1.1 = 16.5px) = ~36.2px, fits within 40px */
+        .task-bar > * {
+            max-height: calc(100% - 8px); /* Account for 4px top + 4px bottom padding */
+        }
+        
+        /* Font sizes are fixed to respect padding - do not increase these values */
+        /* Current sizes: date 17px, hours/continued 15px with line-height 1.1 */
+        /* Total content height: (17 * 1.1) + 1px margin + (15 * 1.1) = ~36.2px */
+        /* Available space: 48px height - 8px padding = 40px, so fits comfortably */
         
         /* Remove task bar connector - using milestone connector instead */
         
@@ -557,7 +566,10 @@
 
     function getDayIndex(date, timelineStart) {
         const d = parseDate(date);
-        const s = parseDate(timelineStart);
+        // timelineStart is the actual project start, but timeline has 1-day padding before it
+        const projectStart = parseDate(timelineStart);
+        const s = new Date(projectStart);
+        s.setDate(s.getDate() - 1); // Subtract 1 day for padding
         // Calculate days difference more precisely
         const diffTime = d.getTime() - s.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -566,8 +578,17 @@
 
     // Build timeline data
     function buildTimelineData() {
-        const start = parseDate(CONFIG.timelineStart);
-        const end = parseDate(CONFIG.timelineEnd);
+        // Add 1 day padding before and after the project timeline
+        const projectStart = parseDate(CONFIG.timelineStart);
+        const projectEnd = parseDate(CONFIG.timelineEnd);
+        
+        // Subtract 1 day from start, add 1 day to end
+        const start = new Date(projectStart);
+        start.setDate(start.getDate() - 1);
+        
+        const end = new Date(projectEnd);
+        end.setDate(end.getDate() + 1);
+        
         const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
         
         const months = [];
@@ -740,10 +761,12 @@
                 // First segment: task start to pause start
                 const segment1StartCol = getDayIndex(task.start, CONFIG.timelineStart);
                 const segment1EndCol = getDayIndex(intersectingPause.start, CONFIG.timelineStart);
+                const segment1Width = segment1EndCol - segment1StartCol;
                 
                 // Second segment: pause end to task end
                 const segment2StartCol = getDayIndex(intersectingPause.end, CONFIG.timelineStart) + 1;
                 const segment2EndCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                const segment2Width = segment2EndCol - segment2StartCol;
                 
                 // Calculate stripe connector position and width (spans the gap between segments)
                 const connectorStartCol = segment1EndCol;
@@ -751,18 +774,90 @@
                 const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
                 const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
                 
-                const startDateLabel = formatStartDate(task.start, "short"); // Use short date format
-                const endDateLabel = formatEndDate(task.end, "short"); // Use short date format
+                // Determine which segment is longer (roomier)
+                const useLeftSegment = segment1Width >= segment2Width;
+                const longerSegment = useLeftSegment ? {
+                    startCol: segment1StartCol,
+                    endCol: segment1EndCol,
+                    width: segment1Width,
+                    isLeft: true
+                } : {
+                    startCol: segment2StartCol,
+                    endCol: segment2EndCol,
+                    width: segment2Width,
+                    isLeft: false
+                };
+                
+                // Calculate the center of the entire task range
+                const taskStartCol = segment1StartCol;
+                const taskEndCol = segment2EndCol;
+                const taskCenterCol = (taskStartCol + taskEndCol) / 2;
+                
+                // Estimate text width: date range (~140px) + hours (~50px) = ~190px max
+                // Convert to column units (assuming ~60px per day column)
+                const estimatedTextWidthPx = 190;
+                const cellWidthPx = 60; // Approximate pixel width of one day column
+                const textWidthCols = estimatedTextWidthPx / cellWidthPx;
+                const textHalfWidthCols = textWidthCols / 2;
+                
+                // Padding from break edge (minimum 1 day column = ~60px)
+                const minPaddingCols = 1;
+                
+                // Calculate where to position text within the longer segment
+                // Position based on CENTER of text, but ensure nearest edge doesn't touch break
+                const cellWidth = 100 / totalDays; // Percentage width of one day column
+                
+                let textCenterCol = taskCenterCol; // Start with task center
+                
+                if (useLeftSegment) {
+                    // On left segment: ensure RIGHT edge of text has padding from break
+                    const segmentRightEdgeCol = longerSegment.endCol;
+                    const maxTextCenterCol = segmentRightEdgeCol - minPaddingCols - textHalfWidthCols;
+                    textCenterCol = Math.min(textCenterCol, maxTextCenterCol);
+                    
+                    // Also ensure LEFT edge doesn't go past segment start
+                    const segmentLeftEdgeCol = longerSegment.startCol;
+                    const minTextCenterCol = segmentLeftEdgeCol + textHalfWidthCols;
+                    textCenterCol = Math.max(textCenterCol, minTextCenterCol);
+                } else {
+                    // On right segment: ensure LEFT edge of text has padding from break
+                    const segmentLeftEdgeCol = longerSegment.startCol;
+                    const minTextCenterCol = segmentLeftEdgeCol + minPaddingCols + textHalfWidthCols;
+                    textCenterCol = Math.max(textCenterCol, minTextCenterCol);
+                    
+                    // Also ensure RIGHT edge doesn't go past segment end
+                    const segmentRightEdgeCol = longerSegment.endCol;
+                    const maxTextCenterCol = segmentRightEdgeCol - textHalfWidthCols;
+                    textCenterCol = Math.min(textCenterCol, maxTextCenterCol);
+                }
+                
+                // Convert text center column to percentage within the segment
+                const segmentLeftPercent = ((longerSegment.startCol - 1) / totalDays) * 100;
+                const segmentRightPercent = ((longerSegment.endCol - 1) / totalDays) * 100;
+                const segmentWidthPercent = segmentRightPercent - segmentLeftPercent;
+                const textCenterPercent = ((textCenterCol - 1) / totalDays) * 100;
+                const textPositionPercent = ((textCenterPercent - segmentLeftPercent) / segmentWidthPercent) * 100;
+                
+                const segmentClass = longerSegment.isLeft ? 'task-bar-segment-left' : 'task-bar-segment-right';
+                const textAlign = longerSegment.isLeft ? 'right' : 'left';
                 
                 taskBarsHTML = `
-                    <div class="task-bar task-bar-segment-left" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
-                        <div class="task-bar-date">${startDateLabel}</div>
-                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    <div class="task-bar ${segmentClass}" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        ${useLeftSegment ? `
+                            <div class="task-bar-content" style="left: ${textPositionPercent}%; text-align: ${textAlign};">
+                                <div class="task-bar-date">${label}</div>
+                                ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="task-bar-stripe-connector" style="left: ${connectorLeft}%; width: ${connectorWidth}%; color: ${task.color};"></div>
-                    <div class="task-bar task-bar-segment-right" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
-                        <div class="task-bar-date">${endDateLabel}</div>
-                        <div class="task-bar-continued">continued</div>
+                    <div class="task-bar ${segmentClass === 'task-bar-segment-left' ? 'task-bar-segment-right' : 'task-bar-segment-left'}" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        ${!useLeftSegment ? `
+                            <div class="task-bar-content" style="left: ${textPositionPercent}%; text-align: ${textAlign};">
+                                <div class="task-bar-date">${label}</div>
+                                ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             } else {

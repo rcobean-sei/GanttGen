@@ -1,87 +1,88 @@
 {
   "title": "PROJECT TIMELINE",
-  "timelineStart": "2025-01-06",
-  "timelineEnd": "2025-03-14",
+  "timelineStart": "2025-12-01",
+  "timelineEnd": "2026-02-14",
   "showMilestones": true,
   "tasks": [
     {
-      "name": "Planning & Vendor Selection",
-      "start": "2025-01-06",
-      "end": "2025-01-24",
-      "hours": 30,
+      "name": "Planning & Preparation",
+      "start": "2025-12-02",
+      "end": "2025-12-10",
+      "hours": 20,
       "subtasks": [
-        "Research beverage machine vendors and models",
-        "Compare features, pricing, and maintenance requirements",
-        "Schedule vendor demos and site visits",
-        "Evaluate compatibility with existing POS systems",
-        "Select vendor and negotiate contract terms"
+        "Define scope: URLs/Domains to audit; discovery and interviews",
+        "Determine test personas/scenarios",
+        "Baseline environment setup, any special access required"
       ],
       "color": "#E31E26"
     },
     {
-      "name": "Site Preparation & Installation",
-      "start": "2025-01-27",
-      "end": "2025-02-21",
-      "hours": 40,
+      "name": "Initial Site Scans – Tracking System",
+      "start": "2025-12-11",
+      "end": "2025-12-22",
+      "hours": 20,
       "subtasks": [
-        "Coordinate with facilities team for electrical and plumbing requirements",
-        "Schedule installation during off-peak hours",
-        "Remove old beverage machine and dispose of equipment",
-        "Install new machine and connect to utilities",
-        "Test all connections and basic functionality"
+        "Scan site and mobile app",
+        "Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)",
+        "Log and classify by purpose/category"
       ],
       "color": "#2CABDB"
     },
     {
-      "name": "System Integration & Testing",
-      "start": "2025-02-24",
-      "end": "2025-03-07",
-      "hours": 25,
+      "name": "Consent Mechanism Testing",
+      "start": "2026-01-05",
+      "end": "2026-01-18",
+      "hours": 20,
       "subtasks": [
-        "Integrate new machine with POS system",
-        "Configure menu items and pricing",
-        "Test payment processing and receipt printing",
-        "Train staff on new machine operation",
-        "Conduct end-to-end testing with real orders"
+        "Opt out of all cookies, verify deactivation across user journeys",
+        "Audit site/app data flow compliance and messaging for GPC/DNSS signals"
       ],
       "color": "#38155B"
     },
     {
-      "name": "Staff Training & Documentation",
-      "start": "2025-03-10",
-      "end": "2025-03-14",
+      "name": "Analysis and Documentation",
+      "start": "2026-01-19",
+      "end": "2026-01-28",
       "hours": 20,
       "subtasks": [
-        "Conduct training sessions for all staff members",
-        "Create quick reference guide for common operations",
-        "Document troubleshooting procedures",
-        "Schedule follow-up training for new hires",
-        "Gather feedback and address concerns"
+        "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
       ],
       "color": "#0049A3"
+    },
+    {
+      "name": "Final Report and Recommendations",
+      "start": "2026-01-29",
+      "end": "2026-02-07",
+      "hours": 20,
+      "subtasks": [
+        "Compile, present, and deliver findings with prioritized remediation items by risk and impact.",
+        "Inventory artifacts with suggested categories",
+        "Revisions and clarifications as needed"
+      ],
+      "color": "#FF6B35"
     }
   ],
   "milestones": [
     {
-      "name": "Project\nKickoff",
-      "date": "2025-01-06",
+      "name": "Project Kickoff",
+      "date": "2025-12-02",
       "taskIndex": 0
     },
     {
-      "name": "Installation\nComplete",
-      "date": "2025-02-21",
-      "taskIndex": 1
+      "name": "Testing Complete",
+      "date": "2026-01-18",
+      "taskIndex": 2
     },
     {
-      "name": "Go Live",
-      "date": "2025-03-14",
-      "taskIndex": 3
+      "name": "Deliver Final Report",
+      "date": "2026-02-07",
+      "taskIndex": 4
     }
   ],
   "pausePeriods": [
     {
-      "start": "2025-02-15",
-      "end": "2025-02-17"
+      "start": "2025-12-23",
+      "end": "2026-01-04"
     }
   ]
 }
