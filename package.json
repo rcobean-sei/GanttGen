@@ -4,10 +4,14 @@
   "description": "Data-driven Gantt chart generator",
   "scripts": {
     "build": "node scripts/render.js",
-    "render": "node scripts/render.js"
+    "render": "node scripts/render.js",
+    "template": "node scripts/generate_template.js"
   },
   "keywords": ["gantt", "chart", "timeline"],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
 }
 

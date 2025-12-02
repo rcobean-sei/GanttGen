@@ -9,7 +9,9 @@ GanttGen/
 ├── config/
 │   └── project.json          # Configuration data (tasks, dates, colors, etc.)
 ├── templates/
-│   └── gantt_template.html   # HTML template with {{CONFIG}} placeholder
+│   ├── gantt_template.html   # HTML template with {{CONFIG}} placeholder
+│   ├── gantt_template.xlsx    # Excel template with instructions (generate with npm run template)
+│   └── gantt_template.csv     # CSV template (alternative format)
 ├── scripts/
 │   └── render.js             # Build script (reads JSON, generates HTML)
 ├── output/
@@ -18,6 +20,34 @@ GanttGen/
 ```
 
 ## Usage
+
+### Option A: Excel Template (Recommended)
+
+1. **Generate or use the Excel template:**
+   ```bash
+   npm run template
+   ```
+   This creates `templates/gantt_template.xlsx` with:
+   - 📋 **INSTRUCTIONS sheet**: Detailed, color-coded instructions
+   - 📅 **Project sheet**: Timeline and chart settings
+   - ✅ **Tasks sheet**: Task definitions with subtasks
+   - 🎯 **Milestones sheet**: Milestone definitions
+   - ⏸️ **PausePeriods sheet**: Optional break periods
+
+2. **Fill in the Excel template** following the instructions in the first sheet
+
+3. **Import from Excel:**
+   ```bash
+   npm run import -- --input templates/gantt_template.xlsx
+   ```
+   (Import script coming soon - for now, manually copy data to JSON)
+
+4. **Generate HTML:**
+   ```bash
+   npm run build
+   ```
+
+### Option B: Direct JSON Editing
 
 ### 1. Edit Configuration
 
@@ -72,8 +102,15 @@ Tasks that span across pause periods will automatically show a break effect with
 ## Features
 
 - ✅ Data-driven configuration (JSON)
+- ✅ Excel template with color-coded instructions
 - ✅ Automatic break effects for tasks spanning pause periods
 - ✅ Milestone connectors with edge overflow protection
 - ✅ Responsive milestone positioning
 - ✅ Transparent background for easy export
 - ✅ Optimized for PowerPoint presentation (16:9 aspect ratio)
+
+## Commands
+
+- `npm run template` - Generate Excel template with instructions
+- `npm run build` - Generate HTML from JSON config
+- `npm run import` - Import from Excel/CSV (coming soon)
