@@ -17,6 +17,97 @@ async function jsonToExcel(jsonPath, excelPath) {
     const workbook = new ExcelJS.Workbook();
     
     // ============================================================
+    // INSTRUCTIONS SHEET
+    // ============================================================
+    const instructionsSheet = workbook.addWorksheet('Instructions', {
+        views: [{ state: 'frozen', ySplit: 1 }]
+    });
+    
+    // Title
+    instructionsSheet.getRow(1).values = ['GanttGen Excel Template - Instructions'];
+    instructionsSheet.getRow(1).font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
+    instructionsSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C3E50' } };
+    instructionsSheet.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
+    instructionsSheet.getRow(1).height = 35;
+    instructionsSheet.mergeCells('A1:D1');
+    
+    // Instructions content
+    const instructions = [
+        ['', '', '', ''],
+        ['QUICK START', '', '', ''],
+        ['1. Fill in the Project sheet with your timeline dates', '', '', ''],
+        ['2. Add your tasks in the Tasks sheet', '', '', ''],
+        ['3. Add milestones in the Milestones sheet (optional)', '', '', ''],
+        ['4. Add pause periods if needed (optional)', '', '', ''],
+        ['5. Run: node scripts/build.js --input your_file.xlsx --palette alternating_b', '', '', ''],
+        ['', '', '', ''],
+        ['SHEET GUIDE', '', '', ''],
+        ['', '', '', ''],
+        ['Sheet Name', 'Purpose', 'Required', 'Notes'],
+        ['Palette', 'Color definitions', 'Optional*', '*Palette preset flag overrides this'],
+        ['Project', 'Timeline & settings', 'Required', 'Set start/end dates and title'],
+        ['Tasks', 'Task definitions', 'Required', 'Add tasks with dates, hours, subtasks'],
+        ['Milestones', 'Key milestones', 'Optional', 'Link to tasks via dropdown'],
+        ['PausePeriods', 'Break periods', 'Optional', 'Holidays, reviews, etc.'],
+        ['', '', '', ''],
+        ['COLOR PALETTES', '', '', ''],
+        ['', '', '', ''],
+        ['Use --palette flag to override template colors:', '', '', ''],
+        ['  • reds, reds_b - Red gradients', '', '', ''],
+        ['  • purples_a, purples_b, purples_c - Purple gradients', '', '', ''],
+        ['  • alternating, alternating_b - Red/purple mix (recommended)', '', '', ''],
+        ['', '', '', ''],
+        ['DATE FORMAT', '', '', ''],
+        ['All dates must be in YYYY-MM-DD format (e.g., 2025-01-15)', '', '', ''],
+        ['', '', '', ''],
+        ['TIPS', '', '', ''],
+        ['• Use colorIndex in Tasks sheet to reference Palette colors (0-based)', '', '', ''],
+        ['• Milestones link to tasks via dropdown menu', '', '', ''],
+        ['• Tasks spanning pause periods show diagonal stripe breaks', '', '', ''],
+        ['• Leave empty cells if you have fewer than 10 subtasks', '', '', ''],
+        ['', '', '', ''],
+        ['DOCUMENTATION', '', '', ''],
+        ['See docs/EXCEL_TEMPLATE_GUIDE.md for detailed instructions', '', '', '']
+    ];
+    
+    instructions.forEach((row, idx) => {
+        const excelRow = instructionsSheet.getRow(idx + 2);
+        excelRow.values = row;
+        
+        // Style section headers
+        if (row[0] === 'QUICK START' || row[0] === 'SHEET GUIDE' || row[0] === 'COLOR PALETTES' || 
+            row[0] === 'DATE FORMAT' || row[0] === 'TIPS' || row[0] === 'DOCUMENTATION') {
+            excelRow.font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
+            excelRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3498DB' } };
+            excelRow.height = 25;
+            if (row[0] !== 'Sheet Name') {
+                instructionsSheet.mergeCells(`A${idx + 2}:D${idx + 2}`);
+            }
+        }
+        // Style table header
+        else if (row[0] === 'Sheet Name') {
+            excelRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            excelRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF27AE60' } };
+            excelRow.height = 25;
+        }
+        // Style regular rows
+        else if (row[0] && !row[0].startsWith('•') && !row[0].startsWith('  •') && row[0] !== '') {
+            excelRow.font = { size: 11 };
+        }
+        // Style bullet points
+        else if (row[0] && row[0].startsWith('•')) {
+            excelRow.font = { size: 10, italic: true };
+            excelRow.getCell(1).alignment = { indent: 2 };
+        }
+    });
+    
+    // Set column widths
+    instructionsSheet.getColumn('A').width = 50;
+    instructionsSheet.getColumn('B').width = 30;
+    instructionsSheet.getColumn('C').width = 15;
+    instructionsSheet.getColumn('D').width = 40;
+    
+    // ============================================================
     // PALETTE SHEET
     // ============================================================
     const paletteSheet = workbook.addWorksheet('Palette', {
