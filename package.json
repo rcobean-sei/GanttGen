@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Data-driven Gantt chart generator",
   "scripts": {
-    "build": "node scripts/render.js",
+    "build": "node scripts/build.js --input config/project.json",
     "render": "node scripts/render.js",
     "template": "node scripts/generate_template.js"
   },
@@ -12,6 +12,9 @@
   "license": "ISC",
   "dependencies": {
     "exceljs": "^4.4.0"
+  },
+  "optionalDependencies": {
+    "puppeteer": "^21.0.0"
   }
 }
 

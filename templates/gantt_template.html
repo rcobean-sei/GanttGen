@@ -13,6 +13,29 @@
         
         :root {
             --connector-width: 2px;
+            
+            /* Brand Colors - Reds */
+            --red-1: #F01840;
+            --red-2: #C01830;
+            --red-3: #901226;
+            --red-4: #600C1C;
+            --red-5: #300810;
+            
+            /* Brand Colors - Purples */
+            --purple-1: #D0C8C8;
+            --purple-2: #A0949E;
+            --purple-3: #705E74;
+            --purple-4: #402848;
+            --purple-5: #2A1C30;
+            
+            /* Brand Colors - Neutrals */
+            --cream: #FFFFF8;
+            --black: #141018;
+            
+            /* Accent color - can be overridden per palette */
+            --accent-color: var(--black);
+            --accent-border: transparent;
+            --accent-border-width: 0px;
         }
         
         body {
@@ -36,7 +59,7 @@
         h1 {
             font-size: 44px;
             font-weight: bold;
-            color: #333;
+            color: var(--black);
             margin: 0 0 15px 0;
             letter-spacing: -1px;
             display: none; /* Hidden for PNG export */
@@ -51,7 +74,7 @@
         }
         
         .gantt-chart {
-            border: 1px solid #ddd;
+            border: 1px solid var(--purple-1);
             border-radius: 8px;
             overflow: hidden;
             margin-bottom: 0;
@@ -72,7 +95,7 @@
         
         .gantt-row {
             display: flex;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid var(--purple-1);
             flex-shrink: 0;
         }
         
@@ -84,8 +107,9 @@
             width: 380px;
             min-width: 380px;
             padding: 12px 16px;
-            background: #f8f9fa;
-            border-right: 1px solid #ddd;
+            background: var(--cream);
+            border-right: 1px solid var(--purple-1);
+            border-left: var(--accent-border-width) solid var(--accent-border);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -94,7 +118,7 @@
         .task-name {
             font-weight: 600;
             font-size: 21px;
-            color: #333;
+            color: var(--accent-color);
         }
         
         .subtasks {
@@ -105,7 +129,7 @@
         .subtask {
             font-size: 16px;
             font-weight: 400;
-            color: #555;
+            color: var(--purple-3);
             line-height: 1.3;
             margin-bottom: 3px;
             padding-left: 12px;
@@ -120,7 +144,7 @@
             content: "•";
             position: absolute;
             left: 0;
-            color: #999;
+            color: var(--purple-2);
         }
         
         .col-timeline {
@@ -131,17 +155,17 @@
         
         /* Header row styling */
         .header-row {
-            background: #333;
-            color: white;
-            border-bottom: 1px solid #555;
+            background: var(--black);
+            color: var(--cream);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
             position: relative;
             z-index: 20; /* Ensure header is above connector lines */
         }
         
         .header-row .col-task {
-            background: #333;
-            border-right-color: #555;
-            color: white;
+            background: var(--black);
+            border-right-color: rgba(255,255,255,0.2);
+            color: var(--cream);
             font-size: 16px;
         }
         
@@ -153,7 +177,7 @@
         .month-header {
             display: grid;
             height: 36px;
-            border-bottom: 1px solid #555;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
         }
         
         .month-label {
@@ -162,7 +186,7 @@
             justify-content: center;
             font-weight: 600;
             font-size: 17px;
-            border-right: 1px solid #555;
+            border-right: 1px solid rgba(255,255,255,0.2);
         }
         
         .month-label:last-child {
@@ -202,7 +226,7 @@
         }
         
         .day-tick.month-boundary {
-            border-right: 1px solid #555;
+            border-right: 1px solid rgba(255,255,255,0.3);
         }
         
         .day-tick:last-child {
@@ -216,7 +240,7 @@
         .task-row .col-timeline {
             display: grid;
             align-items: center;
-            background: #fafafa;
+            background: var(--cream);
             min-height: 58px;
             position: relative;
         }
@@ -246,14 +270,15 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            color: white;
+            color: var(--cream);
             font-weight: 600;
             box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
             margin: 0 1px;
             padding: 4px 12px;
             position: relative;
             z-index: 10;
-            overflow: visible;
+            overflow: hidden; /* Prevent text overflow */
+            box-sizing: border-box; /* Include padding in height calculation */
         }
         
         /* Interrupted task bar segments - sharp edges on interrupted side */
@@ -296,46 +321,42 @@
         }
         
         .task-bar-date {
-            font-size: 17px;
-            line-height: 1.2;
+            font-size: 17px; /* Fixed size - do not increase */
+            line-height: 1.1; /* Tighter line height to fit within padding */
             white-space: nowrap; /* Prevent date text from wrapping */
-            overflow: visible; /* Allow text to be visible */
+            overflow: hidden; /* Prevent overflow */
+        }
+        
+        /* Content positioning for split segments */
+        .task-bar-content {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            white-space: nowrap;
+            z-index: 1;
+            /* Ensure text doesn't overflow segment boundaries */
+            max-width: calc(100% - 32px); /* Leave padding on both sides */
         }
         
         /* Align dates in split segments to same vertical position as regular task bars */
         .task-bar-segment-left,
         .task-bar-segment-right {
             justify-content: center; /* Match regular task bars */
-        }
-        
-        /* Text alignment within split segments */
-        .task-bar-segment-left .task-bar-date,
-        .task-bar-segment-left .task-bar-hours {
-            text-align: right;
-            width: 100%;
-        }
-        
-        .task-bar-segment-right .task-bar-date,
-        .task-bar-segment-right .task-bar-continued {
-            text-align: left;
-            width: 100%;
+            position: relative; /* Allow absolute positioning of content */
         }
         
         .task-bar-hours {
-            font-size: 15px;
+            font-size: 15px; /* Fixed size - do not increase */
             font-weight: 500;
-            line-height: 1.2;
-            margin-top: 2px;
+            line-height: 1.1; /* Tighter line height to fit within padding */
+            margin-top: 1px; /* Reduced margin to fit better */
             opacity: 0.95;
+            overflow: hidden; /* Prevent overflow */
         }
         
-        .task-bar-continued {
-            font-size: 15px;
-            font-style: italic;
-            font-weight: 500;
-            line-height: 1.2;
-            opacity: 0.95;
-        }
         
         /* Break effect for task bars spanning pause periods */
         .task-bar-stripe-connector {
@@ -352,8 +373,20 @@
                 transparent 1px,
                 transparent 4px
             );
-            opacity: 1;
+            opacity: 0.6;
         }
+        
+        /* Ensure task bar content fits within available space */
+        /* With 48px height and 4px top/bottom padding, available content height is 40px */
+        /* Two lines: date (17px * 1.1 = 18.7px) + margin (1px) + hours (15px * 1.1 = 16.5px) = ~36.2px, fits within 40px */
+        .task-bar > * {
+            max-height: calc(100% - 8px); /* Account for 4px top + 4px bottom padding */
+        }
+        
+        /* Font sizes are fixed to respect padding - do not increase these values */
+        /* Current sizes: date 17px, hours/continued 15px with line-height 1.1 */
+        /* Total content height: (17 * 1.1) + 1px margin + (15 * 1.1) = ~36.2px */
+        /* Available space: 48px height - 8px padding = 40px, so fits comfortably */
         
         /* Remove task bar connector - using milestone connector instead */
         
@@ -377,7 +410,7 @@
         }
         
         .grid-line.month-boundary {
-            border-right: 1px solid #ddd;
+            border-right: 1px solid var(--purple-1);
         }
         
         .grid-line:last-child {
@@ -415,17 +448,17 @@
             justify-content: flex-end;
             justify-self: center;
             position: relative;
-            --milestone-color: #0056b3;
+            --milestone-color: var(--purple-4);
         }
         
         .milestone-label {
-            background: #fff;
+            background: var(--cream);
             padding: 6px 10px;
             border-radius: 4px;
             font-size: 16px;
             font-weight: 500;
-            color: #495057;
-            border: 2px solid var(--milestone-color, #0056b3);
+            color: var(--black);
+            border: 2px solid var(--milestone-color, var(--purple-4));
             text-align: center;
             line-height: 1.3;
             white-space: nowrap;
@@ -442,7 +475,7 @@
             left: var(--connector-line-x, 50%);
             transform: translateX(-50%);
             width: 0;
-            border-left: var(--connector-width, 2px) dotted var(--milestone-color, #0056b3);
+            border-left: var(--connector-width, 2px) dotted var(--milestone-color, var(--purple-4));
             height: var(--connector-height, 0px);
             z-index: 1;
         }
@@ -456,8 +489,8 @@
                 45deg,
                 transparent,
                 transparent 8px,
-                rgba(0, 0, 0, 0.08) 8px,
-                rgba(0, 0, 0, 0.08) 16px
+                rgba(160, 148, 158, 0.25) 8px,
+                rgba(160, 148, 158, 0.25) 16px
             );
             pointer-events: none;
             z-index: 5; /* Above grid lines but below task bars */
@@ -484,7 +517,57 @@
     
     const CONFIG = {{CONFIG}};
     
+    // Apply accent styling from config (e.g., for purples palette variants)
+    if (CONFIG.accentColor) {
+        document.documentElement.style.setProperty('--accent-color', CONFIG.accentColor);
+    }
+    if (CONFIG.accentBorder) {
+        document.documentElement.style.setProperty('--accent-border', CONFIG.accentBorder);
+        document.documentElement.style.setProperty('--accent-border-width', '4px');
+    }
+    
     let CURRENT_TOTAL_DAYS = 0;
+
+    // Update pause period overlays to match current timeline dimensions
+    function updatePauseOverlays() {
+        if (!CONFIG.pausePeriods || CONFIG.pausePeriods.length === 0) return;
+        
+        const ganttChart = document.getElementById('gantt-chart');
+        const firstTimelineCol = ganttChart?.querySelector('.col-timeline');
+        if (!firstTimelineCol || !ganttChart) return;
+        
+        // Force layout recalculation
+        firstTimelineCol.offsetHeight;
+        
+        // Get current dimensions
+        const timelineRect = firstTimelineCol.getBoundingClientRect();
+        const chartRect = ganttChart.getBoundingClientRect();
+        const timelineLeft = timelineRect.left - chartRect.left;
+        const timelineWidth = timelineRect.width;
+        
+        // Remove existing overlays
+        const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
+        existingOverlays.forEach(ov => ov.remove());
+        
+        // Create/update overlay for each pause period
+        CONFIG.pausePeriods.forEach(pausePeriod => {
+            const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
+            const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
+            const pauseLeftPercent = ((pauseStartCol - 1) / CURRENT_TOTAL_DAYS) * 100;
+            const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / CURRENT_TOTAL_DAYS) * 100;
+            
+            const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
+            const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
+            
+            const pauseOverlay = document.createElement('div');
+            pauseOverlay.className = 'pause-overlay';
+            pauseOverlay.style.left = `${overlayLeft}px`;
+            pauseOverlay.style.width = `${overlayWidth}px`;
+            pauseOverlay.style.top = '0';
+            pauseOverlay.style.bottom = '0';
+            ganttChart.appendChild(pauseOverlay);
+        });
+    }
 
     // ============================================================
     // CHART RENDERING ENGINE - No need to edit below this line
@@ -557,7 +640,10 @@
 
     function getDayIndex(date, timelineStart) {
         const d = parseDate(date);
-        const s = parseDate(timelineStart);
+        // timelineStart is the actual project start, but timeline has 1-day padding before it
+        const projectStart = parseDate(timelineStart);
+        const s = new Date(projectStart);
+        s.setDate(s.getDate() - 1); // Subtract 1 day for padding
         // Calculate days difference more precisely
         const diffTime = d.getTime() - s.getTime();
         const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -566,8 +652,17 @@
 
     // Build timeline data
     function buildTimelineData() {
-        const start = parseDate(CONFIG.timelineStart);
-        const end = parseDate(CONFIG.timelineEnd);
+        // Add 1 day padding before and after the project timeline
+        const projectStart = parseDate(CONFIG.timelineStart);
+        const projectEnd = parseDate(CONFIG.timelineEnd);
+        
+        // Subtract 1 day from start, add 1 day to end
+        const start = new Date(projectStart);
+        start.setDate(start.getDate() - 1);
+        
+        const end = new Date(projectEnd);
+        end.setDate(end.getDate() + 1);
+        
         const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
         
         const months = [];
@@ -616,6 +711,17 @@
             months[months.length - 1].days = monthDays;
         }
         
+        // Adjust month names: hide month entirely if column is too narrow (would cause line break)
+        // Estimate: ~60px per day column, need ~80px for "Month YYYY"
+        // So if month has < 7 days, hide the label entirely to prevent wrapping
+        const minDaysForYear = 7;
+        months.forEach(month => {
+            if (month.days < minDaysForYear) {
+                // Hide the month label entirely
+                month.name = '';
+            }
+        });
+        
         // Mark month boundaries
         let dayIndex = 0;
         for (let m = 0; m < months.length - 1; m++) {
@@ -657,7 +763,7 @@
                     </div>
                     <div class="day-header" style="grid-template-columns: ${dayGridTemplate}">
                         ${days.map((d, i) => {
-                            const highlight = CONFIG.highlightEvery > 0 && (i + 1) % CONFIG.highlightEvery === 0;
+                            const highlight = (i + 1) % 5 === 0; // Highlight every 5th day
                             const isWeekend = d.date.getDay() === 0 || d.date.getDay() === 6;
                             const classes = ['day-tick'];
                             if (highlight) classes.push('highlight');
@@ -674,7 +780,7 @@
         let tasksHTML = CONFIG.tasks.map((task, originalIndex) => {
             const taskStart = new Date(task.start);
             const taskEnd = new Date(task.end);
-            const label = formatDateRange(task.start, task.end, CONFIG.dateFormat);
+            const label = formatDateRange(task.start, task.end, "short"); // Use short date format
             const hours = task.hours !== undefined ? task.hours : 0;
             const hoursText = hours > 0 ? `${hours} hrs` : '';
             
@@ -740,10 +846,12 @@
                 // First segment: task start to pause start
                 const segment1StartCol = getDayIndex(task.start, CONFIG.timelineStart);
                 const segment1EndCol = getDayIndex(intersectingPause.start, CONFIG.timelineStart);
+                const segment1Width = segment1EndCol - segment1StartCol;
                 
                 // Second segment: pause end to task end
                 const segment2StartCol = getDayIndex(intersectingPause.end, CONFIG.timelineStart) + 1;
                 const segment2EndCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                const segment2Width = segment2EndCol - segment2StartCol;
                 
                 // Calculate stripe connector position and width (spans the gap between segments)
                 const connectorStartCol = segment1EndCol;
@@ -751,18 +859,90 @@
                 const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
                 const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
                 
-                const startDateLabel = formatStartDate(task.start, CONFIG.dateFormat);
-                const endDateLabel = formatEndDate(task.end, CONFIG.dateFormat);
+                // Determine which segment is longer (roomier)
+                const useLeftSegment = segment1Width >= segment2Width;
+                const longerSegment = useLeftSegment ? {
+                    startCol: segment1StartCol,
+                    endCol: segment1EndCol,
+                    width: segment1Width,
+                    isLeft: true
+                } : {
+                    startCol: segment2StartCol,
+                    endCol: segment2EndCol,
+                    width: segment2Width,
+                    isLeft: false
+                };
+                
+                // Calculate the center of the entire task range
+                const taskStartCol = segment1StartCol;
+                const taskEndCol = segment2EndCol;
+                const taskCenterCol = (taskStartCol + taskEndCol) / 2;
+                
+                // Estimate text width: date range (~140px) + hours (~50px) = ~190px max
+                // Convert to column units (assuming ~60px per day column)
+                const estimatedTextWidthPx = 190;
+                const cellWidthPx = 60; // Approximate pixel width of one day column
+                const textWidthCols = estimatedTextWidthPx / cellWidthPx;
+                const textHalfWidthCols = textWidthCols / 2;
+                
+                // Padding from break edge (minimum 2.5 day columns = ~150px for more breathing room)
+                const minPaddingCols = 2.5;
+                
+                // Calculate where to position text within the longer segment
+                // Position based on CENTER of text, but ensure nearest edge doesn't touch break
+                const cellWidth = 100 / totalDays; // Percentage width of one day column
+                
+                let textCenterCol = taskCenterCol; // Start with task center
+                
+                if (useLeftSegment) {
+                    // On left segment: ensure RIGHT edge of text has padding from break
+                    const segmentRightEdgeCol = longerSegment.endCol;
+                    const maxTextCenterCol = segmentRightEdgeCol - minPaddingCols - textHalfWidthCols;
+                    textCenterCol = Math.min(textCenterCol, maxTextCenterCol);
+                    
+                    // Also ensure LEFT edge doesn't go past segment start
+                    const segmentLeftEdgeCol = longerSegment.startCol;
+                    const minTextCenterCol = segmentLeftEdgeCol + textHalfWidthCols;
+                    textCenterCol = Math.max(textCenterCol, minTextCenterCol);
+                } else {
+                    // On right segment: ensure LEFT edge of text has padding from break
+                    const segmentLeftEdgeCol = longerSegment.startCol;
+                    const minTextCenterCol = segmentLeftEdgeCol + minPaddingCols + textHalfWidthCols;
+                    textCenterCol = Math.max(textCenterCol, minTextCenterCol);
+                    
+                    // Also ensure RIGHT edge doesn't go past segment end
+                    const segmentRightEdgeCol = longerSegment.endCol;
+                    const maxTextCenterCol = segmentRightEdgeCol - textHalfWidthCols;
+                    textCenterCol = Math.min(textCenterCol, maxTextCenterCol);
+                }
+                
+                // Convert text center column to percentage within the segment
+                const segmentLeftPercent = ((longerSegment.startCol - 1) / totalDays) * 100;
+                const segmentRightPercent = ((longerSegment.endCol - 1) / totalDays) * 100;
+                const segmentWidthPercent = segmentRightPercent - segmentLeftPercent;
+                const textCenterPercent = ((textCenterCol - 1) / totalDays) * 100;
+                const textPositionPercent = ((textCenterPercent - segmentLeftPercent) / segmentWidthPercent) * 100;
+                
+                const segmentClass = longerSegment.isLeft ? 'task-bar-segment-left' : 'task-bar-segment-right';
+                const textAlign = longerSegment.isLeft ? 'right' : 'left';
                 
                 taskBarsHTML = `
-                    <div class="task-bar task-bar-segment-left" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
-                        <div class="task-bar-date">${startDateLabel}</div>
-                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    <div class="task-bar ${segmentClass}" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        ${useLeftSegment ? `
+                            <div class="task-bar-content" style="left: ${textPositionPercent}%; text-align: ${textAlign};">
+                                <div class="task-bar-date">${label}</div>
+                                ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                     <div class="task-bar-stripe-connector" style="left: ${connectorLeft}%; width: ${connectorWidth}%; color: ${task.color};"></div>
-                    <div class="task-bar task-bar-segment-right" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
-                        <div class="task-bar-date">${endDateLabel}</div>
-                        <div class="task-bar-continued">continued</div>
+                    <div class="task-bar ${segmentClass === 'task-bar-segment-left' ? 'task-bar-segment-right' : 'task-bar-segment-left'}" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        ${!useLeftSegment ? `
+                            <div class="task-bar-content" style="left: ${textPositionPercent}%; text-align: ${textAlign};">
+                                <div class="task-bar-date">${label}</div>
+                                ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             } else {
@@ -799,37 +979,7 @@
         // Add continuous pause period overlays spanning all rows (after layout)
         if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
             requestAnimationFrame(() => {
-                const ganttChart = document.getElementById('gantt-chart');
-                const firstTimelineCol = ganttChart.querySelector('.col-timeline');
-                if (firstTimelineCol && ganttChart) {
-                    const timelineRect = firstTimelineCol.getBoundingClientRect();
-                    const chartRect = ganttChart.getBoundingClientRect();
-                    const timelineLeft = timelineRect.left - chartRect.left;
-                    const timelineWidth = timelineRect.width;
-                    
-                    // Remove existing overlays if any
-                    const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
-                    existingOverlays.forEach(ov => ov.remove());
-                    
-                    // Create overlay for each pause period
-                    CONFIG.pausePeriods.forEach(pausePeriod => {
-                        const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
-                        const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
-                        const pauseLeftPercent = ((pauseStartCol - 1) / totalDays) * 100;
-                        const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / totalDays) * 100;
-                        
-                        const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
-                        const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
-                        
-                        const pauseOverlay = document.createElement('div');
-                        pauseOverlay.className = 'pause-overlay';
-                        pauseOverlay.style.left = `${overlayLeft}px`;
-                        pauseOverlay.style.width = `${overlayWidth}px`;
-                        pauseOverlay.style.top = '0';
-                        pauseOverlay.style.bottom = '0';
-                        ganttChart.appendChild(pauseOverlay);
-                    });
-                }
+                updatePauseOverlays();
             });
         }
         
@@ -861,53 +1011,103 @@
     function updateMilestoneConnectors() {
         const milestoneTimeline = document.querySelector('.milestone-timeline');
         if (!milestoneTimeline || CURRENT_TOTAL_DAYS === 0) return;
+        
+        // Force layout recalculation to ensure we get current, consistent values
+        // Access offsetHeight to force a synchronous layout calculation
+        milestoneTimeline.offsetHeight;
+        
+        // Read timeline dimensions - do this immediately after forcing layout
         const timelineRect = milestoneTimeline.getBoundingClientRect();
-        const cellWidth = timelineRect.width / CURRENT_TOTAL_DAYS;
+        const timelineWidth = timelineRect.width;
         const timelineRight = timelineRect.right;
+        const timelineLeft = timelineRect.left;
+        
+        // Calculate cell width - ensure this is done with the current timeline width
+        // Use a more precise calculation to avoid rounding errors
+        const cellWidth = timelineWidth / CURRENT_TOTAL_DAYS;
         const minPadding = cellWidth; // One day's column width as padding
 
         const milestoneElements = document.querySelectorAll('.milestone');
+        
+        // Collect all layout data first, then calculate and apply in a second pass
+        // This ensures all getBoundingClientRect() calls happen in the same layout frame
+        // Read ALL bounding rects in one batch to ensure consistency
+        const layoutData = [];
+        const allRects = [];
+        
         milestoneElements.forEach((el, index) => {
             const taskIndex = Number(el.getAttribute('data-task-index'));
             const milestoneLabel = el.querySelector('.milestone-label');
             const taskBar = document.querySelector(`.task-bar[data-task-index="${taskIndex}"]`);
             if (!milestoneLabel || !taskBar) return;
 
+            // Store references for batch reading
+            allRects.push({ el, milestoneLabel, taskBar, index, taskIndex });
+        });
+        
+        // Read ALL bounding rects in a single batch - this ensures they're all from the same layout frame
+        allRects.forEach(({ el, milestoneLabel, taskBar, index, taskIndex }) => {
+            const milestoneRect = el.getBoundingClientRect();
+            const labelRect = milestoneLabel.getBoundingClientRect();
+            const barRect = taskBar.getBoundingClientRect();
+            
+            layoutData.push({
+                index,
+                taskIndex,
+                milestoneLabel,
+                taskBar,
+                milestoneRect,
+                labelRect,
+                barRect
+            });
+        });
+        
+        // Now calculate and apply positions using the collected layout data
+        layoutData.forEach(({ index, milestoneLabel, taskBar, milestoneRect, labelRect, barRect }) => {
             const milestone = CONFIG.milestones[index];
             const col = getDayIndex(milestone.date, CONFIG.timelineStart);
-            // Calculate center of the day column (where connector line should be - FIXED)
-            const connectorLineX = timelineRect.left + ((col - 1) * cellWidth) + (cellWidth / 2);
+            
+            // Calculate connector line position directly from column number and cell width
+            // This is the target position where the connector line should be (center of the date column)
+            const connectorLineX = timelineLeft + ((col - 1) * cellWidth) + (cellWidth / 2);
 
-            const labelRect = milestoneLabel.getBoundingClientRect();
             const labelWidth = labelRect.width;
-            const labelCenter = labelRect.left + labelWidth / 2;
-            const timelineLeft = timelineRect.left;
+            
+            // Get the label's natural center position (without transform offset)
+            // The label is inside the milestone element, which is centered in its grid cell
+            // So the label's natural center is at the milestone element's center
+            const milestoneCenter = milestoneRect.left + (milestoneRect.width / 2);
+            const labelNaturalCenter = milestoneCenter; // Label is centered in milestone due to align-items: center
             
             // Calculate where label would be if centered on connector line
             const centeredLabelLeft = connectorLineX - (labelWidth / 2);
             const centeredLabelRight = connectorLineX + (labelWidth / 2);
             
-            // Check if centered label would extend past either edge
-            let labelOffset = connectorLineX - labelCenter;
+            // Calculate offset needed to move label from its natural position to target position
+            let labelOffset = connectorLineX - labelNaturalCenter;
+            
+            // Check if centered label would extend past either edge and adjust
             if (centeredLabelLeft < timelineLeft + minPadding) {
                 // Adjust label to be at least one day's width from the left edge
                 const minLabelLeft = timelineLeft + minPadding;
                 const adjustedLabelCenter = minLabelLeft + (labelWidth / 2);
-                labelOffset = adjustedLabelCenter - labelCenter;
+                labelOffset = adjustedLabelCenter - labelNaturalCenter;
             } else if (centeredLabelRight > timelineRight - minPadding) {
                 // Adjust label to be at least one day's width from the right edge
                 const maxLabelRight = timelineRight - minPadding;
                 const adjustedLabelCenter = maxLabelRight - (labelWidth / 2);
-                labelOffset = adjustedLabelCenter - labelCenter;
+                labelOffset = adjustedLabelCenter - labelNaturalCenter;
             }
             
-            // Calculate where connector line will be relative to the label's left edge
-            const finalLabelLeft = labelRect.left + labelOffset;
+            // Calculate where connector line will be relative to the label's final left edge
+            // Final label center = natural center + offset
+            const finalLabelCenter = labelNaturalCenter + labelOffset;
+            const finalLabelLeft = finalLabelCenter - (labelWidth / 2);
             const connectorLineXRelative = connectorLineX - finalLabelLeft;
 
-            const barRect = taskBar.getBoundingClientRect();
             const connectorHeight = Math.max(0, labelRect.top - barRect.bottom + 4);
 
+            // Apply all styles together
             milestoneLabel.style.setProperty('--connector-height', `${connectorHeight}px`);
             milestoneLabel.style.setProperty('--milestone-color', getComputedStyle(taskBar).getPropertyValue('--task-line-color') || taskBar.style.backgroundColor);
             milestoneLabel.style.setProperty('--connector-offset', `${labelOffset}px`);
@@ -915,7 +1115,24 @@
         });
     }
     
-    window.addEventListener('resize', () => requestAnimationFrame(updateMilestoneConnectors));
+    // Debounce resize handler to prevent rapid recalculations during window resize
+    let resizeTimeout;
+    let resizeRAF;
+    window.addEventListener('resize', () => {
+        // Cancel any pending resize handlers
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        if (resizeRAF) cancelAnimationFrame(resizeRAF);
+        
+        // Use both debounce and requestAnimationFrame for smooth updates
+        resizeTimeout = setTimeout(() => {
+            resizeRAF = requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    updatePauseOverlays();
+                    updateMilestoneConnectors();
+                });
+            });
+        }, 50); // 50ms debounce
+    });
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', renderChart);

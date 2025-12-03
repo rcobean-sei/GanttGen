@@ -10,7 +10,7 @@ GanttGen/
 ├── config/
 │   └── project.json       # Generated output
 ├── templates/
-│   └── gantt_template.csv # Example CSV template
+│   └── gantt_template.xlsx # Excel template (generated with npm run template)
 └── package.json           # Add "import" script
 ```
 
@@ -103,8 +103,8 @@ npm install
 # Import from Excel
 npm run import -- --input data/project.xlsx
 
-# Import from CSV
-npm run import -- --input templates/gantt_template.csv
+# Import from Excel
+npm run import -- --input templates/gantt_template.xlsx
 
 # Import from CSV directory (multiple files)
 npm run import -- --input data/ --format csv

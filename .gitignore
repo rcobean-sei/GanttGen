@@ -1,7 +1,4 @@
-# Generated output
-output/
-
-# Node modules (if we add dependencies later)
+# Node modules
 node_modules/
 
 # OS files
@@ -9,4 +6,18 @@ node_modules/
 *.swp
 *.swo
 
-~cd "/Users/rydercobean/Documents/Client Projects/2025/GanttGen" && echo "~$*.xlsx" >> .gitignore && git reset HEAD "templates/~$gantt_template.xlsx".xlsx
+# Excel temporary files (lock files created when Excel is open)
+~$*.xlsx
+~$*.xls
+
+# Input folder contents (user project data - keep folder with .gitkeep)
+input/*
+!input/.gitkeep
+
+# Output folder contents (generated files - keep folder with .gitkeep)
+output/*
+!output/.gitkeep
+
+# Config folder contents (generated during build)
+config/*
+!config/.gitkeep
