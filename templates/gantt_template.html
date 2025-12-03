@@ -495,6 +495,47 @@
     
     let CURRENT_TOTAL_DAYS = 0;
 
+    // Update pause period overlays to match current timeline dimensions
+    function updatePauseOverlays() {
+        if (!CONFIG.pausePeriods || CONFIG.pausePeriods.length === 0) return;
+        
+        const ganttChart = document.getElementById('gantt-chart');
+        const firstTimelineCol = ganttChart?.querySelector('.col-timeline');
+        if (!firstTimelineCol || !ganttChart) return;
+        
+        // Force layout recalculation
+        firstTimelineCol.offsetHeight;
+        
+        // Get current dimensions
+        const timelineRect = firstTimelineCol.getBoundingClientRect();
+        const chartRect = ganttChart.getBoundingClientRect();
+        const timelineLeft = timelineRect.left - chartRect.left;
+        const timelineWidth = timelineRect.width;
+        
+        // Remove existing overlays
+        const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
+        existingOverlays.forEach(ov => ov.remove());
+        
+        // Create/update overlay for each pause period
+        CONFIG.pausePeriods.forEach(pausePeriod => {
+            const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
+            const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
+            const pauseLeftPercent = ((pauseStartCol - 1) / CURRENT_TOTAL_DAYS) * 100;
+            const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / CURRENT_TOTAL_DAYS) * 100;
+            
+            const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
+            const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
+            
+            const pauseOverlay = document.createElement('div');
+            pauseOverlay.className = 'pause-overlay';
+            pauseOverlay.style.left = `${overlayLeft}px`;
+            pauseOverlay.style.width = `${overlayWidth}px`;
+            pauseOverlay.style.top = '0';
+            pauseOverlay.style.bottom = '0';
+            ganttChart.appendChild(pauseOverlay);
+        });
+    }
+
     // ============================================================
     // CHART RENDERING ENGINE - No need to edit below this line
     // ============================================================
@@ -636,6 +677,17 @@
         if (months.length > 0) {
             months[months.length - 1].days = monthDays;
         }
+        
+        // Adjust month names: hide month entirely if column is too narrow (would cause line break)
+        // Estimate: ~60px per day column, need ~80px for "Month YYYY"
+        // So if month has < 7 days, hide the label entirely to prevent wrapping
+        const minDaysForYear = 7;
+        months.forEach(month => {
+            if (month.days < minDaysForYear) {
+                // Hide the month label entirely
+                month.name = '';
+            }
+        });
         
         // Mark month boundaries
         let dayIndex = 0;
@@ -800,8 +852,8 @@
                 const textWidthCols = estimatedTextWidthPx / cellWidthPx;
                 const textHalfWidthCols = textWidthCols / 2;
                 
-                // Padding from break edge (minimum 1 day column = ~60px)
-                const minPaddingCols = 1;
+                // Padding from break edge (minimum 2.5 day columns = ~150px for more breathing room)
+                const minPaddingCols = 2.5;
                 
                 // Calculate where to position text within the longer segment
                 // Position based on CENTER of text, but ensure nearest edge doesn't touch break
@@ -894,37 +946,7 @@
         // Add continuous pause period overlays spanning all rows (after layout)
         if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
             requestAnimationFrame(() => {
-                const ganttChart = document.getElementById('gantt-chart');
-                const firstTimelineCol = ganttChart.querySelector('.col-timeline');
-                if (firstTimelineCol && ganttChart) {
-                    const timelineRect = firstTimelineCol.getBoundingClientRect();
-                    const chartRect = ganttChart.getBoundingClientRect();
-                    const timelineLeft = timelineRect.left - chartRect.left;
-                    const timelineWidth = timelineRect.width;
-                    
-                    // Remove existing overlays if any
-                    const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
-                    existingOverlays.forEach(ov => ov.remove());
-                    
-                    // Create overlay for each pause period
-                    CONFIG.pausePeriods.forEach(pausePeriod => {
-                        const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
-                        const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
-                        const pauseLeftPercent = ((pauseStartCol - 1) / totalDays) * 100;
-                        const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / totalDays) * 100;
-                        
-                        const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
-                        const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
-                        
-                        const pauseOverlay = document.createElement('div');
-                        pauseOverlay.className = 'pause-overlay';
-                        pauseOverlay.style.left = `${overlayLeft}px`;
-                        pauseOverlay.style.width = `${overlayWidth}px`;
-                        pauseOverlay.style.top = '0';
-                        pauseOverlay.style.bottom = '0';
-                        ganttChart.appendChild(pauseOverlay);
-                    });
-                }
+                updatePauseOverlays();
             });
         }
         
@@ -956,53 +978,103 @@
     function updateMilestoneConnectors() {
         const milestoneTimeline = document.querySelector('.milestone-timeline');
         if (!milestoneTimeline || CURRENT_TOTAL_DAYS === 0) return;
+        
+        // Force layout recalculation to ensure we get current, consistent values
+        // Access offsetHeight to force a synchronous layout calculation
+        milestoneTimeline.offsetHeight;
+        
+        // Read timeline dimensions - do this immediately after forcing layout
         const timelineRect = milestoneTimeline.getBoundingClientRect();
-        const cellWidth = timelineRect.width / CURRENT_TOTAL_DAYS;
+        const timelineWidth = timelineRect.width;
         const timelineRight = timelineRect.right;
+        const timelineLeft = timelineRect.left;
+        
+        // Calculate cell width - ensure this is done with the current timeline width
+        // Use a more precise calculation to avoid rounding errors
+        const cellWidth = timelineWidth / CURRENT_TOTAL_DAYS;
         const minPadding = cellWidth; // One day's column width as padding
 
         const milestoneElements = document.querySelectorAll('.milestone');
+        
+        // Collect all layout data first, then calculate and apply in a second pass
+        // This ensures all getBoundingClientRect() calls happen in the same layout frame
+        // Read ALL bounding rects in one batch to ensure consistency
+        const layoutData = [];
+        const allRects = [];
+        
         milestoneElements.forEach((el, index) => {
             const taskIndex = Number(el.getAttribute('data-task-index'));
             const milestoneLabel = el.querySelector('.milestone-label');
             const taskBar = document.querySelector(`.task-bar[data-task-index="${taskIndex}"]`);
             if (!milestoneLabel || !taskBar) return;
 
+            // Store references for batch reading
+            allRects.push({ el, milestoneLabel, taskBar, index, taskIndex });
+        });
+        
+        // Read ALL bounding rects in a single batch - this ensures they're all from the same layout frame
+        allRects.forEach(({ el, milestoneLabel, taskBar, index, taskIndex }) => {
+            const milestoneRect = el.getBoundingClientRect();
+            const labelRect = milestoneLabel.getBoundingClientRect();
+            const barRect = taskBar.getBoundingClientRect();
+            
+            layoutData.push({
+                index,
+                taskIndex,
+                milestoneLabel,
+                taskBar,
+                milestoneRect,
+                labelRect,
+                barRect
+            });
+        });
+        
+        // Now calculate and apply positions using the collected layout data
+        layoutData.forEach(({ index, milestoneLabel, taskBar, milestoneRect, labelRect, barRect }) => {
             const milestone = CONFIG.milestones[index];
             const col = getDayIndex(milestone.date, CONFIG.timelineStart);
-            // Calculate center of the day column (where connector line should be - FIXED)
-            const connectorLineX = timelineRect.left + ((col - 1) * cellWidth) + (cellWidth / 2);
+            
+            // Calculate connector line position directly from column number and cell width
+            // This is the target position where the connector line should be (center of the date column)
+            const connectorLineX = timelineLeft + ((col - 1) * cellWidth) + (cellWidth / 2);
 
-            const labelRect = milestoneLabel.getBoundingClientRect();
             const labelWidth = labelRect.width;
-            const labelCenter = labelRect.left + labelWidth / 2;
-            const timelineLeft = timelineRect.left;
+            
+            // Get the label's natural center position (without transform offset)
+            // The label is inside the milestone element, which is centered in its grid cell
+            // So the label's natural center is at the milestone element's center
+            const milestoneCenter = milestoneRect.left + (milestoneRect.width / 2);
+            const labelNaturalCenter = milestoneCenter; // Label is centered in milestone due to align-items: center
             
             // Calculate where label would be if centered on connector line
             const centeredLabelLeft = connectorLineX - (labelWidth / 2);
             const centeredLabelRight = connectorLineX + (labelWidth / 2);
             
-            // Check if centered label would extend past either edge
-            let labelOffset = connectorLineX - labelCenter;
+            // Calculate offset needed to move label from its natural position to target position
+            let labelOffset = connectorLineX - labelNaturalCenter;
+            
+            // Check if centered label would extend past either edge and adjust
             if (centeredLabelLeft < timelineLeft + minPadding) {
                 // Adjust label to be at least one day's width from the left edge
                 const minLabelLeft = timelineLeft + minPadding;
                 const adjustedLabelCenter = minLabelLeft + (labelWidth / 2);
-                labelOffset = adjustedLabelCenter - labelCenter;
+                labelOffset = adjustedLabelCenter - labelNaturalCenter;
             } else if (centeredLabelRight > timelineRight - minPadding) {
                 // Adjust label to be at least one day's width from the right edge
                 const maxLabelRight = timelineRight - minPadding;
                 const adjustedLabelCenter = maxLabelRight - (labelWidth / 2);
-                labelOffset = adjustedLabelCenter - labelCenter;
+                labelOffset = adjustedLabelCenter - labelNaturalCenter;
             }
             
-            // Calculate where connector line will be relative to the label's left edge
-            const finalLabelLeft = labelRect.left + labelOffset;
+            // Calculate where connector line will be relative to the label's final left edge
+            // Final label center = natural center + offset
+            const finalLabelCenter = labelNaturalCenter + labelOffset;
+            const finalLabelLeft = finalLabelCenter - (labelWidth / 2);
             const connectorLineXRelative = connectorLineX - finalLabelLeft;
 
-            const barRect = taskBar.getBoundingClientRect();
             const connectorHeight = Math.max(0, labelRect.top - barRect.bottom + 4);
 
+            // Apply all styles together
             milestoneLabel.style.setProperty('--connector-height', `${connectorHeight}px`);
             milestoneLabel.style.setProperty('--milestone-color', getComputedStyle(taskBar).getPropertyValue('--task-line-color') || taskBar.style.backgroundColor);
             milestoneLabel.style.setProperty('--connector-offset', `${labelOffset}px`);
@@ -1010,7 +1082,24 @@
         });
     }
     
-    window.addEventListener('resize', () => requestAnimationFrame(updateMilestoneConnectors));
+    // Debounce resize handler to prevent rapid recalculations during window resize
+    let resizeTimeout;
+    let resizeRAF;
+    window.addEventListener('resize', () => {
+        // Cancel any pending resize handlers
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        if (resizeRAF) cancelAnimationFrame(resizeRAF);
+        
+        // Use both debounce and requestAnimationFrame for smooth updates
+        resizeTimeout = setTimeout(() => {
+            resizeRAF = requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    updatePauseOverlays();
+                    updateMilestoneConnectors();
+                });
+            });
+        }, 50); // 50ms debounce
+    });
 
     // Initialize on page load
     document.addEventListener('DOMContentLoaded', renderChart);

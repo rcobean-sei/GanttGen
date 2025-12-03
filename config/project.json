@@ -1,4 +1,11 @@
 {
+  "palette": [
+    "#E31E26",
+    "#2CABDB",
+    "#38155B",
+    "#0049A3",
+    "#FF6B35"
+  ],
   "title": "PROJECT TIMELINE",
   "timelineStart": "2025-12-01",
   "timelineEnd": "2026-02-14",
@@ -7,7 +14,7 @@
     {
       "name": "Planning & Preparation",
       "start": "2025-12-02",
-      "end": "2025-12-10",
+      "end": "2025-12-14",
       "hours": 20,
       "subtasks": [
         "Define scope: URLs/Domains to audit; discovery and interviews",
@@ -18,8 +25,8 @@
     },
     {
       "name": "Initial Site Scans – Tracking System",
-      "start": "2025-12-11",
-      "end": "2025-12-22",
+      "start": "2025-12-15",
+      "end": "2026-01-11",
       "hours": 20,
       "subtasks": [
         "Scan site and mobile app",
@@ -30,8 +37,8 @@
     },
     {
       "name": "Consent Mechanism Testing",
-      "start": "2026-01-05",
-      "end": "2026-01-18",
+      "start": "2026-01-12",
+      "end": "2026-01-25",
       "hours": 20,
       "subtasks": [
         "Opt out of all cookies, verify deactivation across user journeys",
@@ -41,8 +48,8 @@
     },
     {
       "name": "Analysis and Documentation",
-      "start": "2026-01-19",
-      "end": "2026-01-28",
+      "start": "2026-01-26",
+      "end": "2026-02-04",
       "hours": 20,
       "subtasks": [
         "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
@@ -51,8 +58,8 @@
     },
     {
       "name": "Final Report and Recommendations",
-      "start": "2026-01-29",
-      "end": "2026-02-07",
+      "start": "2026-02-05",
+      "end": "2026-02-13",
       "hours": 20,
       "subtasks": [
         "Compile, present, and deliver findings with prioritized remediation items by risk and impact.",
@@ -70,12 +77,12 @@
     },
     {
       "name": "Testing Complete",
-      "date": "2026-01-18",
+      "date": "2026-01-25",
       "taskIndex": 2
     },
     {
       "name": "Deliver Final Report",
-      "date": "2026-02-07",
+      "date": "2026-02-13",
       "taskIndex": 4
     }
   ],

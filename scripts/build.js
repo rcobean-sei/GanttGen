@@ -142,6 +142,23 @@ async function parseExcel(filePath) {
     
     const data = {};
     
+    // Parse Palette sheet (must be first to resolve color indices)
+    const paletteSheet = workbook.getWorksheet('Palette');
+    data.palette = [];
+    if (paletteSheet) {
+        paletteSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const color = row.getCell(1).value;
+            if (color && String(color).trim()) {
+                data.palette.push(String(color).trim());
+            }
+        });
+    }
+    // If no palette defined, use default SEI colors
+    if (data.palette.length === 0) {
+        data.palette = SEI_COLORS;
+    }
+    
     // Parse Project sheet
     const projectSheet = workbook.getWorksheet('Project');
     if (projectSheet) {
@@ -188,15 +205,38 @@ async function parseExcel(filePath) {
                 task.subtasks = subtasks;
             }
             
+            // Get color - can be either direct color value or colorIndex
+            // Column 15 = color, Column 16 = colorIndex
+            const colorValue = row.getCell(15).value;
+            const colorIndexValue = row.getCell(16).value;
+            
+            if (colorIndexValue !== undefined && colorIndexValue !== null && colorIndexValue !== '') {
+                // Use palette index (preferred)
+                const colorIndex = Number(colorIndexValue);
+                if (!isNaN(colorIndex) && colorIndex >= 0 && colorIndex < data.palette.length) {
+                    task.color = data.palette[colorIndex];
+                }
+            } else if (colorValue && String(colorValue).trim()) {
+                // Use direct color value (fallback)
+                task.color = String(colorValue).trim();
+            }
+            
             data.tasks.push(task);
         });
     }
     
-    // Assign colors to tasks
+    // Assign colors to tasks that don't have colors yet
     if (data.tasks.length > 0) {
         const assignedColors = assignTaskColors(data.tasks.length);
         data.tasks.forEach((task, idx) => {
-            task.color = assignedColors[idx];
+            if (!task.color) {
+                // Use palette if available, otherwise use assigned colors
+                if (data.palette && data.palette.length > 0) {
+                    task.color = data.palette[idx % data.palette.length];
+                } else {
+                    task.color = assignedColors[idx];
+                }
+            }
         });
     }
     
@@ -253,7 +293,40 @@ async function parseExcel(filePath) {
 // Parse JSON file
 function parseJSON(filePath) {
     const content = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(content);
+    const config = JSON.parse(content);
+    
+    // Resolve color indices to actual colors if palette is defined
+    if (config.palette && Array.isArray(config.palette) && config.palette.length > 0) {
+        if (config.tasks && Array.isArray(config.tasks)) {
+            config.tasks.forEach(task => {
+                // If task has colorIndex instead of color, resolve it
+                if (task.colorIndex !== undefined && task.color === undefined) {
+                    const colorIndex = Number(task.colorIndex);
+                    if (!isNaN(colorIndex) && colorIndex >= 0 && colorIndex < config.palette.length) {
+                        task.color = config.palette[colorIndex];
+                    }
+                }
+                // If task has neither color nor colorIndex, assign from palette
+                if (!task.color && task.colorIndex === undefined) {
+                    const taskIndex = config.tasks.indexOf(task);
+                    task.color = config.palette[taskIndex % config.palette.length];
+                }
+            });
+        }
+    } else if (!config.palette) {
+        // If no palette defined, use default SEI colors
+        config.palette = SEI_COLORS;
+        // Assign colors to tasks that don't have them
+        if (config.tasks && Array.isArray(config.tasks)) {
+            config.tasks.forEach((task, idx) => {
+                if (!task.color) {
+                    task.color = config.palette[idx % config.palette.length];
+                }
+            });
+        }
+    }
+    
+    return config;
 }
 
 // Validate config
@@ -319,7 +392,7 @@ async function exportPNG(htmlPath, pngPath) {
     // Try to find system browser first
     const systemBrowser = findSystemBrowser();
     const launchOptions = {
-        headless: true,
+        headless: "new", // Use new headless mode (future-proof)
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     };
     
@@ -348,8 +421,38 @@ async function exportPNG(htmlPath, pngPath) {
             timeout: 30000
         });
         
-        // Wait a bit for any animations or dynamic content to settle
-        await page.waitForTimeout(1000);
+        // Wait for page to be fully loaded and rendered
+        await page.waitForFunction(() => {
+            const timeline = document.querySelector('.milestone-timeline');
+            const milestones = document.querySelectorAll('.milestone-label');
+            return document.readyState === 'complete' && 
+                   timeline !== null &&
+                   milestones.length > 0;
+        }, { timeout: 10000 });
+        
+        // Wait for initial layout to settle
+        await page.waitForTimeout(500);
+        
+        // Trigger a resize event to ensure connectors are calculated with the current viewport
+        // The debounced resize handler will recalculate connectors after layout stabilizes
+        await page.evaluate(() => {
+            window.dispatchEvent(new Event('resize'));
+        });
+        
+        // Wait for the debounced resize handler and double RAF to complete
+        await page.waitForTimeout(200); // Wait for debounce (50ms) + buffer
+        await page.evaluate(() => {
+            return new Promise((resolve) => {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        resolve();
+                    });
+                });
+            });
+        });
+        
+        // Final delay to ensure rendering is complete
+        await page.waitForTimeout(300);
         
         // Take screenshot with transparent background
         await page.screenshot({
@@ -401,7 +504,10 @@ async function build(inputPath, outputPath) {
     
     // Generate HTML
     const templatePath = path.join(__dirname, '..', 'templates', 'gantt_template.html');
-    const htmlOutputPath = outputPath || path.join(__dirname, '..', 'output', 'gantt_chart.html');
+    const htmlOutputPath = outputPath || (() => {
+        const inputBasename = path.basename(inputPath, path.extname(inputPath));
+        return path.join(__dirname, '..', 'output', `${inputBasename}_gantt_chart.html`);
+    })();
     
     console.log('✓ Generating HTML...');
     generateHTML(config, templatePath, htmlOutputPath);
@@ -441,7 +547,7 @@ if (require.main === module) {
     if (inputIndex === -1 || !args[inputIndex + 1]) {
         console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [--output <output.html>]');
         console.error('  --input, -i: Input file (JSON or XLSX)');
-        console.error('  --output, -o: Output HTML file (optional, defaults to output/gantt_chart.html)');
+        console.error('  --output, -o: Output HTML file (optional, defaults to output/<inputname>_gantt_chart.html)');
         process.exit(1);
     }
     
