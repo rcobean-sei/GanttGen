@@ -100,15 +100,112 @@ function findSystemBrowser() {
     return null;
 }
 
-// Brand Color Palette - Alternating Reds and Purples for visual distinction
-const BRAND_COLORS = [
-    '#F01840',  // RED 1 - Bright red
-    '#402848',  // PURPLE 4 - Dark purple
-    '#C01830',  // RED 2 - Darker red
-    '#705E74',  // PURPLE 3 - Medium purple
-    '#901226',  // RED 3 - Burgundy
-    '#2A1C30'   // PURPLE 5 - Deep purple
-];
+// ============================================================
+// BRAND COLOR PALETTES
+// ============================================================
+
+// Individual brand colors for reference
+const BRAND = {
+    RED_1: '#F01840',    // Bright red
+    RED_2: '#C01830',    // Darker red
+    RED_3: '#901226',    // Burgundy
+    RED_4: '#600C1C',    // Dark burgundy
+    RED_5: '#300810',    // Very dark burgundy
+    PURPLE_1: '#D0C8C8', // Light mauve
+    PURPLE_2: '#A0949E', // Muted purple
+    PURPLE_3: '#705E74', // Medium purple
+    PURPLE_4: '#402848', // Dark purple
+    PURPLE_5: '#2A1C30', // Deep purple
+    CREAM: '#FFFFF8',
+    BLACK: '#141018'
+};
+
+// Preset palettes
+const PALETTE_PRESETS = {
+    // Red gradient A - plain (warm, attention-grabbing)
+    reds_a: [
+        BRAND.RED_1,     // Bright red
+        BRAND.RED_2,     // Darker red
+        BRAND.RED_3,     // Burgundy
+        BRAND.RED_4,     // Dark burgundy
+        BRAND.RED_5,     // Very dark burgundy
+        BRAND.RED_1      // Cycle back to bright
+    ],
+    
+    // Red gradient B - with purple left border accent
+    reds_b: [
+        BRAND.RED_1,     // Bright red
+        BRAND.RED_2,     // Darker red
+        BRAND.RED_3,     // Burgundy
+        BRAND.RED_4,     // Dark burgundy
+        BRAND.RED_5,     // Very dark burgundy
+        BRAND.RED_1      // Cycle back to bright
+    ],
+    
+    // Red gradient (alias for reds_a)
+    reds: [
+        BRAND.RED_1,     // Bright red
+        BRAND.RED_2,     // Darker red
+        BRAND.RED_3,     // Burgundy
+        BRAND.RED_4,     // Dark burgundy
+        BRAND.RED_5,     // Very dark burgundy
+        BRAND.RED_1      // Cycle back to bright
+    ],
+    
+    // Purple gradient A - burgundy task name text accent
+    purples_a: [
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.PURPLE_5,  // Deep purple
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.PURPLE_5   // Deep purple
+    ],
+    
+    // Purple gradient B - left border accent only
+    purples_b: [
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.PURPLE_5,  // Deep purple
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.PURPLE_5   // Deep purple
+    ],
+    
+    // Purple gradient C - both burgundy text AND left border
+    purples_c: [
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.PURPLE_5,  // Deep purple
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.PURPLE_5   // Deep purple
+    ],
+    
+    // Alternating red/purple - maximum visual distinction
+    alternating: [
+        BRAND.RED_1,     // Bright red
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.RED_2,     // Darker red
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.RED_3,     // Burgundy
+        BRAND.PURPLE_5   // Deep purple
+    ]
+};
+
+// Default palette (alternating for best visual distinction)
+const BRAND_COLORS = PALETTE_PRESETS.alternating;
+
+// Get palette by name, with fallback to alternating
+function getPaletteByName(name) {
+    if (!name) return null; // Use config palette
+    const normalized = name.toLowerCase().trim();
+    if (PALETTE_PRESETS[normalized]) {
+        return PALETTE_PRESETS[normalized];
+    }
+    console.warn(`⚠️  Unknown palette "${name}", using "alternating"`);
+    return PALETTE_PRESETS.alternating;
+}
 
 // Function to randomly assign colors to tasks ensuring no two adjacent tasks have the same color
 function assignTaskColors(numTasks) {
@@ -479,7 +576,8 @@ async function exportPNG(htmlPath, pngPath) {
 }
 
 // Main function
-async function build(inputPath, outputPath) {
+// Options: { palette: 'reds' | 'purples' | 'alternating' | null }
+async function build(inputPath, outputPath, options = {}) {
     const inputExt = path.extname(inputPath).toLowerCase();
     const isExcel = inputExt === '.xlsx' || inputExt === '.xls';
     const isJSON = inputExt === '.json';
@@ -504,6 +602,46 @@ async function build(inputPath, outputPath) {
         console.log('✓ Parsed JSON file');
     }
     
+    // Apply palette preset if specified via CLI
+    if (options.palette) {
+        const presetPalette = getPaletteByName(options.palette);
+        if (presetPalette) {
+            config.palette = presetPalette;
+            config.palettePreset = options.palette.toLowerCase(); // Store preset name for template
+            console.log(`✓ Applied "${options.palette}" palette preset`);
+            
+            // Set accent styles based on palette variant
+            const paletteName = options.palette.toLowerCase();
+            
+            // reds_b: Purple left border accent
+            if (paletteName === 'reds_b') {
+                config.accentBorder = BRAND.PURPLE_4; // Dark purple border accent
+            }
+            // purples_a: Burgundy task name text only
+            else if (paletteName === 'purples_a') {
+                config.accentColor = BRAND.RED_3; // Burgundy text
+            }
+            // purples_b: Left border accent only (keep black text)
+            else if (paletteName === 'purples_b') {
+                config.accentBorder = BRAND.RED_2; // Red border accent
+            }
+            // purples_c: Both burgundy text AND left border
+            else if (paletteName === 'purples_c') {
+                config.accentColor = BRAND.RED_3; // Burgundy text
+                config.accentBorder = BRAND.RED_2; // Red border accent
+            }
+            
+            // Re-assign colors to tasks based on new palette
+            if (config.tasks && Array.isArray(config.tasks)) {
+                config.tasks.forEach((task, idx) => {
+                    // Use colorIndex if defined, otherwise use task index
+                    const colorIdx = task.colorIndex !== undefined ? task.colorIndex : idx;
+                    task.color = config.palette[colorIdx % config.palette.length];
+                });
+            }
+        }
+    }
+    
     // Validate
     console.log('✓ Validating configuration...');
     validateConfig(config);
@@ -511,9 +649,10 @@ async function build(inputPath, outputPath) {
     
     // Generate HTML
     const templatePath = path.join(__dirname, '..', 'templates', 'gantt_template.html');
+    const paletteSuffix = options.palette ? `_${options.palette.toLowerCase()}` : '';
     const htmlOutputPath = outputPath || (() => {
         const inputBasename = path.basename(inputPath, path.extname(inputPath));
-        return path.join(__dirname, '..', 'output', `${inputBasename}_gantt_chart.html`);
+        return path.join(__dirname, '..', 'output', `${inputBasename}_gantt_chart${paletteSuffix}.html`);
     })();
     
     console.log('✓ Generating HTML...');
@@ -550,11 +689,22 @@ if (require.main === module) {
     const args = process.argv.slice(2);
     const inputIndex = args.indexOf('--input') !== -1 ? args.indexOf('--input') : args.indexOf('-i');
     const outputIndex = args.indexOf('--output') !== -1 ? args.indexOf('--output') : args.indexOf('-o');
+    const paletteIndex = args.indexOf('--palette') !== -1 ? args.indexOf('--palette') : args.indexOf('-p');
     
     if (inputIndex === -1 || !args[inputIndex + 1]) {
-        console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [--output <output.html>]');
-        console.error('  --input, -i: Input file (JSON or XLSX)');
-        console.error('  --output, -o: Output HTML file (optional, defaults to output/<inputname>_gantt_chart.html)');
+        console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [options]');
+        console.error('');
+        console.error('Options:');
+        console.error('  --input, -i     Input file (JSON or XLSX) [required]');
+        console.error('  --output, -o    Output HTML file (defaults to output/<inputname>_gantt_chart.html)');
+        console.error('  --palette, -p   Color palette preset: reds, purples, alternating');
+        console.error('');
+        console.error('Palette presets:');
+        console.error('  reds          Red gradient (RED 1 → RED 5) - warm, attention-grabbing');
+        console.error('  purples_a     Purple gradient + burgundy task name text');
+        console.error('  purples_b     Purple gradient + red left border accent');
+        console.error('  purples_c     Purple gradient + both burgundy text AND border');
+        console.error('  alternating   Alternating red/purple - maximum visual distinction [default]');
         process.exit(1);
     }
     
@@ -562,12 +712,15 @@ if (require.main === module) {
     const outputPath = outputIndex !== -1 && args[outputIndex + 1] 
         ? path.resolve(args[outputIndex + 1])
         : null;
+    const palette = paletteIndex !== -1 && args[paletteIndex + 1]
+        ? args[paletteIndex + 1]
+        : null;
     
-    build(inputPath, outputPath).catch(error => {
+    build(inputPath, outputPath, { palette }).catch(error => {
         console.error('✗ Error:', error.message);
         process.exit(1);
     });
 }
 
-module.exports = { build, parseExcel, parseJSON };
+module.exports = { build, parseExcel, parseJSON, PALETTE_PRESETS, getPaletteByName };
 

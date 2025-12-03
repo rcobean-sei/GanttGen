@@ -5,11 +5,11 @@
   "showMilestones": true,
   "palette": [
     "#F01840",
-    "#402848",
     "#C01830",
-    "#705E74",
     "#901226",
-    "#2A1C30"
+    "#600C1C",
+    "#300810",
+    "#F01840"
   ],
   "tasks": [
     {
@@ -36,7 +36,7 @@
         "Log and classify by purpose/category"
       ],
       "colorIndex": 1,
-      "color": "#402848"
+      "color": "#C01830"
     },
     {
       "name": "Consent Mechanism Testing",
@@ -48,7 +48,7 @@
         "Audit site/app data flow compliance and messaging for GPC/DNSS signals"
       ],
       "colorIndex": 2,
-      "color": "#C01830"
+      "color": "#901226"
     },
     {
       "name": "Analysis and Documentation",
@@ -59,7 +59,7 @@
         "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
       ],
       "colorIndex": 3,
-      "color": "#705E74"
+      "color": "#600C1C"
     },
     {
       "name": "Final Report and Recommendations",
@@ -72,7 +72,7 @@
         "Revisions and clarifications as needed"
       ],
       "colorIndex": 4,
-      "color": "#901226"
+      "color": "#300810"
     }
   ],
   "milestones": [
@@ -97,5 +97,7 @@
       "start": "2025-12-23",
       "end": "2026-01-04"
     }
-  ]
+  ],
+  "palettePreset": "reds_b",
+  "accentBorder": "#402848"
 }

@@ -1,0 +1,83 @@
+{
+  "title": "PROJECT TIMELINE",
+  "timelineStart": "2025-01-01",
+  "timelineEnd": "2025-03-31",
+  "showMilestones": true,
+  "palette": [
+    "#F01840",
+    "#402848",
+    "#C01830",
+    "#705E74",
+    "#901226",
+    "#2A1C30"
+  ],
+  "tasks": [
+    {
+      "name": "Phase 1: Discovery",
+      "start": "2025-01-06",
+      "end": "2025-01-24",
+      "hours": 40,
+      "subtasks": [
+        "Stakeholder interviews",
+        "Requirements gathering",
+        "Initial assessment"
+      ],
+      "colorIndex": 0
+    },
+    {
+      "name": "Phase 2: Planning",
+      "start": "2025-01-27",
+      "end": "2025-02-14",
+      "hours": 30,
+      "subtasks": [
+        "Define project scope",
+        "Create project plan",
+        "Resource allocation"
+      ],
+      "colorIndex": 1
+    },
+    {
+      "name": "Phase 3: Execution",
+      "start": "2025-02-17",
+      "end": "2025-03-14",
+      "hours": 60,
+      "subtasks": [
+        "Implementation tasks",
+        "Quality assurance",
+        "Progress tracking"
+      ],
+      "colorIndex": 2
+    },
+    {
+      "name": "Phase 4: Delivery",
+      "start": "2025-03-17",
+      "end": "2025-03-28",
+      "hours": 20,
+      "subtasks": [
+        "Final deliverables",
+        "Documentation",
+        "Handoff and training"
+      ],
+      "colorIndex": 3
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Project Kickoff",
+      "date": "2025-01-06",
+      "taskIndex": 0
+    },
+    {
+      "name": "Planning Complete",
+      "date": "2025-02-14",
+      "taskIndex": 1
+    },
+    {
+      "name": "Final Delivery",
+      "date": "2025-03-28",
+      "taskIndex": 3
+    }
+  ],
+  "pausePeriods": []
+}
+

@@ -1,7 +1,4 @@
-# Generated output
-output/
-
-# Node modules (if we add dependencies later)
+# Node modules
 node_modules/
 
 # OS files
@@ -13,5 +10,14 @@ node_modules/
 ~$*.xlsx
 ~$*.xls
 
-# User input files (real project data)
-input/
+# Input folder contents (user project data - keep folder with .gitkeep)
+input/*
+!input/.gitkeep
+
+# Output folder contents (generated files - keep folder with .gitkeep)
+output/*
+!output/.gitkeep
+
+# Config folder contents (generated during build)
+config/*
+!config/.gitkeep
