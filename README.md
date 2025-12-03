@@ -15,9 +15,9 @@ A data-driven Gantt chart generator with brand color palettes, configurable task
 
 ## Example Output
 
-![Alternating Palette Example](palette_examples/template_alternating.png)
+![Alternating B Palette Example](palette_examples/template_alternating_b.png)
 
-*Example Gantt chart using the `alternating` palette (default) - see [Palette Examples](palette_examples/PALETTE_EXAMPLES.md) for all variants*
+*Example Gantt chart using the `alternating_b` palette - see [Palette Examples](palette_examples/PALETTE_EXAMPLES.md) for all variants*
 
 ---
 
@@ -122,6 +122,7 @@ Each build generates:
 | `purples_b` | PURPLE 3 → PURPLE 5 | Red left border | Purple bars + red accent edge |
 | `purples_c` | PURPLE 3 → PURPLE 5 | Both text + border | Purple bars + full red accent |
 | `alternating` | RED/PURPLE mix | — | Maximum visual distinction *(default)* |
+| `alternating_b` | RED/PURPLE mix | Red left border | Maximum distinction + brand accent |
 
 ### Usage Examples
 
@@ -143,6 +144,9 @@ node scripts/build.js -i input/project.json -p reds_b
 
 # Alternating red/purple for best task differentiation (default)
 node scripts/build.js -i input/project.json -p alternating
+
+# Alternating red/purple with red left border accent
+node scripts/build.js -i input/project.json -p alternating_b
 ```
 
 ---

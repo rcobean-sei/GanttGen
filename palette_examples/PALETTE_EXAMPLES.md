@@ -82,6 +82,19 @@ node scripts/build.js --input templates/gantt_template.json --palette alternatin
 
 ---
 
+## Alternating B Palette
+
+**Command:**
+```bash
+node scripts/build.js --input templates/gantt_template.json --palette alternating_b
+```
+
+**Description:** Alternating red and purple task bars with red left border accent. Combines maximum visual distinction with brand accent styling.
+
+![Alternating B Palette](template_alternating_b.png)
+
+---
+
 ## Palette Comparison
 
 | Palette | Task Colors | Accent Style | Best For |
@@ -92,6 +105,7 @@ node scripts/build.js --input templates/gantt_template.json --palette alternatin
 | `purples_b` | PURPLE 3 → PURPLE 5 | Red left border | Purple with edge accent |
 | `purples_c` | PURPLE 3 → PURPLE 5 | Both text + border | Maximum brand integration |
 | `alternating` | RED/PURPLE mix | None | Best task differentiation |
+| `alternating_b` | RED/PURPLE mix | Red left border | Best differentiation + brand accent |
 
 ---
 

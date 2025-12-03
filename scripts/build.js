@@ -190,6 +190,16 @@ const PALETTE_PRESETS = {
         BRAND.PURPLE_3,  // Medium purple
         BRAND.RED_3,     // Burgundy
         BRAND.PURPLE_5   // Deep purple
+    ],
+    
+    // Alternating red/purple B - with red left border accent
+    alternating_b: [
+        BRAND.RED_1,     // Bright red
+        BRAND.PURPLE_4,  // Dark purple
+        BRAND.RED_2,     // Darker red
+        BRAND.PURPLE_3,  // Medium purple
+        BRAND.RED_3,     // Burgundy
+        BRAND.PURPLE_5   // Deep purple
     ]
 };
 
@@ -654,6 +664,10 @@ async function build(inputPath, outputPath, options = {}) {
                 config.accentColor = BRAND.RED_3; // Burgundy text
                 config.accentBorder = BRAND.RED_2; // Red border accent
             }
+            // alternating_b: Alternating colors with red left border accent
+            else if (paletteName === 'alternating_b') {
+                config.accentBorder = BRAND.RED_2; // Red border accent
+            }
             
             // Re-assign colors to tasks based on new palette
             if (config.tasks && Array.isArray(config.tasks)) {
@@ -729,6 +743,7 @@ if (require.main === module) {
         console.error('  purples_b     Purple gradient + red left border accent');
         console.error('  purples_c     Purple gradient + both burgundy text AND border');
         console.error('  alternating   Alternating red/purple - maximum visual distinction [default]');
+        console.error('  alternating_b Alternating red/purple + red left border accent');
         process.exit(1);
     }
     
