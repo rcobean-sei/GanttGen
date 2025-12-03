@@ -34,6 +34,8 @@ node scripts/build.js --input templates/gantt_template.json --palette alternatin
 node scripts/build.js --input input/myproject.json --palette purples_c
 ```
 
+> 📘 **New to Excel templates?** See the [**Excel Template Guide**](docs/EXCEL_TEMPLATE_GUIDE.md) for step-by-step instructions on using the Excel template.
+
 ---
 
 ## Project Structure
@@ -81,6 +83,8 @@ node scripts/build.js -i input/project.json -p alternating
 ```bash
 node scripts/build.js -i input/project.xlsx -p reds_b
 ```
+
+> 📖 **See [Excel Template Guide](docs/EXCEL_TEMPLATE_GUIDE.md)** for detailed instructions on using the Excel template, including sheet-by-sheet documentation and examples.
 
 ### Output
 
@@ -317,6 +321,14 @@ node scripts/build.js \
 3. **For sophistication**: Use `purples_c` with both accent styles
 4. **For urgency/energy**: Use `reds` or `reds_b` palette
 5. **Pause periods**: Great for holidays, client review periods, etc.
+
+---
+
+## Documentation
+
+- 📘 **[Excel Template Guide](docs/EXCEL_TEMPLATE_GUIDE.md)** - Complete guide to using the Excel template with sheet-by-sheet instructions
+- 🎨 **[Palette Examples](palette_examples/PALETTE_EXAMPLES.md)** - Visual comparisons of all color palette variants
+- 📋 [CSV/Excel Import Spec](docs/CSV_EXCEL_IMPORT_SPEC.md) - Import specifications
 
 ---
 
