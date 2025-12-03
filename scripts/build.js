@@ -487,6 +487,25 @@ function generateHTML(config, templatePath, outputPath) {
     fs.writeFileSync(outputPath, output, 'utf8');
 }
 
+// Crop PNG to visible pixels only (remove transparent space)
+async function cropPNGToVisible(pngPath) {
+    try {
+        const sharp = require('sharp');
+        const image = sharp(pngPath);
+        const metadata = await image.metadata();
+        
+        // Trim transparent pixels (threshold: 0 means fully transparent)
+        const trimmed = await image.trim({ threshold: 0 }).toBuffer();
+        
+        // Write back to file
+        fs.writeFileSync(pngPath, trimmed);
+        return true;
+    } catch (error) {
+        // If sharp is not available, skip cropping silently
+        return false;
+    }
+}
+
 // Export HTML to PNG with transparent background
 async function exportPNG(htmlPath, pngPath) {
     if (!puppeteer) {
@@ -565,6 +584,11 @@ async function exportPNG(htmlPath, pngPath) {
             fullPage: true,
             omitBackground: true // Transparent background
         });
+        
+        // Crop to visible pixels only (remove transparent space)
+        if (await cropPNGToVisible(pngPath)) {
+            console.log('   Cropped PNG to visible pixels');
+        }
         
     } catch (error) {
         throw new Error(`Failed to export PNG: ${error.message}`);
