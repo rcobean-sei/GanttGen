@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, initial-scale=1.0">
+    <title>Project Timeline - Gantt Chart</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        :root {
+            --connector-width: 2px;
+            
+            /* Brand Colors - Reds */
+            --red-1: #F01840;
+            --red-2: #C01830;
+            --red-3: #901226;
+            --red-4: #600C1C;
+            --red-5: #300810;
+            
+            /* Brand Colors - Purples */
+            --purple-1: #D0C8C8;
+            --purple-2: #A0949E;
+            --purple-3: #705E74;
+            --purple-4: #402848;
+            --purple-5: #2A1C30;
+            
+            /* Brand Colors - Neutrals */
+            --cream: #FFFFF8;
+            --black: #141018;
+            
+            /* Accent color - can be overridden per palette */
+            --accent-color: var(--black);
+            --accent-border: transparent;
+            --accent-border-width: 0px;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 10px;
+            background-color: transparent;
+        }
+        
+        .gantt-container {
+            background: transparent;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: none;
+            max-width: 1920px;
+            width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        h1 {
+            font-size: 44px;
+            font-weight: bold;
+            color: var(--black);
+            margin: 0 0 15px 0;
+            letter-spacing: -1px;
+            display: none; /* Hidden for PNG export */
+        }
+        
+        .gantt-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .gantt-chart {
+            border: 1px solid var(--purple-1);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 0;
+            position: relative;
+        }
+        
+        
+        .task-section {
+            position: relative;
+            overflow: visible; /* Allow connectors to extend past */
+        }
+        
+        /* Clip container for milestone connectors */
+        .milestone-clip-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gantt-row {
+            display: flex;
+            border-bottom: 1px solid var(--purple-1);
+            flex-shrink: 0;
+        }
+        
+        .gantt-row:last-child {
+            border-bottom: none;
+        }
+        
+        .col-task {
+            width: 380px;
+            min-width: 380px;
+            padding: 12px 16px;
+            background: var(--cream);
+            border-right: 1px solid var(--purple-1);
+            border-left: var(--accent-border-width) solid var(--accent-border);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .task-name {
+            font-weight: 600;
+            font-size: 21px;
+            color: var(--accent-color);
+        }
+        
+        .subtasks {
+            margin-top: 6px;
+            padding-left: 4px;
+        }
+        
+        .subtask {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--purple-3);
+            line-height: 1.3;
+            margin-bottom: 3px;
+            padding-left: 12px;
+            position: relative;
+        }
+        
+        .subtask:last-child {
+            margin-bottom: 0;
+        }
+        
+        .subtask::before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: var(--purple-2);
+        }
+        
+        .col-timeline {
+            flex: 1;
+            min-width: 0;
+            position: relative;
+        }
+        
+        /* Header row styling */
+        .header-row {
+            background: var(--black);
+            color: var(--cream);
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            z-index: 20; /* Ensure header is above connector lines */
+        }
+        
+        .header-row .col-task {
+            background: var(--black);
+            border-right-color: rgba(255,255,255,0.2);
+            color: var(--cream);
+            font-size: 16px;
+        }
+        
+        .header-row .col-timeline {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .month-header {
+            display: grid;
+            height: 36px;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .month-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 17px;
+            border-right: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .month-label:last-child {
+            border-right: none;
+        }
+        
+        .day-numbers {
+            display: grid;
+            height: 14px;
+        }
+        
+        .day-number {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .day-header {
+            display: grid;
+            height: 22px;
+        }
+        
+        .day-tick {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+            border-right: 1px solid rgba(255,255,255,0.15);
+        }
+        
+        .day-tick.weekend {
+            color: #888;
+        }
+        
+        .day-tick.month-boundary {
+            border-right: 1px solid rgba(255,255,255,0.3);
+        }
+        
+        .day-tick:last-child {
+            border-right: none;
+        }
+        
+        .day-tick.highlight {
+            font-weight: bold;
+        }
+        
+        .task-row .col-timeline {
+            display: grid;
+            align-items: center;
+            background: var(--cream);
+            min-height: 58px;
+            position: relative;
+        }
+        
+        .month-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .month-background.month-even {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+        
+        .month-background.month-odd {
+            background-color: transparent;
+        }
+        
+        .task-bar {
+            height: 48px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--cream);
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
+            margin: 0 1px;
+            padding: 4px 12px;
+            position: relative;
+            z-index: 10;
+            overflow: hidden; /* Prevent text overflow */
+            box-sizing: border-box; /* Include padding in height calculation */
+        }
+        
+        /* Interrupted task bar segments - sharp edges on interrupted side */
+        .task-bar-segment-left {
+            border-radius: 4px 0 0 4px; /* Rounded only on left side */
+            box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border only */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
+                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
+        .task-bar-segment-left::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: inherit;
+            z-index: 2;
+        }
+        
+        .task-bar-segment-right {
+            border-radius: 0 4px 4px 0; /* Rounded only on right side */
+            box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border only */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
+                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+        }
+        
+        .task-bar-segment-right::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: inherit;
+            z-index: 2;
+        }
+        
+        .task-bar-date {
+            font-size: 17px; /* Fixed size - do not increase */
+            line-height: 1.1; /* Tighter line height to fit within padding */
+            white-space: nowrap; /* Prevent date text from wrapping */
+            overflow: hidden; /* Prevent overflow */
+        }
+        
+        /* Content positioning for split segments */
+        .task-bar-content {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%); /* Center both horizontally and vertically */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            white-space: nowrap;
+            z-index: 1;
+            /* Ensure text doesn't overflow segment boundaries */
+            max-width: calc(100% - 32px); /* Leave padding on both sides */
+        }
+        
+        /* Align dates in split segments to same vertical position as regular task bars */
+        .task-bar-segment-left,
+        .task-bar-segment-right {
+            justify-content: center; /* Match regular task bars */
+            position: relative; /* Allow absolute positioning of content */
+        }
+        
+        .task-bar-hours {
+            font-size: 15px; /* Fixed size - do not increase */
+            font-weight: 500;
+            line-height: 1.1; /* Tighter line height to fit within padding */
+            margin-top: 1px; /* Reduced margin to fit better */
+            opacity: 0.95;
+            overflow: hidden; /* Prevent overflow */
+        }
+        
+        
+        /* Break effect for task bars spanning pause periods */
+        .task-bar-stripe-connector {
+            position: absolute;
+            height: 48px; /* Same height as task bar */
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 11;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                45deg,
+                currentColor 0px,
+                currentColor 1px,
+                transparent 1px,
+                transparent 4px
+            );
+            opacity: 0.6;
+        }
+        
+        /* Ensure task bar content fits within available space */
+        /* With 48px height and 4px top/bottom padding, available content height is 40px */
+        /* Two lines: date (17px * 1.1 = 18.7px) + margin (1px) + hours (15px * 1.1 = 16.5px) = ~36.2px, fits within 40px */
+        .task-bar > * {
+            max-height: calc(100% - 8px); /* Account for 4px top + 4px bottom padding */
+        }
+        
+        /* Font sizes are fixed to respect padding - do not increase these values */
+        /* Current sizes: date 17px, hours/continued 15px with line-height 1.1 */
+        /* Total content height: (17 * 1.1) + 1px margin + (15 * 1.1) = ~36.2px */
+        /* Available space: 48px height - 8px padding = 40px, so fits comfortably */
+        
+        /* Remove task bar connector - using milestone connector instead */
+        
+        .grid-lines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: grid;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .grid-line {
+            border-right: 1px dashed rgba(0,0,0,0.08);
+        }
+        
+        .grid-line.week-boundary {
+            border-right: 1px dashed rgba(0,0,0,0.2);
+        }
+        
+        .grid-line.month-boundary {
+            border-right: 1px solid var(--purple-1);
+        }
+        
+        .grid-line:last-child {
+            border-right: none;
+        }
+        
+        /* Milestones */
+        #milestone-section {
+            position: relative;
+            overflow: visible;
+        }
+        
+        .milestone-row {
+            display: flex;
+            margin-top: 15px;
+        }
+        
+        .milestone-spacer {
+            width: 380px;
+            min-width: 380px;
+        }
+        
+        .milestone-timeline {
+            flex: 1;
+            min-width: 0;
+            display: grid;
+            height: 65px;
+            position: relative;
+        }
+        
+        .milestone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            justify-self: center;
+            position: relative;
+            --milestone-color: var(--purple-4);
+        }
+        
+        .milestone-label {
+            background: var(--cream);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--black);
+            border: 2px solid var(--milestone-color, var(--purple-4));
+            text-align: center;
+            line-height: 1.3;
+            white-space: nowrap;
+            position: relative;
+            transform: translateX(var(--connector-offset, 0px));
+            --connector-height: 0px;
+        }
+        
+        /* Connector from top of milestone label up to task section */
+        .milestone-label::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: var(--connector-line-x, 50%);
+            transform: translateX(-50%);
+            width: 0;
+            border-left: var(--connector-width, 2px) dotted var(--milestone-color, var(--purple-4));
+            height: var(--connector-height, 0px);
+            z-index: 1;
+        }
+        
+        /* Pause period overlay with diagonal hash pattern */
+        .pause-overlay {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            background-image: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 8px,
+                rgba(160, 148, 158, 0.25) 8px,
+                rgba(160, 148, 158, 0.25) 16px
+            );
+            pointer-events: none;
+            z-index: 5; /* Above grid lines but below task bars */
+        }
+        
+        .gantt-chart {
+            position: relative; /* Ensure pause overlay can be positioned relative to this */
+        }
+    </style>
+</head>
+<body>
+    <div class="gantt-container">
+        <h1 id="chart-title">PROJECT TIMELINE</h1>
+        <div class="gantt-wrapper">
+            <div id="gantt-chart" class="gantt-chart"></div>
+            <div id="milestone-section"></div>
+        </div>
+    </div>
+
+    <script>
+    // ============================================================
+    // CONFIGURATION - Injected from JSON config file
+    // ============================================================
+    
+    const CONFIG = {
+    "title": "PROJECT TIMELINE",
+    "timelineStart": "2025-01-01",
+    "timelineEnd": "2025-03-31",
+    "showMilestones": true,
+    "palette": [
+        "#F01840",
+        "#C01830",
+        "#901226",
+        "#600C1C",
+        "#300810",
+        "#F01840"
+    ],
+    "tasks": [
+        {
+            "name": "Phase 1: Discovery",
+            "start": "2025-01-06",
+            "end": "2025-01-24",
+            "hours": 40,
+            "subtasks": [
+                "Stakeholder interviews",
+                "Requirements gathering",
+                "Initial assessment"
+            ],
+            "colorIndex": 0,
+            "color": "#F01840"
+        },
+        {
+            "name": "Phase 2: Planning",
+            "start": "2025-01-27",
+            "end": "2025-02-14",
+            "hours": 30,
+            "subtasks": [
+                "Define project scope",
+                "Create project plan",
+                "Resource allocation"
+            ],
+            "colorIndex": 1,
+            "color": "#C01830"
+        },
+        {
+            "name": "Phase 3: Execution",
+            "start": "2025-02-17",
+            "end": "2025-03-14",
+            "hours": 60,
+            "subtasks": [
+                "Implementation tasks",
+                "Quality assurance",
+                "Progress tracking"
+            ],
+            "colorIndex": 2,
+            "color": "#901226"
+        },
+        {
+            "name": "Phase 4: Delivery",
+            "start": "2025-03-17",
+            "end": "2025-03-28",
+            "hours": 20,
+            "subtasks": [
+                "Final deliverables",
+                "Documentation",
+                "Handoff and training"
+            ],
+            "colorIndex": 3,
+            "color": "#600C1C"
+        }
+    ],
+    "milestones": [
+        {
+            "name": "Project Kickoff",
+            "date": "2025-01-06",
+            "taskIndex": 0
+        },
+        {
+            "name": "Planning Complete",
+            "date": "2025-02-14",
+            "taskIndex": 1
+        },
+        {
+            "name": "Final Delivery",
+            "date": "2025-03-28",
+            "taskIndex": 3
+        }
+    ],
+    "pausePeriods": [],
+    "palettePreset": "reds_b",
+    "accentBorder": "#402848"
+};
+    
+    // Apply accent styling from config (e.g., for purples palette variants)
+    if (CONFIG.accentColor) {
+        document.documentElement.style.setProperty('--accent-color', CONFIG.accentColor);
+    }
+    if (CONFIG.accentBorder) {
+        document.documentElement.style.setProperty('--accent-border', CONFIG.accentBorder);
+        document.documentElement.style.setProperty('--accent-border-width', '4px');
+    }
+    
+    let CURRENT_TOTAL_DAYS = 0;
+
+    // Update pause period overlays to match current timeline dimensions
+    function updatePauseOverlays() {
+        if (!CONFIG.pausePeriods || CONFIG.pausePeriods.length === 0) return;
+        
+        const ganttChart = document.getElementById('gantt-chart');
+        const firstTimelineCol = ganttChart?.querySelector('.col-timeline');
+        if (!firstTimelineCol || !ganttChart) return;
+        
+        // Force layout recalculation
+        firstTimelineCol.offsetHeight;
+        
+        // Get current dimensions
+        const timelineRect = firstTimelineCol.getBoundingClientRect();
+        const chartRect = ganttChart.getBoundingClientRect();
+        const timelineLeft = timelineRect.left - chartRect.left;
+        const timelineWidth = timelineRect.width;
+        
+        // Remove existing overlays
+        const existingOverlays = ganttChart.querySelectorAll('.pause-overlay');
+        existingOverlays.forEach(ov => ov.remove());
+        
+        // Create/update overlay for each pause period
+        CONFIG.pausePeriods.forEach(pausePeriod => {
+            const pauseStartCol = getDayIndex(pausePeriod.start, CONFIG.timelineStart);
+            const pauseEndCol = getDayIndex(pausePeriod.end, CONFIG.timelineStart) + 1;
+            const pauseLeftPercent = ((pauseStartCol - 1) / CURRENT_TOTAL_DAYS) * 100;
+            const pauseWidthPercent = ((pauseEndCol - pauseStartCol) / CURRENT_TOTAL_DAYS) * 100;
+            
+            const overlayLeft = timelineLeft + (pauseLeftPercent / 100) * timelineWidth;
+            const overlayWidth = (pauseWidthPercent / 100) * timelineWidth;
+            
+            const pauseOverlay = document.createElement('div');
+            pauseOverlay.className = 'pause-overlay';
+            pauseOverlay.style.left = `${overlayLeft}px`;
+            pauseOverlay.style.width = `${overlayWidth}px`;
+            pauseOverlay.style.top = '0';
+            pauseOverlay.style.bottom = '0';
+            ganttChart.appendChild(pauseOverlay);
+        });
+    }
+
+    // ============================================================
+    // CHART RENDERING ENGINE - No need to edit below this line
+    // ============================================================
+
+    // Utility functions
+    function parseDate(str) {
+        const [y, m, d] = str.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+
+    function formatDateRange(start, end, format) {
+        const s = parseDate(start);
+        const e = parseDate(end);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `${s.getMonth()+1}/${s.getDate()}–${e.getMonth()+1}/${e.getDate()}`;
+        }
+        
+        // Short format
+        const sMonth = months[s.getMonth()];
+        const eMonth = months[e.getMonth()];
+        
+        if (s.getMonth() === e.getMonth()) {
+            return `${sMonth} ${s.getDate()}–${e.getDate()}`;
+        }
+        return `${sMonth} ${s.getDate()}–${eMonth} ${e.getDate()}`;
+    }
+    
+    function formatStartDate(date, format) {
+        const d = parseDate(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `${d.getMonth()+1}/${d.getDate()}–`;
+        }
+        
+        // Short format
+        const month = months[d.getMonth()];
+        return `${month} ${d.getDate()}–`;
+    }
+    
+    function formatEndDate(date, format) {
+        const d = parseDate(date);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        
+        if (format === 'numeric') {
+            return `–${d.getMonth()+1}/${d.getDate()}`;
+        }
+        
+        // Short format
+        const month = months[d.getMonth()];
+        return `–${month} ${d.getDate()}`;
+    }
+
+    function getDayOfWeek(date) {
+        const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+        return days[date.getDay()];
+    }
+
+    function daysBetween(start, end) {
+        const s = parseDate(start);
+        const e = parseDate(end);
+        return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    function getDayIndex(date, timelineStart) {
+        const d = parseDate(date);
+        // timelineStart is the actual project start, but timeline has 1-day padding before it
+        const projectStart = parseDate(timelineStart);
+        const s = new Date(projectStart);
+        s.setDate(s.getDate() - 1); // Subtract 1 day for padding
+        // Calculate days difference more precisely
+        const diffTime = d.getTime() - s.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays + 1; // +1 because grid columns are 1-indexed
+    }
+
+    // Build timeline data
+    function buildTimelineData() {
+        // Add 1 day padding before and after the project timeline
+        const projectStart = parseDate(CONFIG.timelineStart);
+        const projectEnd = parseDate(CONFIG.timelineEnd);
+        
+        // Subtract 1 day from start, add 1 day to end
+        const start = new Date(projectStart);
+        start.setDate(start.getDate() - 1);
+        
+        const end = new Date(projectEnd);
+        end.setDate(end.getDate() + 1);
+        
+        const totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+        
+        const months = [];
+        const days = [];
+        
+        let currentDate = new Date(start);
+        let currentMonth = null;
+        let monthDays = 0;
+        let monthIndex = -1;
+        
+        for (let i = 0; i < totalDays; i++) {
+            const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+            
+            if (monthKey !== currentMonth) {
+                if (currentMonth !== null) {
+                    months[months.length - 1].days = monthDays;
+                }
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                months.push({
+                    name: `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`,
+                    days: 0
+                });
+                currentMonth = monthKey;
+                monthDays = 0;
+                monthIndex++;
+            }
+            
+            const dayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+            const isWeekStart = dayOfWeek === 0; // Sunday is week start (separator appears between S and M)
+            
+            days.push({
+                date: new Date(currentDate),
+                dayOfWeek: getDayOfWeek(currentDate),
+                isMonthEnd: false,
+                isWeekStart: isWeekStart,
+                monthIndex: monthIndex
+            });
+            
+            monthDays++;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Set last month's days
+        if (months.length > 0) {
+            months[months.length - 1].days = monthDays;
+        }
+        
+        // Adjust month names: hide month entirely if column is too narrow (would cause line break)
+        // Estimate: ~60px per day column, need ~80px for "Month YYYY"
+        // So if month has < 7 days, hide the label entirely to prevent wrapping
+        const minDaysForYear = 7;
+        months.forEach(month => {
+            if (month.days < minDaysForYear) {
+                // Hide the month label entirely
+                month.name = '';
+            }
+        });
+        
+        // Mark month boundaries
+        let dayIndex = 0;
+        for (let m = 0; m < months.length - 1; m++) {
+            dayIndex += months[m].days;
+            if (dayIndex > 0 && dayIndex <= days.length) {
+                days[dayIndex - 1].isMonthEnd = true;
+            }
+        }
+        
+        return { months, days, totalDays };
+    }
+
+    // Render the chart
+    function renderChart() {
+        const { months, days, totalDays } = buildTimelineData();
+        CURRENT_TOTAL_DAYS = totalDays;
+        
+        // Set title
+        document.getElementById('chart-title').textContent = CONFIG.title;
+        
+        // Build month header grid template
+        const monthGridTemplate = months.map(m => `${m.days}fr`).join(' ');
+        const dayGridTemplate = `repeat(${totalDays}, 1fr)`;
+        
+        // Create header row
+        let headerHTML = `
+            <div class="gantt-row header-row">
+                <div class="col-task">Tasks</div>
+                <div class="col-timeline" style="position: relative;">
+                    <div class="month-header" style="grid-template-columns: ${monthGridTemplate}">
+                        ${months.map(m => `<div class="month-label">${m.name}</div>`).join('')}
+                    </div>
+                    <div class="day-numbers" style="grid-template-columns: ${dayGridTemplate}">
+                        ${days.map((d, i) => {
+                            const isMonday = d.date.getDay() === 1;
+                            const dayNum = isMonday ? d.date.getDate() : '';
+                            return `<div class="day-number">${dayNum}</div>`;
+                        }).join('')}
+                    </div>
+                    <div class="day-header" style="grid-template-columns: ${dayGridTemplate}">
+                        ${days.map((d, i) => {
+                            const highlight = (i + 1) % 5 === 0; // Highlight every 5th day
+                            const isWeekend = d.date.getDay() === 0 || d.date.getDay() === 6;
+                            const classes = ['day-tick'];
+                            if (highlight) classes.push('highlight');
+                            if (isWeekend) classes.push('weekend');
+                            if (d.isMonthEnd) classes.push('month-boundary');
+                            return `<div class="${classes.join(' ')}">${d.dayOfWeek}</div>`;
+                        }).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Create task rows
+        let tasksHTML = CONFIG.tasks.map((task, originalIndex) => {
+            const taskStart = new Date(task.start);
+            const taskEnd = new Date(task.end);
+            const label = formatDateRange(task.start, task.end, "short"); // Use short date format
+            const hours = task.hours !== undefined ? task.hours : 0;
+            const hoursText = hours > 0 ? `${hours} hrs` : '';
+            
+            // Check if task spans across any pause period
+            let intersectingPause = null;
+            if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
+                for (const pause of CONFIG.pausePeriods) {
+                    const pauseStart = new Date(pause.start);
+                    const pauseEnd = new Date(pause.end);
+                    // Check if task spans across pause (starts before pause ends and ends after pause starts)
+                    if (taskStart < pauseEnd && taskEnd > pauseStart) {
+                        intersectingPause = pause;
+                        break;
+                    }
+                }
+            }
+            
+            // Create grid lines
+            const gridLines = days.map((d, i) => {
+                const classes = ['grid-line'];
+                if (d.isWeekStart) classes.push('week-boundary');
+                if (d.isMonthEnd) classes.push('month-boundary');
+                return `<div class="${classes.join(' ')}"></div>`;
+            }).join('');
+            
+            // Create month background cells (absolutely positioned)
+            const monthBackgrounds = [];
+            if (days.length > 0 && totalDays > 0) {
+                let currentMonthIndex = days[0].monthIndex;
+                let monthStartCol = 1;
+                
+                for (let i = 1; i <= days.length; i++) {
+                    const day = i < days.length ? days[i] : null;
+                    if (!day || day.monthIndex !== currentMonthIndex) {
+                        // End of month or last day
+                        const monthEndCol = i + 1;
+                        const monthClass = currentMonthIndex % 2 === 0 ? 'month-even' : 'month-odd';
+                        // Calculate percentage positions for absolute positioning
+                        const leftPercent = ((monthStartCol - 1) / totalDays) * 100;
+                        const widthPercent = ((monthEndCol - monthStartCol) / totalDays) * 100;
+                        monthBackgrounds.push(`<div class="month-background ${monthClass}" style="left: ${leftPercent}%; width: ${widthPercent}%;"></div>`);
+                        
+                        if (day) {
+                            currentMonthIndex = day.monthIndex;
+                            monthStartCol = i + 1;
+                        }
+                    }
+                }
+            }
+            
+            // Create subtasks HTML if present
+            const subtasksHTML = task.subtasks && task.subtasks.length > 0 
+                ? `<div class="subtasks">${task.subtasks.map(st => `<div class="subtask">${st}</div>`).join('')}</div>`
+                : '';
+            
+            // Render task bar(s) - split if spanning pause period
+            let taskBarsHTML = '';
+            if (intersectingPause) {
+                // Split task bar into two segments
+                const pauseStart = new Date(intersectingPause.start);
+                const pauseEnd = new Date(intersectingPause.end);
+                
+                // First segment: task start to pause start
+                const segment1StartCol = getDayIndex(task.start, CONFIG.timelineStart);
+                const segment1EndCol = getDayIndex(intersectingPause.start, CONFIG.timelineStart);
+                const segment1Width = segment1EndCol - segment1StartCol;
+                
+                // Second segment: pause end to task end
+                const segment2StartCol = getDayIndex(intersectingPause.end, CONFIG.timelineStart) + 1;
+                const segment2EndCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                const segment2Width = segment2EndCol - segment2StartCol;
+                
+                // Calculate stripe connector position and width (spans the gap between segments)
+                const connectorStartCol = segment1EndCol;
+                const connectorEndCol = segment2StartCol;
+                const connectorLeft = ((connectorStartCol - 1) / totalDays) * 100;
+                const connectorWidth = ((connectorEndCol - connectorStartCol) / totalDays) * 100;
+                
+                // Determine which segment is longer (roomier)
+                const useLeftSegment = segment1Width >= segment2Width;
+                const longerSegment = useLeftSegment ? {
+                    startCol: segment1StartCol,
+                    endCol: segment1EndCol,
+                    width: segment1Width,
+                    isLeft: true
+                } : {
+                    startCol: segment2StartCol,
+                    endCol: segment2EndCol,
+                    width: segment2Width,
+                    isLeft: false
+                };
+                
+                // Calculate the center of the entire task range
+                const taskStartCol = segment1StartCol;
+                const taskEndCol = segment2EndCol;
+                const taskCenterCol = (taskStartCol + taskEndCol) / 2;
+                
+                // Estimate text width: date range (~140px) + hours (~50px) = ~190px max
+                // Convert to column units (assuming ~60px per day column)
+                const estimatedTextWidthPx = 190;
+                const cellWidthPx = 60; // Approximate pixel width of one day column
+                const textWidthCols = estimatedTextWidthPx / cellWidthPx;
+                const textHalfWidthCols = textWidthCols / 2;
+                
+                // Padding from break edge (minimum 2.5 day columns = ~150px for more breathing room)
+                const minPaddingCols = 2.5;
+                
+                // Calculate where to position text within the longer segment
+                // Position based on CENTER of text, but ensure nearest edge doesn't touch break
+                const cellWidth = 100 / totalDays; // Percentage width of one day column
+                
+                let textCenterCol = taskCenterCol; // Start with task center
+                
+                if (useLeftSegment) {
+                    // On left segment: ensure RIGHT edge of text has padding from break
+                    const segmentRightEdgeCol = longerSegment.endCol;
+                    const maxTextCenterCol = segmentRightEdgeCol - minPaddingCols - textHalfWidthCols;
+                    textCenterCol = Math.min(textCenterCol, maxTextCenterCol);
+                    
+                    // Also ensure LEFT edge doesn't go past segment start
+                    const segmentLeftEdgeCol = longerSegment.startCol;
+                    const minTextCenterCol = segmentLeftEdgeCol + textHalfWidthCols;
+                    textCenterCol = Math.max(textCenterCol, minTextCenterCol);
+                } else {
+                    // On right segment: ensure LEFT edge of text has padding from break
+                    const segmentLeftEdgeCol = longerSegment.startCol;
+                    const minTextCenterCol = segmentLeftEdgeCol + minPaddingCols + textHalfWidthCols;
+                    textCenterCol = Math.max(textCenterCol, minTextCenterCol);
+                    
+                    // Also ensure RIGHT edge doesn't go past segment end
+                    const segmentRightEdgeCol = longerSegment.endCol;
+                    const maxTextCenterCol = segmentRightEdgeCol - textHalfWidthCols;
+                    textCenterCol = Math.min(textCenterCol, maxTextCenterCol);
+                }
+                
+                // Convert text center column to percentage within the segment
+                const segmentLeftPercent = ((longerSegment.startCol - 1) / totalDays) * 100;
+                const segmentRightPercent = ((longerSegment.endCol - 1) / totalDays) * 100;
+                const segmentWidthPercent = segmentRightPercent - segmentLeftPercent;
+                const textCenterPercent = ((textCenterCol - 1) / totalDays) * 100;
+                const textPositionPercent = ((textCenterPercent - segmentLeftPercent) / segmentWidthPercent) * 100;
+                
+                const segmentClass = longerSegment.isLeft ? 'task-bar-segment-left' : 'task-bar-segment-right';
+                const textAlign = longerSegment.isLeft ? 'right' : 'left';
+                
+                taskBarsHTML = `
+                    <div class="task-bar ${segmentClass}" data-task-index="${originalIndex}" style="grid-column: ${segment1StartCol} / ${segment1EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        ${useLeftSegment ? `
+                            <div class="task-bar-content" style="left: ${textPositionPercent}%; text-align: ${textAlign};">
+                                <div class="task-bar-date">${label}</div>
+                                ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div class="task-bar-stripe-connector" style="left: ${connectorLeft}%; width: ${connectorWidth}%; color: ${task.color};"></div>
+                    <div class="task-bar ${segmentClass === 'task-bar-segment-left' ? 'task-bar-segment-right' : 'task-bar-segment-left'}" data-task-index="${originalIndex}" style="grid-column: ${segment2StartCol} / ${segment2EndCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        ${!useLeftSegment ? `
+                            <div class="task-bar-content" style="left: ${textPositionPercent}%; text-align: ${textAlign};">
+                                <div class="task-bar-date">${label}</div>
+                                ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else {
+                // Single continuous task bar
+                const startCol = getDayIndex(task.start, CONFIG.timelineStart);
+                const endCol = getDayIndex(task.end, CONFIG.timelineStart) + 1;
+                taskBarsHTML = `
+                    <div class="task-bar" data-task-index="${originalIndex}" style="grid-column: ${startCol} / ${endCol}; background: ${task.color}; --task-line-color: ${task.color};">
+                        <div class="task-bar-date">${label}</div>
+                        ${hoursText ? `<div class="task-bar-hours">${hoursText}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="gantt-row task-row" data-task-index="${originalIndex}">
+                    <div class="col-task">
+                        <div class="task-name">${task.name}</div>
+                        ${subtasksHTML}
+                    </div>
+                    <div class="col-timeline" style="grid-template-columns: ${dayGridTemplate}">
+                        <div class="grid-lines" style="grid-template-columns: ${dayGridTemplate}">
+                            ${gridLines}
+                        </div>
+                        ${monthBackgrounds.join('')}
+                        ${taskBarsHTML}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        document.getElementById('gantt-chart').innerHTML = headerHTML + `<div class="task-section">${tasksHTML}</div>`;
+        
+        // Add continuous pause period overlays spanning all rows (after layout)
+        if (CONFIG.pausePeriods && CONFIG.pausePeriods.length > 0) {
+            requestAnimationFrame(() => {
+                updatePauseOverlays();
+            });
+        }
+        
+        // Create milestones
+        if (CONFIG.showMilestones && CONFIG.milestones.length > 0) {
+            const milestonesHTML = `
+                <div class="milestone-row">
+                    <div class="milestone-spacer"></div>
+                    <div class="milestone-timeline" style="grid-template-columns: ${dayGridTemplate}">
+                        ${CONFIG.milestones.map((m, index) => {
+                            const col = getDayIndex(m.date, CONFIG.timelineStart);
+                            const label = m.name.replace(/\n/g, '<br>');
+                            const associatedTask = CONFIG.tasks[m.taskIndex];
+                            const connectorColor = associatedTask ? associatedTask.color : '#0056b3';
+                            return `
+                                <div class="milestone" data-milestone-index="${index}" data-task-index="${m.taskIndex}" style="grid-column: ${col}; --milestone-color: ${connectorColor};">
+                                    <div class="milestone-label">${label}</div>
+                                </div>
+                            `;
+                        }).join('')}
+        </div>
+    </div>
+            `;
+            document.getElementById('milestone-section').innerHTML = milestonesHTML;
+            requestAnimationFrame(updateMilestoneConnectors);
+        }
+    }
+    
+    function updateMilestoneConnectors() {
+        const milestoneTimeline = document.querySelector('.milestone-timeline');
+        if (!milestoneTimeline || CURRENT_TOTAL_DAYS === 0) return;
+        
+        // Force layout recalculation to ensure we get current, consistent values
+        // Access offsetHeight to force a synchronous layout calculation
+        milestoneTimeline.offsetHeight;
+        
+        // Read timeline dimensions - do this immediately after forcing layout
+        const timelineRect = milestoneTimeline.getBoundingClientRect();
+        const timelineWidth = timelineRect.width;
+        const timelineRight = timelineRect.right;
+        const timelineLeft = timelineRect.left;
+        
+        // Calculate cell width - ensure this is done with the current timeline width
+        // Use a more precise calculation to avoid rounding errors
+        const cellWidth = timelineWidth / CURRENT_TOTAL_DAYS;
+        const minPadding = cellWidth; // One day's column width as padding
+
+        const milestoneElements = document.querySelectorAll('.milestone');
+        
+        // Collect all layout data first, then calculate and apply in a second pass
+        // This ensures all getBoundingClientRect() calls happen in the same layout frame
+        // Read ALL bounding rects in one batch to ensure consistency
+        const layoutData = [];
+        const allRects = [];
+        
+        milestoneElements.forEach((el, index) => {
+            const taskIndex = Number(el.getAttribute('data-task-index'));
+            const milestoneLabel = el.querySelector('.milestone-label');
+            const taskBar = document.querySelector(`.task-bar[data-task-index="${taskIndex}"]`);
+            if (!milestoneLabel || !taskBar) return;
+
+            // Store references for batch reading
+            allRects.push({ el, milestoneLabel, taskBar, index, taskIndex });
+        });
+        
+        // Read ALL bounding rects in a single batch - this ensures they're all from the same layout frame
+        allRects.forEach(({ el, milestoneLabel, taskBar, index, taskIndex }) => {
+            const milestoneRect = el.getBoundingClientRect();
+            const labelRect = milestoneLabel.getBoundingClientRect();
+            const barRect = taskBar.getBoundingClientRect();
+            
+            layoutData.push({
+                index,
+                taskIndex,
+                milestoneLabel,
+                taskBar,
+                milestoneRect,
+                labelRect,
+                barRect
+            });
+        });
+        
+        // Now calculate and apply positions using the collected layout data
+        layoutData.forEach(({ index, milestoneLabel, taskBar, milestoneRect, labelRect, barRect }) => {
+            const milestone = CONFIG.milestones[index];
+            const col = getDayIndex(milestone.date, CONFIG.timelineStart);
+            
+            // Calculate connector line position directly from column number and cell width
+            // This is the target position where the connector line should be (center of the date column)
+            const connectorLineX = timelineLeft + ((col - 1) * cellWidth) + (cellWidth / 2);
+
+            const labelWidth = labelRect.width;
+            
+            // Get the label's natural center position (without transform offset)
+            // The label is inside the milestone element, which is centered in its grid cell
+            // So the label's natural center is at the milestone element's center
+            const milestoneCenter = milestoneRect.left + (milestoneRect.width / 2);
+            const labelNaturalCenter = milestoneCenter; // Label is centered in milestone due to align-items: center
+            
+            // Calculate where label would be if centered on connector line
+            const centeredLabelLeft = connectorLineX - (labelWidth / 2);
+            const centeredLabelRight = connectorLineX + (labelWidth / 2);
+            
+            // Calculate offset needed to move label from its natural position to target position
+            let labelOffset = connectorLineX - labelNaturalCenter;
+            
+            // Check if centered label would extend past either edge and adjust
+            if (centeredLabelLeft < timelineLeft + minPadding) {
+                // Adjust label to be at least one day's width from the left edge
+                const minLabelLeft = timelineLeft + minPadding;
+                const adjustedLabelCenter = minLabelLeft + (labelWidth / 2);
+                labelOffset = adjustedLabelCenter - labelNaturalCenter;
+            } else if (centeredLabelRight > timelineRight - minPadding) {
+                // Adjust label to be at least one day's width from the right edge
+                const maxLabelRight = timelineRight - minPadding;
+                const adjustedLabelCenter = maxLabelRight - (labelWidth / 2);
+                labelOffset = adjustedLabelCenter - labelNaturalCenter;
+            }
+            
+            // Calculate where connector line will be relative to the label's final left edge
+            // Final label center = natural center + offset
+            const finalLabelCenter = labelNaturalCenter + labelOffset;
+            const finalLabelLeft = finalLabelCenter - (labelWidth / 2);
+            const connectorLineXRelative = connectorLineX - finalLabelLeft;
+
+            const connectorHeight = Math.max(0, labelRect.top - barRect.bottom + 4);
+
+            // Apply all styles together
+            milestoneLabel.style.setProperty('--connector-height', `${connectorHeight}px`);
+            milestoneLabel.style.setProperty('--milestone-color', getComputedStyle(taskBar).getPropertyValue('--task-line-color') || taskBar.style.backgroundColor);
+            milestoneLabel.style.setProperty('--connector-offset', `${labelOffset}px`);
+            milestoneLabel.style.setProperty('--connector-line-x', `${connectorLineXRelative}px`);
+        });
+    }
+    
+    // Debounce resize handler to prevent rapid recalculations during window resize
+    let resizeTimeout;
+    let resizeRAF;
+    window.addEventListener('resize', () => {
+        // Cancel any pending resize handlers
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        if (resizeRAF) cancelAnimationFrame(resizeRAF);
+        
+        // Use both debounce and requestAnimationFrame for smooth updates
+        resizeTimeout = setTimeout(() => {
+            resizeRAF = requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    updatePauseOverlays();
+                    updateMilestoneConnectors();
+                });
+            });
+        }, 50); // 50ms debounce
+    });
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', renderChart);
+    </script>
+</body>
+</html>

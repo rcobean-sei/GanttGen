@@ -13,6 +13,14 @@ A data-driven Gantt chart generator with brand color palettes, configurable task
 
 ---
 
+## Example Output
+
+![Alternating Palette Example](palette_examples/template_alternating.png)
+
+*Example Gantt chart using the `alternating` palette (default) - see [Palette Examples](palette_examples/PALETTE_EXAMPLES.md) for all variants*
+
+---
+
 ## Quick Start
 
 ```bash
@@ -83,6 +91,8 @@ Each build generates:
 ---
 
 ## Color Palettes
+
+> 📸 **See [Palette Examples](palette_examples/PALETTE_EXAMPLES.md) for visual comparisons of all palette variants**
 
 ### Brand Colors
 
