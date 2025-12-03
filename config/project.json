@@ -1,15 +1,16 @@
 {
-  "palette": [
-    "#E31E26",
-    "#2CABDB",
-    "#38155B",
-    "#0049A3",
-    "#FF6B35"
-  ],
   "title": "PROJECT TIMELINE",
   "timelineStart": "2025-12-01",
   "timelineEnd": "2026-02-14",
   "showMilestones": true,
+  "palette": [
+    "#F01840",
+    "#402848",
+    "#C01830",
+    "#705E74",
+    "#901226",
+    "#2A1C30"
+  ],
   "tasks": [
     {
       "name": "Planning & Preparation",
@@ -21,7 +22,8 @@
         "Determine test personas/scenarios",
         "Baseline environment setup, any special access required"
       ],
-      "color": "#E31E26"
+      "colorIndex": 0,
+      "color": "#F01840"
     },
     {
       "name": "Initial Site Scans – Tracking System",
@@ -33,7 +35,8 @@
         "Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)",
         "Log and classify by purpose/category"
       ],
-      "color": "#2CABDB"
+      "colorIndex": 1,
+      "color": "#402848"
     },
     {
       "name": "Consent Mechanism Testing",
@@ -44,7 +47,8 @@
         "Opt out of all cookies, verify deactivation across user journeys",
         "Audit site/app data flow compliance and messaging for GPC/DNSS signals"
       ],
-      "color": "#38155B"
+      "colorIndex": 2,
+      "color": "#C01830"
     },
     {
       "name": "Analysis and Documentation",
@@ -54,7 +58,8 @@
       "subtasks": [
         "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
       ],
-      "color": "#0049A3"
+      "colorIndex": 3,
+      "color": "#705E74"
     },
     {
       "name": "Final Report and Recommendations",
@@ -66,7 +71,8 @@
         "Inventory artifacts with suggested categories",
         "Revisions and clarifications as needed"
       ],
-      "color": "#FF6B35"
+      "colorIndex": 4,
+      "color": "#901226"
     }
   ],
   "milestones": [

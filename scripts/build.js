@@ -100,8 +100,15 @@ function findSystemBrowser() {
     return null;
 }
 
-// SEI Color Palette (excluding gray for pause periods)
-const SEI_COLORS = ['#E31E26', '#2CABDB', '#38155B', '#0049A3', '#FF6B35'];
+// Brand Color Palette - Alternating Reds and Purples for visual distinction
+const BRAND_COLORS = [
+    '#F01840',  // RED 1 - Bright red
+    '#402848',  // PURPLE 4 - Dark purple
+    '#C01830',  // RED 2 - Darker red
+    '#705E74',  // PURPLE 3 - Medium purple
+    '#901226',  // RED 3 - Burgundy
+    '#2A1C30'   // PURPLE 5 - Deep purple
+];
 
 // Function to randomly assign colors to tasks ensuring no two adjacent tasks have the same color
 function assignTaskColors(numTasks) {
@@ -110,8 +117,8 @@ function assignTaskColors(numTasks) {
     
     for (let i = 0; i < numTasks; i++) {
         const availableColors = previousColor 
-            ? SEI_COLORS.filter(c => c !== previousColor)
-            : SEI_COLORS;
+            ? BRAND_COLORS.filter(c => c !== previousColor)
+            : BRAND_COLORS;
         
         const randomIndex = Math.floor(Math.random() * availableColors.length);
         const selectedColor = availableColors[randomIndex];
@@ -156,7 +163,7 @@ async function parseExcel(filePath) {
     }
     // If no palette defined, use default SEI colors
     if (data.palette.length === 0) {
-        data.palette = SEI_COLORS;
+        data.palette = BRAND_COLORS;
     }
     
     // Parse Project sheet
@@ -315,7 +322,7 @@ function parseJSON(filePath) {
         }
     } else if (!config.palette) {
         // If no palette defined, use default SEI colors
-        config.palette = SEI_COLORS;
+        config.palette = BRAND_COLORS;
         // Assign colors to tasks that don't have them
         if (config.tasks && Array.isArray(config.tasks)) {
             config.tasks.forEach((task, idx) => {
