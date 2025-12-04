@@ -68,8 +68,8 @@ test.describe('HTML Generation E2E Tests', () => {
         const fileUrl = `file://${path.resolve(outputPath)}`;
         await page.goto(fileUrl);
 
-        // Check for milestone section
-        const milestoneSection = page.locator('.milestone-section');
+        // Check for milestone section (it's an ID, not a class)
+        const milestoneSection = page.locator('#milestone-section');
         await expect(milestoneSection).toBeVisible();
 
         // Check for milestone labels

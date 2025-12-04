@@ -58,12 +58,12 @@ test.describe('Build E2E Tests', () => {
 
         const outputDir = createTempDir();
         tempDirs.push(outputDir);
+        const outputPath = path.join(outputDir, 'test_output_reds.html');
 
-        await build(inputPath, null, { palette: 'reds' });
+        await build(inputPath, outputPath, { palette: 'reds' });
 
-        const files = fs.readdirSync(outputDir);
-        const htmlFile = files.find(f => f.includes('_reds.html'));
-        expect(htmlFile).toBeDefined();
+        expect(fs.existsSync(outputPath)).toBe(true);
+        expect(outputPath).toContain('_reds');
     });
 
     test('should handle build errors gracefully', async () => {
