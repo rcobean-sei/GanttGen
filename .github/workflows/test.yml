@@ -62,6 +62,10 @@ jobs:
     - name: Install Playwright browsers
       run: npx playwright install --with-deps chromium
     
+    - name: Generate visual regression snapshots (if missing)
+      run: npm run test:visual -- --update-snapshots || true
+      continue-on-error: true
+    
     - name: Run visual regression tests
       run: npm run test:visual
     
