@@ -62,9 +62,19 @@ jobs:
     - name: Install Playwright browsers
       run: npx playwright install --with-deps chromium
     
+    - name: Generate Linux snapshots for visual regression tests
+      run: npm run test:visual -- --update-snapshots
+    
+    - name: Upload generated snapshots
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: visual-test-snapshots
+        path: tests/visual/regression.spec.js-snapshots/
+        retention-days: 7
+    
     - name: Run visual regression tests
       run: npm run test:visual
-      continue-on-error: true
     
     - name: Upload test results
       if: always()
