@@ -11,16 +11,16 @@ const { execSync } = require('child_process');
 const os = require('os');
 const ExcelJS = require('exceljs');
 
-// Optional Puppeteer for PNG export
-let puppeteer;
+// Optional Playwright for PNG export
+let playwright;
 try {
-    puppeteer = require('puppeteer');
+    playwright = require('playwright');
 } catch (e) {
-    // Puppeteer not installed - PNG export will be skipped
-    puppeteer = null;
+    // Playwright not installed - PNG export will be skipped
+    playwright = null;
 }
 
-// Find system-installed Chrome or Edge
+// Find system-installed Chrome or Edge for Playwright
 function findSystemBrowser() {
     const platform = os.platform();
     
@@ -79,16 +79,16 @@ function findSystemBrowser() {
         } else if (platform === 'linux') {
             // Use which command on Linux
             try {
-                execSync('which google-chrome 2>/dev/null', { encoding: 'utf8' });
-                return 'google-chrome';
+                const chrome = execSync('which google-chrome 2>/dev/null', { encoding: 'utf8' }).trim();
+                if (chrome) return chrome;
             } catch (e) {
                 try {
-                    execSync('which chromium 2>/dev/null', { encoding: 'utf8' });
-                    return 'chromium';
+                    const chromium = execSync('which chromium 2>/dev/null', { encoding: 'utf8' }).trim();
+                    if (chromium) return chromium;
                 } catch (e) {
                     try {
-                        execSync('which microsoft-edge 2>/dev/null', { encoding: 'utf8' });
-                        return 'microsoft-edge';
+                        const edge = execSync('which microsoft-edge 2>/dev/null', { encoding: 'utf8' }).trim();
+                        if (edge) return edge;
                     } catch (e) {}
                 }
             }
@@ -413,15 +413,14 @@ function parseJSON(filePath) {
     if (config.palette && Array.isArray(config.palette) && config.palette.length > 0) {
         if (config.tasks && Array.isArray(config.tasks)) {
             config.tasks.forEach(task => {
-                // If task has colorIndex instead of color, resolve it
-                if (task.colorIndex !== undefined && task.color === undefined) {
+                // Prefer colorIndex over direct color when both are present
+                if (task.colorIndex !== undefined) {
                     const colorIndex = Number(task.colorIndex);
                     if (!isNaN(colorIndex) && colorIndex >= 0 && colorIndex < config.palette.length) {
                         task.color = config.palette[colorIndex];
                     }
-                }
-                // If task has neither color nor colorIndex, assign from palette
-                if (!task.color && task.colorIndex === undefined) {
+                } else if (!task.color) {
+                    // If task has neither color nor colorIndex, assign from palette
                     const taskIndex = config.tasks.indexOf(task);
                     task.color = config.palette[taskIndex % config.palette.length];
                 }
@@ -518,39 +517,43 @@ async function cropPNGToVisible(pngPath) {
 
 // Export HTML to PNG with transparent background
 async function exportPNG(htmlPath, pngPath) {
-    if (!puppeteer) {
-        throw new Error('Puppeteer is not installed');
+    if (!playwright) {
+        throw new Error('Playwright is not installed');
     }
     
     // Try to find system browser first
     const systemBrowser = findSystemBrowser();
     const launchOptions = {
-        headless: "new", // Use new headless mode (future-proof)
+        headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     };
     
     if (systemBrowser) {
         launchOptions.executablePath = systemBrowser;
         console.log(`   Using system browser: ${path.basename(systemBrowser)}`);
+    } else {
+        console.log('   Using Playwright bundled Chromium');
     }
     
     let browser;
     try {
-        browser = await puppeteer.launch(launchOptions);
+        // Launch Chromium browser (use system browser if available, otherwise use bundled)
+        browser = await playwright.chromium.launch(launchOptions);
         
-        const page = await browser.newPage();
-        
-        // Set viewport to match the chart dimensions (16:9 aspect ratio, optimized for presentation)
-        await page.setViewport({
-            width: 1920,
-            height: 1080,
+        const context = await browser.newContext({
+            viewport: {
+                width: 1920,
+                height: 1080
+            },
             deviceScaleFactor: 2 // Higher DPI for better quality
         });
+        
+        const page = await context.newPage();
         
         // Load the HTML file
         const fileUrl = `file://${path.resolve(htmlPath)}`;
         await page.goto(fileUrl, {
-            waitUntil: 'networkidle0',
+            waitUntil: 'networkidle',
             timeout: 30000
         });
         
@@ -697,8 +700,8 @@ async function build(inputPath, outputPath, options = {}) {
     generateHTML(config, templatePath, htmlOutputPath);
     console.log(`✓ Generated HTML at ${htmlOutputPath}`);
     
-    // Generate PNG export with transparent background (if Puppeteer is available)
-    if (puppeteer) {
+    // Generate PNG export with transparent background (if Playwright is available)
+    if (playwright) {
         const pngOutputPath = htmlOutputPath.replace(/\.html$/, '.png');
         console.log('✓ Exporting PNG...');
         try {
@@ -709,8 +712,8 @@ async function build(inputPath, outputPath, options = {}) {
             console.warn('   (HTML file was generated successfully)');
         }
     } else {
-        console.log('ℹ️  Skipping PNG export (Puppeteer not installed)');
-        console.log('   Install with: npm install puppeteer');
+        console.log('ℹ️  Skipping PNG export (Playwright not installed)');
+        console.log('   Install with: npm install @playwright/test');
         console.log('   Will use system Chrome/Edge if available, or download Chromium');
     }
     
@@ -761,5 +764,15 @@ if (require.main === module) {
     });
 }
 
-module.exports = { build, parseExcel, parseJSON, PALETTE_PRESETS, getPaletteByName };
+module.exports = { 
+    build, 
+    parseExcel, 
+    parseJSON, 
+    validateConfig,
+    PALETTE_PRESETS, 
+    getPaletteByName,
+    assignTaskColors,
+    collectSubtasks,
+    BRAND_COLORS
+};
 

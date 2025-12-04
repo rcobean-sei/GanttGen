@@ -1,0 +1,14 @@
+{
+  "title": "",
+  "timelineStart": "2025-03-31",
+  "timelineEnd": "2025-01-01",
+  "showMilestones": true,
+  "tasks": [
+    {
+      "name": "Task 1",
+      "start": "2025-01-24",
+      "end": "2025-01-06"
+    }
+  ]
+}
+

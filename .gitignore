@@ -21,3 +21,9 @@ output/*
 # Config folder contents (generated during build)
 config/*
 !config/.gitkeep
+
+# Test output directories
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/

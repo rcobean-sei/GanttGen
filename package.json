@@ -5,7 +5,13 @@
   "scripts": {
     "build": "node scripts/build.js --input config/project.json",
     "render": "node scripts/render.js",
-    "template": "node scripts/generate_template.js"
+    "template": "node scripts/generate_template.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:visual": "playwright test tests/visual",
+    "test:all": "npm run test && npm run test:e2e"
   },
   "keywords": [
     "gantt",
@@ -13,12 +19,16 @@
     "timeline"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
+  "private": true,
   "dependencies": {
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "@playwright/test": "^1.40.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "optionalDependencies": {
-    "puppeteer": "^21.0.0",
     "sharp": "^0.34.5"
   }
 }
