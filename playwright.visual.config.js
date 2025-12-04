@@ -13,6 +13,8 @@ module.exports = defineConfig({
     video: 'retain-on-failure',
     trace: 'on-first-retry'
   },
+  // Use local browser cache if system cache has permission issues
+  // Set PLAYWRIGHT_BROWSERS_PATH=./node_modules/.playwright to use project-local browsers
   projects: [
     {
       name: 'chromium',
