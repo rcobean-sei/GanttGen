@@ -585,6 +585,25 @@ npm run test:visual
    npm run test:visual -- --update-snapshots
    ```
 
+**Updating Snapshots from CI**
+Visual regression test snapshots are platform-specific. If you generate snapshots locally on macOS but CI runs on Linux, you'll need to update them:
+
+```bash
+# After CI generates Linux snapshots, download and commit them:
+npm run update-snapshots:ci
+
+# Or run the script directly:
+./scripts/update-visual-snapshots.sh
+
+# To skip confirmation prompt:
+./scripts/update-visual-snapshots.sh --yes
+```
+
+The script will:
+- Download the latest Linux snapshots from CI artifacts
+- Replace your local macOS snapshots
+- Commit them to the repository
+
 #### Continuous Integration
 
 For CI/CD pipelines:
