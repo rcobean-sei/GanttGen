@@ -1,0 +1,18 @@
+# Node
+node_modules/
+
+# Rust
+src-tauri/target/
+
+# Build artifacts
+dist/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db

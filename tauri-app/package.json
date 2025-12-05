@@ -1,0 +1,25 @@
+{
+  "name": "ganttgen-app",
+  "version": "1.0.0",
+  "description": "GanttGen Desktop App - Data-driven Gantt chart generator with SEI styling",
+  "main": "src/index.html",
+  "scripts": {
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:icon": "tauri icon"
+  },
+  "keywords": [
+    "gantt",
+    "chart",
+    "timeline",
+    "tauri",
+    "desktop"
+  ],
+  "author": "SEI",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "GanttGen",
+  "version": "1.0.0",
+  "identifier": "com.sei.ganttgen",
+  "build": {
+    "frontendDist": "../src",
+    "devUrl": "http://localhost:1420"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "GanttGen - Gantt Chart Generator",
+        "width": 1100,
+        "height": 750,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "../../scripts/*",
+      "../../templates/*"
+    ],
+    "shortDescription": "Data-driven Gantt chart generator with SEI styling",
+    "longDescription": "GanttGen is a professional Gantt chart generator that creates presentation-ready timeline visualizations from JSON or Excel input files. Features the SEI brand color palette."
+  },
+  "plugins": {
+    "dialog": {},
+    "shell": {
+      "open": true
+    },
+    "fs": {
+      "scope": {
+        "allow": ["$HOME/**", "$APPDATA/**", "$DESKTOP/**", "$DOCUMENT/**", "$DOWNLOAD/**", "**"]
+      }
+    }
+  }
+}
