@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GanttGen - Preview</title>
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="logo">GanttGen</h1>
+            <span class="tagline">Data-driven Gantt Chart Generator</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- File Input Section -->
+        <section class="section file-section">
+            <h2 class="section-title">
+                <span class="step-number">1</span>
+                Select Input File
+            </h2>
+            <div class="file-drop-zone" id="dropZone">
+                <div class="drop-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </div>
+                <p class="drop-text">Drag and drop your file here</p>
+                <p class="drop-subtext">or</p>
+                <button class="btn btn-secondary" id="browseBtn">Browse Files</button>
+                <p class="file-types">Supported: .json, .xlsx</p>
+            </div>
+        </section>
+
+        <!-- Palette Selection Section -->
+        <section class="section palette-section">
+            <h2 class="section-title">
+                <span class="step-number">2</span>
+                Choose Color Palette
+            </h2>
+            <div class="palette-grid" id="paletteGrid">
+                <!-- Alternating (Default) -->
+                <div class="palette-option selected" data-palette="alternating">
+                    <div class="palette-header">
+                        <span class="palette-name">Alternating (Default)</span>
+                        <span class="palette-check">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                    </div>
+                    <p class="palette-description">Best task differentiation with red/purple mix</p>
+                    <div class="palette-colors">
+                        <div class="palette-color" style="background-color: #F01840;"></div>
+                        <div class="palette-color" style="background-color: #402848;"></div>
+                        <div class="palette-color" style="background-color: #C01830;"></div>
+                        <div class="palette-color" style="background-color: #705E74;"></div>
+                        <div class="palette-color" style="background-color: #901226;"></div>
+                    </div>
+                </div>
+
+                <!-- Reds -->
+                <div class="palette-option" data-palette="reds">
+                    <div class="palette-header">
+                        <span class="palette-name">Reds</span>
+                        <span class="palette-check">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                    </div>
+                    <p class="palette-description">Warm, energetic red gradient</p>
+                    <div class="palette-colors">
+                        <div class="palette-color" style="background-color: #F01840;"></div>
+                        <div class="palette-color" style="background-color: #C01830;"></div>
+                        <div class="palette-color" style="background-color: #901226;"></div>
+                        <div class="palette-color" style="background-color: #600C1C;"></div>
+                        <div class="palette-color" style="background-color: #300810;"></div>
+                    </div>
+                </div>
+
+                <!-- Purples + Red Border -->
+                <div class="palette-option" data-palette="purples_b">
+                    <div class="palette-header">
+                        <span class="palette-name">Purples + Red Border</span>
+                        <span class="palette-check">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                    </div>
+                    <p class="palette-description">Purple gradient with red left border</p>
+                    <div class="palette-colors">
+                        <div class="palette-color" style="background-color: #705E74;"></div>
+                        <div class="palette-color" style="background-color: #402848;"></div>
+                        <div class="palette-color" style="background-color: #2A1C30;"></div>
+                    </div>
+                    <div class="palette-accents">
+                        <span class="accent-tag">
+                            <span class="accent-swatch" style="background-color: #C01830;"></span>
+                            Border
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Purples + Both Accents -->
+                <div class="palette-option" data-palette="purples_c">
+                    <div class="palette-header">
+                        <span class="palette-name">Purples + Both Accents</span>
+                        <span class="palette-check">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                    </div>
+                    <p class="palette-description">Purple with burgundy text and red border</p>
+                    <div class="palette-colors">
+                        <div class="palette-color" style="background-color: #705E74;"></div>
+                        <div class="palette-color" style="background-color: #402848;"></div>
+                        <div class="palette-color" style="background-color: #2A1C30;"></div>
+                    </div>
+                    <div class="palette-accents">
+                        <span class="accent-tag">
+                            <span class="accent-swatch" style="background-color: #C01830;"></span>
+                            Border
+                        </span>
+                        <span class="accent-tag">
+                            <span class="accent-swatch" style="background-color: #901226;"></span>
+                            Text
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Output Options Section -->
+        <section class="section output-section">
+            <h2 class="section-title">
+                <span class="step-number">3</span>
+                Output Options
+            </h2>
+            <div class="output-options">
+                <div class="option-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="exportHtml" checked>
+                        <span class="checkbox-custom"></span>
+                        <span class="option-text">
+                            <strong>HTML</strong>
+                            <span class="option-desc">Interactive, scalable output</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="option-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="exportPng">
+                        <span class="checkbox-custom"></span>
+                        <span class="option-text">
+                            <strong>PNG</strong>
+                            <span class="option-desc">High-resolution image (1920x1080)</span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            <div class="output-path">
+                <label for="outputDir">Output Directory:</label>
+                <div class="path-input-group">
+                    <input type="text" id="outputDir" placeholder="Select output directory..." readonly value="/Users/demo/Documents">
+                    <button class="btn btn-secondary" id="selectOutputBtn">Browse</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Generate Button -->
+        <div class="generate-section">
+            <button class="btn btn-primary btn-large" id="generateBtn">
+                <span class="btn-text">Generate Gantt Chart</span>
+                <svg class="btn-icon-right" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                </svg>
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>GanttGen v1.0.0 - SEI Brand Styling</p>
+    </footer>
+
+    <script>
+        // Interactive demo - palette selection
+        document.querySelectorAll('.palette-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.palette-option').forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+            });
+        });
+    </script>
+</body>
+</html>
