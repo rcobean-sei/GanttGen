@@ -186,10 +186,22 @@ ipcMain.handle('generate-gantt', async (event, options) => {
         // Set output directory if specified
         let outputDir = options.output_path ? path.dirname(options.output_path) : path.dirname(options.input_path);
 
+        // Set up NODE_PATH to find dependencies
+        let nodePath = process.env.NODE_PATH || '';
+        if (app.isPackaged) {
+            // In packaged app, add resources node_modules to NODE_PATH
+            const resourcesNodeModules = path.join(process.resourcesPath, 'node_modules');
+            nodePath = nodePath ? `${resourcesNodeModules}${path.delimiter}${nodePath}` : resourcesNodeModules;
+        }
+
         // Execute the build script
         const nodeProcess = spawn('node', [scriptPath, ...args], {
             cwd: path.dirname(scriptPath),
-            env: { ...process.env, OUTPUT_DIR: outputDir }
+            env: {
+                ...process.env,
+                OUTPUT_DIR: outputDir,
+                NODE_PATH: nodePath
+            }
         });
 
         let stdout = '';

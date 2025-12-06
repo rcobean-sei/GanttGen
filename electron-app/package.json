@@ -45,6 +45,21 @@
       {
         "from": "../templates",
         "to": "templates"
+      },
+      {
+        "from": "../node_modules",
+        "to": "node_modules",
+        "filter": [
+          "**/*",
+          "!jest/**",
+          "!@jest/**",
+          "!jest-*/**",
+          "!sharp/**"
+        ]
+      },
+      {
+        "from": "../package.json",
+        "to": "package.json"
       }
     ],
     "mac": {
