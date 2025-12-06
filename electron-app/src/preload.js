@@ -26,5 +26,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getDirname: (path) => ipcRenderer.invoke('get-dirname', path),
 
     // Manual entry
-    createTempJsonFile: (data) => ipcRenderer.invoke('create-temp-json', data)
+    createTempJsonFile: (data) => ipcRenderer.invoke('create-temp-json', data),
+
+    // Test mode
+    isTestMode: () => ipcRenderer.invoke('is-test-mode'),
+    getTestData: () => ipcRenderer.invoke('get-test-data')
 });

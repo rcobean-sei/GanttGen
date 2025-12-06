@@ -71,6 +71,13 @@ async function init() {
     setupEventListeners();
     setupProgressListener();
     updateGenerateButton();
+
+    // Check for test mode and populate form
+    const testMode = await api.isTestMode();
+    if (testMode) {
+        console.log('Test mode enabled, loading test data...');
+        await loadTestData();
+    }
 }
 
 // Load palette options from backend
@@ -792,6 +799,109 @@ function collectManualData() {
         .map(p => ({ start: p.start, end: p.end }));
 
     return data;
+}
+
+// Load test data and populate form
+async function loadTestData() {
+    try {
+        const testData = await api.getTestData();
+        if (!testData) {
+            console.error('No test data available');
+            return;
+        }
+
+        console.log('Loading test data:', testData);
+
+        // Switch to manual entry tab
+        switchInputMethod('manual');
+
+        // Populate basic fields
+        elements.projectTitle.value = testData.title || 'Test Project';
+        elements.timelineStart.value = testData.timelineStart || '';
+        elements.timelineEnd.value = testData.timelineEnd || '';
+        elements.showMilestones.checked = testData.showMilestones !== false;
+
+        // Select the matching palette
+        if (testData.palettePreset) {
+            selectPalette(testData.palettePreset);
+        }
+
+        // Add tasks
+        if (testData.tasks && testData.tasks.length > 0) {
+            testData.tasks.forEach((taskData, index) => {
+                addTask();
+                const task = state.manualData.tasks[index];
+
+                // Update task fields
+                task.name = taskData.name;
+                task.start = taskData.start;
+                task.end = taskData.end;
+                task.hours = taskData.hours || 0;
+
+                // Populate the DOM elements
+                const taskCard = document.querySelector(`[data-task-id="${task.id}"]`);
+                if (taskCard) {
+                    taskCard.querySelector('.task-name').value = task.name;
+                    taskCard.querySelector('.task-start').value = task.start;
+                    taskCard.querySelector('.task-end').value = task.end;
+                    taskCard.querySelector('.task-hours').value = task.hours;
+
+                    // Add subtasks
+                    if (taskData.subtasks && taskData.subtasks.length > 0) {
+                        taskData.subtasks.forEach((subtaskText, subtaskIdx) => {
+                            addSubtask(task.id);
+                            task.subtasks[subtaskIdx] = subtaskText;
+                            const subtaskInput = taskCard.querySelector(`#subtasks-${task.id}`).children[subtaskIdx]?.querySelector('input');
+                            if (subtaskInput) {
+                                subtaskInput.value = subtaskText;
+                            }
+                        });
+                    }
+
+                    // Add milestones for this task
+                    const taskMilestones = testData.milestones?.filter(m => m.taskIndex === index) || [];
+                    taskMilestones.forEach((milestoneData, milestoneIdx) => {
+                        addMilestone(task.id);
+                        task.milestones[milestoneIdx] = {
+                            name: milestoneData.name,
+                            date: milestoneData.date
+                        };
+                        const milestoneItem = taskCard.querySelector(`#milestones-${task.id}`).children[milestoneIdx];
+                        if (milestoneItem) {
+                            const inputs = milestoneItem.querySelectorAll('input');
+                            inputs[0].value = milestoneData.name;
+                            inputs[1].value = milestoneData.date;
+                        }
+                    });
+                }
+            });
+        }
+
+        // Add pause periods
+        if (testData.pausePeriods && testData.pausePeriods.length > 0) {
+            // Expand the pause periods section
+            document.querySelector('.pause-periods-section')?.classList.add('expanded');
+
+            testData.pausePeriods.forEach((pauseData, index) => {
+                addPausePeriod();
+                const pause = state.manualData.pausePeriods[index];
+                pause.start = pauseData.start;
+                pause.end = pauseData.end;
+
+                const pauseItem = document.querySelector(`[data-pause-id="${pause.id}"]`);
+                if (pauseItem) {
+                    const inputs = pauseItem.querySelectorAll('input[type="date"]');
+                    inputs[0].value = pauseData.start;
+                    inputs[1].value = pauseData.end;
+                }
+            });
+        }
+
+        updateGenerateButton();
+        console.log('Test data loaded successfully');
+    } catch (error) {
+        console.error('Failed to load test data:', error);
+    }
 }
 
 // Make functions globally available for onclick handlers

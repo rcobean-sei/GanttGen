@@ -6,6 +6,9 @@ const fs = require('fs');
 
 let mainWindow;
 
+// Check for --test flag
+const isTestMode = process.argv.includes('--test');
+
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1024,
@@ -24,8 +27,8 @@ function createWindow() {
 
     mainWindow.loadFile(path.join(__dirname, 'index.html'));
 
-    // Open DevTools in development
-    if (process.env.NODE_ENV === 'development') {
+    // Open DevTools in development or test mode
+    if (process.env.NODE_ENV === 'development' || isTestMode) {
         mainWindow.webContents.openDevTools();
     }
 
@@ -283,5 +286,22 @@ ipcMain.handle('create-temp-json', async (event, data) => {
         return tempFilePath;
     } catch (error) {
         throw new Error(`Failed to create temporary JSON file: ${error.message}`);
+    }
+});
+
+// Get test mode flag
+ipcMain.handle('is-test-mode', () => {
+    return isTestMode;
+});
+
+// Get test data for populating form
+ipcMain.handle('get-test-data', () => {
+    const testDataPath = path.join(__dirname, '../../config/project.json');
+    try {
+        const data = fs.readFileSync(testDataPath, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        console.error('Failed to load test data:', error);
+        return null;
     }
 });
