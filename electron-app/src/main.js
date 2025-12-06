@@ -271,3 +271,17 @@ ipcMain.handle('shell-open', async (event, filePath) => {
 ipcMain.handle('get-dirname', async (event, filePath) => {
     return path.dirname(filePath);
 });
+
+// Create temporary JSON file from manual entry data
+ipcMain.handle('create-temp-json', async (event, data) => {
+    const os = require('os');
+    const tmpDir = os.tmpdir();
+    const tempFilePath = path.join(tmpDir, `ganttgen-manual-${Date.now()}.json`);
+
+    try {
+        fs.writeFileSync(tempFilePath, JSON.stringify(data, null, 2), 'utf8');
+        return tempFilePath;
+    } catch (error) {
+        throw new Error(`Failed to create temporary JSON file: ${error.message}`);
+    }
+});
