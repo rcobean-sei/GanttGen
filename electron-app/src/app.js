@@ -358,7 +358,14 @@ async function generateGantt() {
         // For manual entry, create a temporary JSON file
         if (state.inputMethod === 'manual') {
             const manualData = collectManualData();
+            console.log('Manual data collected:', manualData);
             inputPath = await api.createTempJsonFile(manualData);
+            console.log('Temp file created:', inputPath);
+
+            // Set default output directory to same location as temp file if not set
+            if (!state.outputDir) {
+                state.outputDir = await api.getDirname(inputPath);
+            }
         } else {
             inputPath = state.inputFile;
         }
@@ -370,11 +377,14 @@ async function generateGantt() {
             export_png: elements.exportPng.checked
         };
 
+        console.log('Generate options:', options);
         const result = await api.generateGantt(options);
+        console.log('Generate result:', result);
 
         state.lastResult = result;
         showSuccess(result);
     } catch (error) {
+        console.error('Generation error:', error);
         showError(error);
     } finally {
         state.isGenerating = false;
@@ -735,11 +745,15 @@ function updatePauseCount() {
 }
 
 function collectManualData() {
+    // Get the selected palette colors
+    const paletteInfo = getDefaultPalettes().find(p => p.id === state.selectedPalette);
+
     const data = {
         title: elements.projectTitle.value,
         timelineStart: elements.timelineStart.value,
         timelineEnd: elements.timelineEnd.value,
         showMilestones: elements.showMilestones.checked,
+        palette: paletteInfo?.colors || [],
         palettePreset: state.selectedPalette,
         tasks: [],
         milestones: [],

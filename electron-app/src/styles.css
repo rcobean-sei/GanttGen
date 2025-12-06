@@ -967,6 +967,19 @@ body {
 
 .subtask-item input {
     flex: 1;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.subtask-item input:focus {
+    outline: none;
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 3px rgba(240, 24, 64, 0.1);
 }
 
 /* Milestones */
