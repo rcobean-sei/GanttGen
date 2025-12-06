@@ -117,6 +117,13 @@
         },
         {
           "x": 270,
+          "y": 100,
+          "type": "file",
+          "path": "build/Fix-GanttGen.command",
+          "name": "Fix GanttGen.command"
+        },
+        {
+          "x": 270,
           "y": 350,
           "type": "file",
           "path": "build/DMG_README.txt"

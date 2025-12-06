@@ -5,30 +5,31 @@
 QUICK START
 -----------
 1. Drag GanttGen to the Applications folder
-2. Eject this disk image
-3. Open GanttGen from Applications
+2. Double-click "Fix GanttGen.command" (in this DMG) ⭐ EASIEST
+3. Eject this disk image
+4. Open GanttGen from Applications
 
 
 ⚠️  IF YOU SEE "DAMAGED AND CAN'T BE OPENED"
 --------------------------------------------
 
-This is normal for unsigned apps. Here's the quick fix:
+This is normal for unsigned apps. THREE WAYS TO FIX:
 
-1. Open Terminal (Applications → Utilities → Terminal)
+✅ OPTION 1: DOUBLE-CLICK FIX SCRIPT (EASIEST!)
+   • Just double-click "Fix GanttGen.command" in this DMG
+   • Follow the prompts
+   • Done!
 
-2. Copy and paste this command:
+✅ OPTION 2: TERMINAL COMMAND
+   1. Open Terminal (Applications → Utilities → Terminal)
+   2. Copy and paste: xattr -cr /Applications/GanttGen.app
+   3. Press Enter
 
-   xattr -cr /Applications/GanttGen.app
-
-3. Press Enter and try opening GanttGen again
-
-
-ALTERNATIVE FIX
----------------
-• Right-click on GanttGen.app
-• Select "Open" from the menu
-• Click "Open" in the security dialog
-• (Only needed once)
+✅ OPTION 3: RIGHT-CLICK METHOD
+   • Right-click on GanttGen.app
+   • Select "Open" from the menu
+   • Click "Open" in the security dialog
+   • (Only needed once)
 
 
 WHY THIS HAPPENS
