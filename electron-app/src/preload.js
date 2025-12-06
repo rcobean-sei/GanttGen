@@ -23,5 +23,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Shell operations
     shellOpen: (path) => ipcRenderer.invoke('shell-open', path),
-    getDirname: (path) => ipcRenderer.invoke('get-dirname', path)
+    getDirname: (path) => ipcRenderer.invoke('get-dirname', path),
+
+    // Manual entry
+    createTempJsonFile: (data) => ipcRenderer.invoke('create-temp-json', data)
 });
