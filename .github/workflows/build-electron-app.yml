@@ -43,8 +43,7 @@ jobs:
             electron-app/package-lock.json
 
       - name: Install root dependencies
-        run: npm ci --legacy-peer-deps
-        continue-on-error: true
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       - name: Install Electron app dependencies
         working-directory: electron-app
@@ -54,6 +53,29 @@ jobs:
         working-directory: electron-app
         run: npx playwright install --with-deps chromium
         continue-on-error: true
+
+      - name: Verify dependencies installed
+        shell: bash
+        run: |
+          echo "=== Verifying dependencies ==="
+          if [ ! -d "node_modules" ]; then
+            echo "ERROR: Root node_modules not found!"
+            exit 1
+          fi
+          echo "✓ Root node_modules exists"
+
+          if [ ! -d "node_modules/exceljs" ]; then
+            echo "ERROR: exceljs not found in root node_modules!"
+            exit 1
+          fi
+          echo "✓ exceljs found"
+
+          if [ ! -d "electron-app/node_modules" ]; then
+            echo "ERROR: Electron app node_modules not found!"
+            exit 1
+          fi
+          echo "✓ Electron app node_modules exists"
+          echo "=== Dependencies verification passed ==="
 
       - name: Build Electron app (macOS)
         if: matrix.platform == 'mac'
