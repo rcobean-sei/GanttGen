@@ -4,19 +4,28 @@ on:
   push:
     branches:
       - 'claude/electron-installer-app-*'
+      - 'main'
     tags:
       - 'v*'
+  pull_request:
+    paths:
+      - 'electron-app/**'
+      - '.github/workflows/build-electron-app.yml'
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build for ${{ matrix.platform }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: macos-latest
             platform: mac
+            arch: universal
           - os: windows-latest
             platform: win
+            arch: x64
 
     runs-on: ${{ matrix.os }}
 
@@ -27,39 +36,87 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
-          cache-dependency-path: electron-app/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            electron-app/package-lock.json
 
-      - name: Install dependencies (electron-app)
+      - name: Install root dependencies
+        run: npm ci --legacy-peer-deps
+        continue-on-error: true
+
+      - name: Install Electron app dependencies
         working-directory: electron-app
         run: npm ci
 
-      - name: Install dependencies (root - for build scripts)
-        run: npm ci
-
-      - name: Build Electron app
+      - name: Install Playwright browsers (for PNG export)
         working-directory: electron-app
-        run: |
-          if [ "${{ matrix.platform }}" = "mac" ]; then
-            npm run build:mac
-          else
-            npm run build:win
-          fi
+        run: npx playwright install --with-deps chromium
+        continue-on-error: true
+
+      - name: Build Electron app (macOS)
+        if: matrix.platform == 'mac'
+        working-directory: electron-app
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+        run: npm run build:mac
+
+      - name: Build Electron app (Windows)
+        if: matrix.platform == 'win'
+        working-directory: electron-app
+        run: npm run build:win
+
+      - name: List build artifacts
+        working-directory: electron-app
         shell: bash
+        run: |
+          echo "Build completed. Contents of dist directory:"
+          ls -lah dist/ || echo "No dist directory found"
+          if [ -d "dist" ]; then
+            find dist -type f -name "*.dmg" -o -name "*.zip" -o -name "*.exe" || echo "No installers found"
+          fi
 
-      - name: Upload artifacts
+      - name: Upload macOS DMG
+        if: matrix.platform == 'mac'
         uses: actions/upload-artifact@v4
         with:
-          name: electron-app-${{ matrix.platform }}
-          path: |
-            electron-app/dist/*.dmg
-            electron-app/dist/*.zip
-            electron-app/dist/*.exe
-            electron-app/dist/*.blockmap
+          name: macos-dmg
+          path: electron-app/dist/*.dmg
+          if-no-files-found: warn
           retention-days: 30
 
+      - name: Upload macOS ZIP
+        if: matrix.platform == 'mac'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip
+          path: electron-app/dist/*.zip
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload Windows Installer
+        if: matrix.platform == 'win'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: electron-app/dist/*.exe
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ matrix.platform }}
+          path: |
+            electron-app/dist/*.log
+            electron-app/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
   release:
+    name: Create GitHub Release
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
@@ -70,25 +127,54 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Download Mac artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: electron-app-mac
-          path: dist/mac
+          path: release-artifacts
 
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: electron-app-win
-          path: dist/win
+      - name: Display structure of downloaded files
+        run: |
+          echo "Downloaded artifacts:"
+          ls -lhR release-artifacts/
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release-files
+          find release-artifacts -type f \( -name "*.dmg" -o -name "*.zip" -o -name "*.exe" \) -exec cp {} release-files/ \;
+          echo "Files prepared for release:"
+          ls -lh release-files/
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            dist/mac/*
-            dist/win/*
+          files: release-files/*
           draft: true
           generate_release_notes: true
+          name: GanttGen Electron v${{ github.ref_name }}
+          body: |
+            ## GanttGen Electron Desktop App
+
+            Cross-platform desktop application for generating professional Gantt charts.
+
+            ### Downloads
+
+            **macOS:**
+            - `.dmg` - Disk image installer (recommended)
+            - `.zip` - Zip archive (universal binary for Intel and Apple Silicon)
+
+            **Windows:**
+            - `Setup.exe` - NSIS installer (recommended)
+            - Portable `.exe` - Standalone executable
+
+            ### Installation Notes
+
+            **macOS:** Apps are not signed. Right-click → Open for first launch.
+            **Windows:** May trigger SmartScreen. Click "More info" → "Run anyway"
+
+            ### Documentation
+
+            - [README](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/electron-app/README.md)
+            - [Building Guide](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/electron-app/BUILDING.md)
+            - [Release Notes](https://github.com/${{ github.repository }}/blob/${{ github.ref_name }}/electron-app/RELEASE_NOTES.md)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
