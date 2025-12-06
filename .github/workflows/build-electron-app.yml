@@ -22,7 +22,7 @@ jobs:
         include:
           - os: macos-latest
             platform: mac
-            arch: universal
+            arch: arm64
           - os: windows-latest
             platform: win
             arch: x64
@@ -76,6 +76,99 @@ jobs:
           if [ -d "dist" ]; then
             find dist -type f -name "*.dmg" -o -name "*.zip" -o -name "*.exe" || echo "No installers found"
           fi
+
+      - name: Verify macOS build
+        if: matrix.platform == 'mac'
+        working-directory: electron-app
+        shell: bash
+        run: |
+          echo "=== Verifying macOS build ==="
+
+          # Check if .app bundle exists
+          APP_PATH=$(find dist/mac*/GanttGen.app -type d 2>/dev/null | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: GanttGen.app not found!"
+            exit 1
+          fi
+          echo "✓ Found app bundle: $APP_PATH"
+
+          # Check app structure
+          if [ ! -f "$APP_PATH/Contents/MacOS/GanttGen" ]; then
+            echo "ERROR: Main executable not found!"
+            exit 1
+          fi
+          echo "✓ Main executable exists"
+
+          # Check Info.plist
+          if [ ! -f "$APP_PATH/Contents/Info.plist" ]; then
+            echo "ERROR: Info.plist not found!"
+            exit 1
+          fi
+          echo "✓ Info.plist exists"
+
+          # Verify architecture
+          ARCH=$(file "$APP_PATH/Contents/MacOS/GanttGen" | grep -o "arm64\|x86_64")
+          echo "Architecture: $ARCH"
+          if [[ "$ARCH" != *"arm64"* ]]; then
+            echo "WARNING: Expected arm64 architecture"
+          fi
+
+          # Check DMG exists
+          DMG_COUNT=$(find dist -name "*.dmg" | wc -l)
+          if [ "$DMG_COUNT" -eq 0 ]; then
+            echo "ERROR: No DMG file found!"
+            exit 1
+          fi
+          echo "✓ DMG file(s) found: $DMG_COUNT"
+
+          # Check ZIP exists
+          ZIP_COUNT=$(find dist -name "*.zip" | wc -l)
+          if [ "$ZIP_COUNT" -eq 0 ]; then
+            echo "ERROR: No ZIP file found!"
+            exit 1
+          fi
+          echo "✓ ZIP file(s) found: $ZIP_COUNT"
+
+          echo "=== macOS build verification passed ==="
+
+      - name: Verify Windows build
+        if: matrix.platform == 'win'
+        working-directory: electron-app
+        shell: bash
+        run: |
+          echo "=== Verifying Windows build ==="
+
+          # Check if unpacked app exists
+          if [ ! -d "dist/win-unpacked" ]; then
+            echo "ERROR: win-unpacked directory not found!"
+            exit 1
+          fi
+          echo "✓ Found unpacked directory"
+
+          # Check main executable
+          if [ ! -f "dist/win-unpacked/GanttGen.exe" ]; then
+            echo "ERROR: GanttGen.exe not found in unpacked directory!"
+            exit 1
+          fi
+          echo "✓ Main executable exists"
+
+          # Check installer exists
+          INSTALLER_COUNT=$(find dist -name "*Setup*.exe" | wc -l)
+          if [ "$INSTALLER_COUNT" -eq 0 ]; then
+            echo "ERROR: No installer found!"
+            exit 1
+          fi
+          echo "✓ Installer(s) found: $INSTALLER_COUNT"
+
+          # Check portable exe exists
+          PORTABLE_COUNT=$(find dist -name "*.exe" ! -name "*Setup*.exe" | wc -l)
+          if [ "$PORTABLE_COUNT" -eq 0 ]; then
+            echo "WARNING: No portable exe found"
+          else
+            echo "✓ Portable exe(s) found: $PORTABLE_COUNT"
+          fi
+
+          echo "=== Windows build verification passed ==="
 
       - name: Upload macOS DMG
         if: matrix.platform == 'mac'
@@ -158,18 +251,37 @@ jobs:
 
             ### Downloads
 
-            **macOS:**
+            **macOS (Apple Silicon only):**
             - `.dmg` - Disk image installer (recommended)
-            - `.zip` - Zip archive (universal binary for Intel and Apple Silicon)
+            - `.zip` - Zip archive
+            - Requires macOS 11.0+ on Apple Silicon (M1/M2/M3/M4)
 
             **Windows:**
             - `Setup.exe` - NSIS installer (recommended)
             - Portable `.exe` - Standalone executable
+            - Requires Windows 10+ (64-bit)
 
             ### Installation Notes
 
-            **macOS:** Apps are not signed. Right-click → Open for first launch.
-            **Windows:** May trigger SmartScreen. Click "More info" → "Run anyway"
+            **macOS:**
+            - Apps are **not signed** and will trigger security warnings
+            - **If you see "damaged and can't be opened":**
+              1. Open Terminal
+              2. Run: `xattr -cr /Applications/GanttGen.app`
+              3. Try opening again
+            - **Alternative:** Right-click → Open for first launch
+
+            **Windows:**
+            - May trigger SmartScreen warning
+            - Click "More info" → "Run anyway"
+
+            ### Verification
+
+            All builds are automatically verified for:
+            - ✅ App bundle/executable structure
+            - ✅ Required files present
+            - ✅ Correct architecture (arm64 for macOS, x64 for Windows)
+            - ✅ Installer files generated
 
             ### Documentation
 

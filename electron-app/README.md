@@ -8,15 +8,34 @@ A cross-platform desktop application for generating professional Gantt charts fr
 - 🎨 7 SEI-branded color palettes
 - 📱 Clean, modern interface matching SEI brand guidelines
 - 💾 Export to HTML (interactive) and PNG (high-resolution)
-- 🖥️ Native desktop app for Windows and macOS
+- 🖥️ Native desktop app for Windows and macOS (Apple Silicon)
 - 📦 Self-contained with all dependencies included
 
 ## Installation
 
 Download the appropriate installer for your platform from the [Releases](https://github.com/rcobean-sei/GanttGen/releases) page:
 
-- **Windows**: `GanttGen-Setup-0.5.0.exe` (installer) or `GanttGen-0.5.0-win.exe` (portable)
-- **macOS**: `GanttGen-0.5.0.dmg` (Intel/Apple Silicon universal)
+### macOS (Apple Silicon only)
+- **Requirements:** macOS 11.0+ on Apple Silicon (M1/M2/M3/M4)
+- **Download:** `GanttGen-0.5.0-arm64.dmg` or `GanttGen-0.5.0-arm64-mac.zip`
+
+⚠️ **Important:** This build is for Apple Silicon Macs only. Intel Macs are not supported.
+
+### Windows
+- **Requirements:** Windows 10+ (64-bit)
+- **Download:** `GanttGen-Setup-0.5.0.exe` (installer) or `GanttGen-0.5.0-win.exe` (portable)
+
+## macOS Installation & Troubleshooting
+
+### Quick Fix for "damaged and can't be opened" Error
+
+If macOS says the app is damaged:
+
+```bash
+xattr -cr /Applications/GanttGen.app
+```
+
+**[See full macOS troubleshooting guide →](MACOS_TROUBLESHOOTING.md)**
 
 ## Development
 
