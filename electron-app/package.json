@@ -103,7 +103,6 @@
     },
     "dmg": {
       "title": "GanttGen ${version}",
-      "backgroundColor": "#FFFFF8",
       "contents": [
         {
           "x": 130,
