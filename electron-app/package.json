@@ -1,0 +1,139 @@
+{
+  "name": "ganttgen-electron",
+  "version": "0.5.0",
+  "description": "GanttGen - Data-driven Gantt Chart Generator (Electron Edition)",
+  "main": "src/main.js",
+  "author": "SEI",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:all": "electron-builder --mac --win",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.sei.ganttgen",
+    "productName": "GanttGen",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/**/*",
+      "!node_modules/@playwright/**/*",
+      "!node_modules/playwright-core/**/*",
+      "../scripts/**/*",
+      "../templates/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../scripts",
+        "to": "scripts"
+      },
+      {
+        "from": "../templates",
+        "to": "templates"
+      },
+      {
+        "from": "../node_modules",
+        "to": "node_modules",
+        "filter": [
+          "**/*",
+          "!jest/**",
+          "!@jest/**",
+          "!jest-*/**",
+          "!sharp/**"
+        ]
+      },
+      {
+        "from": "../package.json",
+        "to": "package.json"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "darkModeSupport": true,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GanttGen"
+    },
+    "dmg": {
+      "title": "GanttGen ${version}",
+      "contents": [
+        {
+          "x": 130,
+          "y": 220,
+          "type": "file"
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 270,
+          "y": 100,
+          "type": "file",
+          "path": "build/Fix-GanttGen.command",
+          "name": "Fix GanttGen.command"
+        },
+        {
+          "x": 270,
+          "y": 350,
+          "type": "file",
+          "path": "build/DMG_README.txt"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 450
+      },
+      "format": "ULFO"
+    }
+  }
+}
