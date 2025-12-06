@@ -194,8 +194,12 @@ ipcMain.handle('generate-gantt', async (event, options) => {
             nodePath = nodePath ? `${resourcesNodeModules}${path.delimiter}${nodePath}` : resourcesNodeModules;
         }
 
+        // Use Electron's Node.js instead of system node
+        // process.execPath points to the Electron executable which includes Node.js
+        const nodeExecutable = process.execPath;
+
         // Execute the build script
-        const nodeProcess = spawn('node', [scriptPath, ...args], {
+        const nodeProcess = spawn(nodeExecutable, [scriptPath, ...args], {
             cwd: path.dirname(scriptPath),
             env: {
                 ...process.env,
