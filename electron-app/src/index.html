@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
     <title>GanttGen - Gantt Chart Generator</title>
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -129,16 +129,18 @@
                             <span class="count-badge" id="pauseCount">0</span>
                         </button>
                         <div class="collapsible-content" id="pausePeriodsContent">
-                            <p class="section-description">Add periods when work is paused (holidays, breaks, etc.)</p>
-                            <button type="button" class="btn btn-small btn-secondary" id="addPauseBtn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                Add Pause Period
-                            </button>
-                            <div id="pausePeriodsList" class="pause-list">
-                                <!-- Pause periods will be dynamically added here -->
+                            <div class="collapsible-content-inner">
+                                <p class="section-description">Add periods when work is paused (holidays, breaks, etc.)</p>
+                                <button type="button" class="btn btn-small btn-secondary" id="addPauseBtn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    Add Pause Period
+                                </button>
+                                <div id="pausePeriodsList" class="pause-list">
+                                    <!-- Pause periods will be dynamically added here -->
+                                </div>
                             </div>
                         </div>
                     </div>

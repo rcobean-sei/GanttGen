@@ -870,7 +870,7 @@ body {
     max-height: 2000px;
 }
 
-.collapsible-content > * {
+.collapsible-content-inner {
     padding: var(--spacing-md);
 }
 
