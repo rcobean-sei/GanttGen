@@ -1,4 +1,4 @@
-// GanttGen Desktop App - Frontend Logic
+// GanttGen Desktop App - Frontend Logic (Tauri Edition)
 
 // Tauri API imports (available via withGlobalTauri)
 const { invoke } = window.__TAURI__.core;
@@ -9,20 +9,47 @@ const { dirname } = window.__TAURI__.path;
 
 // State
 let state = {
+    inputMethod: 'file', // 'file' or 'manual'
     inputFile: null,
+    manualData: {
+        tasks: [],
+        pausePeriods: []
+    },
     selectedPalette: 'alternating',
     outputDir: null,
     isGenerating: false,
-    lastResult: null
+    lastResult: null,
+    taskIdCounter: 0,
+    pauseIdCounter: 0
 };
 
 // DOM Elements
 const elements = {
+    // Input method tabs
+    fileMethodBtn: document.getElementById('fileMethodBtn'),
+    manualMethodBtn: document.getElementById('manualMethodBtn'),
+    filePanel: document.getElementById('filePanel'),
+    manualPanel: document.getElementById('manualPanel'),
+
+    // File upload elements
     dropZone: document.getElementById('dropZone'),
     browseBtn: document.getElementById('browseBtn'),
     selectedFile: document.getElementById('selectedFile'),
     fileName: document.getElementById('fileName'),
     clearFileBtn: document.getElementById('clearFileBtn'),
+
+    // Manual entry elements
+    projectTitle: document.getElementById('projectTitle'),
+    timelineStart: document.getElementById('timelineStart'),
+    timelineEnd: document.getElementById('timelineEnd'),
+    showMilestones: document.getElementById('showMilestones'),
+    addTaskBtn: document.getElementById('addTaskBtn'),
+    tasksList: document.getElementById('tasksList'),
+    addPauseBtn: document.getElementById('addPauseBtn'),
+    pausePeriodsList: document.getElementById('pausePeriodsList'),
+    pauseCount: document.getElementById('pauseCount'),
+
+    // Common elements
     paletteGrid: document.getElementById('paletteGrid'),
     exportHtml: document.getElementById('exportHtml'),
     exportPng: document.getElementById('exportPng'),
@@ -49,6 +76,17 @@ async function init() {
     setupDragAndDrop();
     await setupProgressListener();
     updateGenerateButton();
+
+    // Check for test mode and populate form
+    try {
+        const testMode = await invoke('is_test_mode');
+        if (testMode) {
+            console.log('Test mode enabled, loading test data...');
+            await loadTestData();
+        }
+    } catch (error) {
+        console.log('Test mode not available or disabled:', error);
+    }
 }
 
 // Load palette options from backend
@@ -175,11 +213,26 @@ function selectPalette(paletteId) {
 }
 
 function setupEventListeners() {
+    // Input method tabs
+    elements.fileMethodBtn.addEventListener('click', () => switchInputMethod('file'));
+    elements.manualMethodBtn.addEventListener('click', () => switchInputMethod('manual'));
+
     // Browse button
     elements.browseBtn.addEventListener('click', openFileDialog);
 
     // Clear file button
     elements.clearFileBtn.addEventListener('click', clearFile);
+
+    // Manual entry buttons
+    elements.addTaskBtn.addEventListener('click', addTask);
+    elements.addPauseBtn.addEventListener('click', addPausePeriod);
+
+    // Collapsible sections
+    document.querySelectorAll('.collapsible-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.parentElement.classList.toggle('expanded');
+        });
+    });
 
     // Select output directory
     elements.selectOutputBtn.addEventListener('click', selectOutputDirectory);
@@ -308,7 +361,19 @@ async function selectOutputDirectory() {
 }
 
 function updateGenerateButton() {
-    const canGenerate = state.inputFile && !state.isGenerating;
+    let canGenerate = false;
+
+    if (state.inputMethod === 'file') {
+        canGenerate = state.inputFile && !state.isGenerating;
+    } else if (state.inputMethod === 'manual') {
+        // Check if minimum required fields are filled
+        canGenerate = !state.isGenerating &&
+                     elements.projectTitle?.value &&
+                     elements.timelineStart?.value &&
+                     elements.timelineEnd?.value &&
+                     state.manualData.tasks.length > 0;
+    }
+
     elements.generateBtn.disabled = !canGenerate;
 }
 
@@ -318,7 +383,17 @@ function updateProgress(percent, text) {
 }
 
 async function generateGantt() {
-    if (!state.inputFile || state.isGenerating) return;
+    if (state.isGenerating) return;
+
+    // Validate input
+    if (state.inputMethod === 'file' && !state.inputFile) return;
+    if (state.inputMethod === 'manual') {
+        if (!elements.projectTitle?.value || !elements.timelineStart?.value ||
+            !elements.timelineEnd?.value || state.manualData.tasks.length === 0) {
+            alert('Please fill in all required fields and add at least one task.');
+            return;
+        }
+    }
 
     state.isGenerating = true;
     updateGenerateButton();
@@ -333,18 +408,38 @@ async function generateGantt() {
     updateProgress(0, 'Initializing...');
 
     try {
+        let inputPath;
+
+        // For manual entry, create a temporary JSON file
+        if (state.inputMethod === 'manual') {
+            const manualData = collectManualData();
+            console.log('Manual data collected:', manualData);
+            inputPath = await invoke('create_temp_json', { data: manualData });
+            console.log('Temp file created:', inputPath);
+
+            // Set default output directory to same location as temp file if not set
+            if (!state.outputDir) {
+                state.outputDir = await dirname(inputPath);
+            }
+        } else {
+            inputPath = state.inputFile;
+        }
+
         const options = {
-            input_path: state.inputFile,
+            input_path: inputPath,
             output_path: state.outputDir ? `${state.outputDir}/output_gantt_chart.html` : null,
             palette: state.selectedPalette,
             export_png: elements.exportPng.checked
         };
 
+        console.log('Generate options:', options);
         const result = await invoke('generate_gantt', { options });
+        console.log('Generate result:', result);
 
         state.lastResult = result;
         showSuccess(result);
     } catch (error) {
+        console.error('Generation error:', error);
         showError(error);
     } finally {
         state.isGenerating = false;
@@ -426,6 +521,448 @@ async function viewHtmlFile() {
         }
     }
 }
+
+// ========================================
+// Manual Entry Functions
+// ========================================
+
+function switchInputMethod(method) {
+    state.inputMethod = method;
+
+    // Update tab buttons
+    elements.fileMethodBtn.classList.toggle('active', method === 'file');
+    elements.manualMethodBtn.classList.toggle('active', method === 'manual');
+
+    // Update panels
+    elements.filePanel.classList.toggle('active', method === 'file');
+    elements.manualPanel.classList.toggle('active', method === 'manual');
+
+    // Update generate button
+    updateGenerateButton();
+}
+
+function addTask() {
+    const taskId = state.taskIdCounter++;
+    const taskIndex = state.manualData.tasks.length;
+
+    const task = {
+        id: taskId,
+        name: '',
+        start: '',
+        end: '',
+        hours: 0,
+        subtasks: [],
+        milestones: []
+    };
+
+    state.manualData.tasks.push(task);
+    renderTask(task, taskIndex);
+    updateGenerateButton();
+}
+
+function renderTask(task, index) {
+    const taskCard = document.createElement('div');
+    taskCard.className = 'task-card';
+    taskCard.dataset.taskId = task.id;
+
+    taskCard.innerHTML = `
+        <div class="task-card-header">
+            <span class="task-number">${index + 1}</span>
+            <div class="task-actions">
+                <button type="button" class="btn-icon" onclick="removeTask(${task.id})" title="Remove task">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="task-fields">
+            <div class="form-group">
+                <label>Task/Phase Name *</label>
+                <input type="text" class="task-name" placeholder="e.g., Phase 1: Discovery"
+                       onchange="updateTaskField(${task.id}, 'name', this.value)" required>
+            </div>
+
+            <div class="task-dates">
+                <div class="form-group">
+                    <label>Start Date *</label>
+                    <input type="date" class="task-start"
+                           onchange="updateTaskField(${task.id}, 'start', this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label>End Date *</label>
+                    <input type="date" class="task-end"
+                           onchange="updateTaskField(${task.id}, 'end', this.value)" required>
+                </div>
+                <div class="form-group">
+                    <label>Hours (Optional)</label>
+                    <input type="number" class="task-hours" placeholder="0" min="0"
+                           onchange="updateTaskField(${task.id}, 'hours', parseInt(this.value) || 0)">
+                </div>
+            </div>
+
+            <!-- Subtasks Section -->
+            <div class="subtasks-section">
+                <div class="subtasks-header">
+                    <h4>Subtasks</h4>
+                    <button type="button" class="btn btn-small btn-secondary" onclick="addSubtask(${task.id})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Subtask
+                    </button>
+                </div>
+                <div class="subtasks-list" id="subtasks-${task.id}">
+                    <!-- Subtasks will be added here -->
+                </div>
+            </div>
+
+            <!-- Milestones Section -->
+            <div class="milestones-section">
+                <div class="subtasks-header">
+                    <h4>Milestones (Optional)</h4>
+                    <button type="button" class="btn btn-small btn-secondary" onclick="addMilestone(${task.id})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add Milestone
+                    </button>
+                </div>
+                <div class="milestones-list" id="milestones-${task.id}">
+                    <!-- Milestones will be added here -->
+                </div>
+            </div>
+        </div>
+    `;
+
+    elements.tasksList.appendChild(taskCard);
+}
+
+function removeTask(taskId) {
+    const taskIndex = state.manualData.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex >= 0) {
+        state.manualData.tasks.splice(taskIndex, 1);
+        document.querySelector(`[data-task-id="${taskId}"]`)?.remove();
+
+        // Renumber tasks
+        document.querySelectorAll('.task-number').forEach((num, idx) => {
+            num.textContent = idx + 1;
+        });
+
+        updateGenerateButton();
+    }
+}
+
+function updateTaskField(taskId, field, value) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (task) {
+        task[field] = value;
+        updateGenerateButton();
+    }
+}
+
+function addSubtask(taskId) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const subtaskIndex = task.subtasks.length;
+    task.subtasks.push('');
+
+    const subtasksList = document.getElementById(`subtasks-${taskId}`);
+    const subtaskItem = document.createElement('div');
+    subtaskItem.className = 'subtask-item';
+    subtaskItem.innerHTML = `
+        <input type="text" placeholder="Subtask description"
+               onchange="updateSubtask(${taskId}, ${subtaskIndex}, this.value)">
+        <button type="button" class="btn-icon btn-icon-only" onclick="removeSubtask(${taskId}, ${subtaskIndex})" title="Remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    `;
+    subtasksList.appendChild(subtaskItem);
+}
+
+function updateSubtask(taskId, subtaskIndex, value) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.subtasks[subtaskIndex] = value;
+    }
+}
+
+function removeSubtask(taskId, subtaskIndex) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.subtasks.splice(subtaskIndex, 1);
+        const subtasksList = document.getElementById(`subtasks-${taskId}`);
+        subtasksList.children[subtaskIndex]?.remove();
+    }
+}
+
+function addMilestone(taskId) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const milestoneIndex = task.milestones.length;
+    task.milestones.push({ name: '', date: '' });
+
+    const milestonesList = document.getElementById(`milestones-${taskId}`);
+    const milestoneItem = document.createElement('div');
+    milestoneItem.className = 'milestone-item';
+    milestoneItem.innerHTML = `
+        <input type="text" placeholder="Milestone name"
+               onchange="updateMilestone(${taskId}, ${milestoneIndex}, 'name', this.value)">
+        <input type="date"
+               onchange="updateMilestone(${taskId}, ${milestoneIndex}, 'date', this.value)">
+        <button type="button" class="btn-icon btn-icon-only" onclick="removeMilestone(${taskId}, ${milestoneIndex})" title="Remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    `;
+    milestonesList.appendChild(milestoneItem);
+}
+
+function updateMilestone(taskId, milestoneIndex, field, value) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (task && task.milestones[milestoneIndex]) {
+        task.milestones[milestoneIndex][field] = value;
+    }
+}
+
+function removeMilestone(taskId, milestoneIndex) {
+    const task = state.manualData.tasks.find(t => t.id === taskId);
+    if (task) {
+        task.milestones.splice(milestoneIndex, 1);
+        const milestonesList = document.getElementById(`milestones-${taskId}`);
+        milestonesList.children[milestoneIndex]?.remove();
+    }
+}
+
+function addPausePeriod() {
+    const pauseId = state.pauseIdCounter++;
+    const pause = { id: pauseId, start: '', end: '' };
+
+    state.manualData.pausePeriods.push(pause);
+    renderPausePeriod(pause);
+    updatePauseCount();
+}
+
+function renderPausePeriod(pause) {
+    const pauseItem = document.createElement('div');
+    pauseItem.className = 'pause-item';
+    pauseItem.dataset.pauseId = pause.id;
+    pauseItem.innerHTML = `
+        <div class="form-group" style="flex: 1; margin: 0;">
+            <input type="date" placeholder="Start date"
+                   onchange="updatePausePeriod(${pause.id}, 'start', this.value)">
+        </div>
+        <div class="form-group" style="flex: 1; margin: 0;">
+            <input type="date" placeholder="End date"
+                   onchange="updatePausePeriod(${pause.id}, 'end', this.value)">
+        </div>
+        <button type="button" class="btn-icon btn-icon-only" onclick="removePausePeriod(${pause.id})" title="Remove">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    `;
+    elements.pausePeriodsList.appendChild(pauseItem);
+}
+
+function updatePausePeriod(pauseId, field, value) {
+    const pause = state.manualData.pausePeriods.find(p => p.id === pauseId);
+    if (pause) {
+        pause[field] = value;
+    }
+}
+
+function removePausePeriod(pauseId) {
+    const pauseIndex = state.manualData.pausePeriods.findIndex(p => p.id === pauseId);
+    if (pauseIndex >= 0) {
+        state.manualData.pausePeriods.splice(pauseIndex, 1);
+        document.querySelector(`[data-pause-id="${pauseId}"]`)?.remove();
+        updatePauseCount();
+    }
+}
+
+function updatePauseCount() {
+    if (elements.pauseCount) {
+        elements.pauseCount.textContent = state.manualData.pausePeriods.length;
+    }
+}
+
+function collectManualData() {
+    // Get the selected palette colors
+    const paletteInfo = getDefaultPalettes().find(p => p.id === state.selectedPalette);
+
+    const data = {
+        title: elements.projectTitle.value,
+        timelineStart: elements.timelineStart.value,
+        timelineEnd: elements.timelineEnd.value,
+        showMilestones: elements.showMilestones.checked,
+        palette: paletteInfo?.colors || [],
+        palettePreset: state.selectedPalette,
+        tasks: [],
+        milestones: [],
+        pausePeriods: []
+    };
+
+    // Process tasks
+    state.manualData.tasks.forEach((task, taskIndex) => {
+        if (task.name && task.start && task.end) {
+            const taskData = {
+                name: task.name,
+                start: task.start,
+                end: task.end,
+                hours: task.hours || 0,
+                subtasks: task.subtasks.filter(s => s.trim()),
+                colorIndex: taskIndex
+            };
+            data.tasks.push(taskData);
+
+            // Process milestones for this task
+            task.milestones.forEach(milestone => {
+                if (milestone.name && milestone.date) {
+                    data.milestones.push({
+                        name: milestone.name,
+                        date: milestone.date,
+                        taskIndex: taskIndex
+                    });
+                }
+            });
+        }
+    });
+
+    // Process pause periods
+    data.pausePeriods = state.manualData.pausePeriods
+        .filter(p => p.start && p.end)
+        .map(p => ({ start: p.start, end: p.end }));
+
+    return data;
+}
+
+// Load test data and populate form
+async function loadTestData() {
+    try {
+        const testData = await invoke('get_test_data');
+        if (!testData) {
+            console.error('No test data available');
+            return;
+        }
+
+        console.log('Loading test data:', testData);
+
+        // Switch to manual entry tab
+        switchInputMethod('manual');
+
+        // Populate basic fields
+        elements.projectTitle.value = testData.title || 'Test Project';
+        elements.timelineStart.value = testData.timelineStart || '';
+        elements.timelineEnd.value = testData.timelineEnd || '';
+        elements.showMilestones.checked = testData.showMilestones !== false;
+
+        // Select the matching palette
+        if (testData.palettePreset) {
+            selectPalette(testData.palettePreset);
+        }
+
+        // Add tasks
+        if (testData.tasks && testData.tasks.length > 0) {
+            testData.tasks.forEach((taskData, index) => {
+                addTask();
+                const task = state.manualData.tasks[index];
+
+                // Update task fields
+                task.name = taskData.name;
+                task.start = taskData.start;
+                task.end = taskData.end;
+                task.hours = taskData.hours || 0;
+
+                // Populate the DOM elements
+                const taskCard = document.querySelector(`[data-task-id="${task.id}"]`);
+                if (taskCard) {
+                    taskCard.querySelector('.task-name').value = task.name;
+                    taskCard.querySelector('.task-start').value = task.start;
+                    taskCard.querySelector('.task-end').value = task.end;
+                    taskCard.querySelector('.task-hours').value = task.hours;
+
+                    // Add subtasks
+                    if (taskData.subtasks && taskData.subtasks.length > 0) {
+                        taskData.subtasks.forEach((subtaskText, subtaskIdx) => {
+                            addSubtask(task.id);
+                            task.subtasks[subtaskIdx] = subtaskText;
+                            const subtaskInput = taskCard.querySelector(`#subtasks-${task.id}`).children[subtaskIdx]?.querySelector('input');
+                            if (subtaskInput) {
+                                subtaskInput.value = subtaskText;
+                            }
+                        });
+                    }
+
+                    // Add milestones for this task
+                    const taskMilestones = testData.milestones?.filter(m => m.taskIndex === index) || [];
+                    taskMilestones.forEach((milestoneData, milestoneIdx) => {
+                        addMilestone(task.id);
+                        task.milestones[milestoneIdx] = {
+                            name: milestoneData.name,
+                            date: milestoneData.date
+                        };
+                        const milestoneItem = taskCard.querySelector(`#milestones-${task.id}`).children[milestoneIdx];
+                        if (milestoneItem) {
+                            const inputs = milestoneItem.querySelectorAll('input');
+                            inputs[0].value = milestoneData.name;
+                            inputs[1].value = milestoneData.date;
+                        }
+                    });
+                }
+            });
+        }
+
+        // Add pause periods
+        if (testData.pausePeriods && testData.pausePeriods.length > 0) {
+            // Expand the pause periods section
+            document.querySelector('.pause-periods-section')?.classList.add('expanded');
+
+            testData.pausePeriods.forEach((pauseData, index) => {
+                addPausePeriod();
+                const pause = state.manualData.pausePeriods[index];
+                pause.start = pauseData.start;
+                pause.end = pauseData.end;
+
+                const pauseItem = document.querySelector(`[data-pause-id="${pause.id}"]`);
+                if (pauseItem) {
+                    const inputs = pauseItem.querySelectorAll('input[type="date"]');
+                    inputs[0].value = pauseData.start;
+                    inputs[1].value = pauseData.end;
+                }
+            });
+        }
+
+        updateGenerateButton();
+        console.log('Test data loaded successfully');
+    } catch (error) {
+        console.error('Failed to load test data:', error);
+    }
+}
+
+// Make functions globally available for onclick handlers
+window.removeTask = removeTask;
+window.updateTaskField = updateTaskField;
+window.addSubtask = addSubtask;
+window.updateSubtask = updateSubtask;
+window.removeSubtask = removeSubtask;
+window.addMilestone = addMilestone;
+window.updateMilestone = updateMilestone;
+window.removeMilestone = removeMilestone;
+window.updatePausePeriod = updatePausePeriod;
+window.removePausePeriod = removePausePeriod;
 
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', init);

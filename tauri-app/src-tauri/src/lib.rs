@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
@@ -355,17 +357,96 @@ pub struct PaletteInfo {
     pub accent_color: Option<String>,
 }
 
+/// Global state for test mode
+struct AppState {
+    test_mode: bool,
+}
+
+/// Create a temporary JSON file from manual entry data
+#[tauri::command]
+async fn create_temp_json(data: Value) -> Result<String, String> {
+    use std::fs;
+    use std::time::SystemTime;
+
+    let timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+
+    let temp_dir = std::env::temp_dir();
+    let temp_file = temp_dir.join(format!("ganttgen-manual-{}.json", timestamp));
+
+    let json_string = serde_json::to_string_pretty(&data)
+        .map_err(|e| format!("Failed to serialize data: {}", e))?;
+
+    fs::write(&temp_file, json_string)
+        .map_err(|e| format!("Failed to write temp file: {}", e))?;
+
+    Ok(temp_file.to_string_lossy().to_string())
+}
+
+/// Check if app is in test mode
+#[tauri::command]
+fn is_test_mode(state: tauri::State<Mutex<AppState>>) -> bool {
+    state.lock().unwrap().test_mode
+}
+
+/// Get test data from config/project.json
+#[tauri::command]
+async fn get_test_data(app_handle: tauri::AppHandle) -> Result<Value, String> {
+    use tokio::fs;
+
+    // In development, use parent project's config
+    let dev_path = std::env::current_dir()
+        .map(|p| p.parent().map(|pp| pp.join("config/project.json")).unwrap_or_default())
+        .unwrap_or_default();
+
+    let config_path = if dev_path.exists() {
+        dev_path
+    } else {
+        // In production, use bundled resources
+        app_handle
+            .path()
+            .resource_dir()
+            .map(|p| p.join("config/project.json"))
+            .map_err(|e| format!("Failed to get resource directory: {}", e))?
+    };
+
+    if !config_path.exists() {
+        return Err(format!(
+            "Test data file not found at: {}",
+            config_path.display()
+        ));
+    }
+
+    let content = fs::read_to_string(&config_path)
+        .await
+        .map_err(|e| format!("Failed to read test data: {}", e))?;
+
+    let data: Value = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse test data: {}", e))?;
+
+    Ok(data)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Check for --test flag in command line arguments
+    let test_mode = std::env::args().any(|arg| arg == "--test");
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
+        .manage(Mutex::new(AppState { test_mode }))
         .invoke_handler(tauri::generate_handler![
             generate_gantt,
             read_json_file,
             validate_input_file,
-            get_palette_info
+            get_palette_info,
+            create_temp_json,
+            is_test_mode,
+            get_test_data
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
