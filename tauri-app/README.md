@@ -50,6 +50,64 @@ npm install
 npm run tauri:build
 ```
 
+#### macOS Code Signing
+
+For macOS App Store distribution and enhanced security, the app can be code signed during the CI/CD build process.
+
+**Required Secrets:**
+
+The following GitHub repository secrets must be configured for code signing:
+
+| Secret Name | Description | Example/Format |
+|-------------|-------------|----------------|
+| `MAC_CERT_P12_BASE64` | Base64-encoded .p12 certificate file | `cat certificate.p12 \| base64` |
+| `MAC_CERT_PASSWORD` | Password for the .p12 certificate | Your certificate password |
+| `APPLE_SIGNING_IDENTITY` | Common name of the signing certificate | `"Developer ID Application: Company Name (TEAM_ID)"` |
+| `APPLE_ID` | Apple ID for notarization (optional) | `developer@example.com` |
+| `APPLE_PASSWORD` | App-specific password for notarization (optional) | Generate at appleid.apple.com |
+| `APPLE_TEAM_ID` | Apple Developer Team ID (optional) | 10-character team ID |
+
+**Setting up the certificate:**
+
+1. Export your Apple Developer certificate as a .p12 file from Keychain Access
+2. Convert it to base64:
+   ```bash
+   base64 -i certificate.p12 -o certificate.p12.base64
+   ```
+3. Add the base64 content to GitHub Secrets as `MAC_CERT_P12_BASE64`
+4. Add the certificate password to GitHub Secrets as `MAC_CERT_PASSWORD`
+5. Add your signing identity to GitHub Secrets as `APPLE_SIGNING_IDENTITY`
+
+**Notarization (Optional):**
+
+For full App Store compliance and to avoid Gatekeeper warnings, you can enable notarization by adding:
+
+- `APPLE_ID`: Your Apple Developer email
+- `APPLE_PASSWORD`: An app-specific password (create at https://appleid.apple.com)
+- `APPLE_TEAM_ID`: Your 10-character Apple Developer Team ID
+
+**How it works:**
+
+The CI/CD workflow automatically:
+1. Creates a temporary keychain on the macOS runner
+2. Imports the signing certificate into the keychain
+3. Configures the build environment to use the certificate
+4. Signs the app bundle during the build process
+5. Optionally notarizes the app with Apple (if credentials are provided)
+6. Cleans up the temporary keychain after the build
+
+**Local Development:**
+
+Code signing is only enabled in CI/CD. Local builds remain unsigned for faster development iteration. To test signing locally:
+
+```bash
+# Set environment variables
+export APPLE_SIGNING_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+
+# Build
+npm run tauri:build
+```
+
 ### Windows
 
 ```bash
@@ -104,13 +162,29 @@ The app includes all 7 SEI palette presets:
 
 The app is built automatically via GitHub Actions for:
 - Windows (x64)
-- macOS (x64 and ARM64)
+- macOS (x64 and ARM64) - **with code signing support**
 - Linux (x64)
 
 Installers are created for each platform:
 - Windows: `.msi` and `.exe` (NSIS)
-- macOS: `.dmg` and `.app`
+- macOS: `.dmg` and `.app` (signed and optionally notarized)
 - Linux: `.deb`, `.rpm`, and `.AppImage`
+
+### Code Signing
+
+macOS builds can be automatically code signed during CI/CD builds. See the [Apple Code Signing Documentation](../docs/APPLE_CODE_SIGNING.md) for:
+- Setting up signing certificates
+- Configuring GitHub Secrets
+- Enabling notarization
+- Troubleshooting common issues
+
+**Quick Setup:**
+1. Export your Apple Developer certificate as .p12
+2. Add `MAC_CERT_P12_BASE64` and `MAC_CERT_PASSWORD` secrets to GitHub
+3. Add `APPLE_SIGNING_IDENTITY` secret
+4. (Optional) Add `APPLE_ID`, `APPLE_PASSWORD`, and `APPLE_TEAM_ID` for notarization
+
+Builds will automatically be signed when these secrets are present.
 
 ## License
 
