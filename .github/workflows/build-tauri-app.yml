@@ -155,17 +155,41 @@ jobs:
             BINARY="$APP_PATH/Contents/MacOS/ganttgen-app"
             echo "Testing binary: $BINARY"
 
-            # Run in background with timeout, capture stderr
-            timeout 5s "$BINARY" 2>&1 | tee /tmp/launch_test.log || true
+            # Set RUST_BACKTRACE to ensure we get full panic output
+            export RUST_BACKTRACE=1
 
-            # Check for panic in output
-            if grep -q "panicked at" /tmp/launch_test.log; then
-              echo "❌ ERROR: App panicked during launch!"
-              cat /tmp/launch_test.log
+            # Run with timeout and capture ALL output (stdout + stderr)
+            set +e  # Don't exit on error
+            timeout --preserve-status 2s "$BINARY" > /tmp/launch_test.log 2>&1
+            EXIT_CODE=$?
+            set -e
+
+            echo "Exit code: $EXIT_CODE"
+            echo "Output captured:"
+            cat /tmp/launch_test.log
+
+            # Exit code 124 = timeout killed it (expected for GUI apps)
+            # Exit code 143 = SIGTERM from timeout (also expected)
+            # Exit code 0 or 124 or 143 = OK
+            # Anything else = crash
+            if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
+              echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
               exit 1
             fi
 
-            echo "✓ App launched without panic (GUI apps don't exit, this is expected)"
+            # Also check for panic in output
+            if grep -q "panicked at" /tmp/launch_test.log; then
+              echo "❌ ERROR: App panicked during launch!"
+              exit 1
+            fi
+
+            # Check for common error patterns
+            if grep -qi "error while running tauri application" /tmp/launch_test.log; then
+              echo "❌ ERROR: Tauri application error detected!"
+              exit 1
+            fi
+
+            echo "✓ App launched without crash (exit code: $EXIT_CODE)"
 
           elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
             # Find the Linux binary
@@ -176,16 +200,33 @@ jobs:
             fi
             echo "Testing binary: $BINARY"
 
-            # Test that it doesn't panic immediately
-            timeout 5s "$BINARY" 2>&1 | tee /tmp/launch_test.log || true
+            export RUST_BACKTRACE=1
 
-            if grep -q "panicked at" /tmp/launch_test.log; then
-              echo "❌ ERROR: App panicked during launch!"
-              cat /tmp/launch_test.log
+            set +e
+            timeout --preserve-status 2s "$BINARY" > /tmp/launch_test.log 2>&1
+            EXIT_CODE=$?
+            set -e
+
+            echo "Exit code: $EXIT_CODE"
+            echo "Output captured:"
+            cat /tmp/launch_test.log
+
+            if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
+              echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
               exit 1
             fi
 
-            echo "✓ App launched without panic"
+            if grep -q "panicked at" /tmp/launch_test.log; then
+              echo "❌ ERROR: App panicked during launch!"
+              exit 1
+            fi
+
+            if grep -qi "error while running tauri application" /tmp/launch_test.log; then
+              echo "❌ ERROR: Tauri application error detected!"
+              exit 1
+            fi
+
+            echo "✓ App launched without crash (exit code: $EXIT_CODE)"
 
           elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
             # Find the Windows executable
@@ -196,16 +237,33 @@ jobs:
             fi
             echo "Testing binary: $BINARY"
 
-            # Run briefly and check for crashes
-            timeout 5s "$BINARY" 2>&1 | tee /tmp/launch_test.log || true
+            export RUST_BACKTRACE=1
 
-            if grep -qi "panic" /tmp/launch_test.log; then
-              echo "❌ ERROR: App panicked during launch!"
-              cat /tmp/launch_test.log
+            set +e
+            timeout --preserve-status 2s "$BINARY" > /tmp/launch_test.log 2>&1
+            EXIT_CODE=$?
+            set -e
+
+            echo "Exit code: $EXIT_CODE"
+            echo "Output captured:"
+            cat /tmp/launch_test.log
+
+            if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
+              echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
               exit 1
             fi
 
-            echo "✓ App launched without panic"
+            if grep -qi "panic" /tmp/launch_test.log; then
+              echo "❌ ERROR: App panicked during launch!"
+              exit 1
+            fi
+
+            if grep -qi "error while running tauri application" /tmp/launch_test.log; then
+              echo "❌ ERROR: Tauri application error detected!"
+              exit 1
+            fi
+
+            echo "✓ App launched without crash (exit code: $EXIT_CODE)"
           fi
 
           echo "=== Launch verification passed ==="
