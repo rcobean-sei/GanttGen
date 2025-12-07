@@ -656,6 +656,7 @@ npx playwright install
 - 📘 **[Excel Template Guide](docs/EXCEL_TEMPLATE_GUIDE.md)** - Complete guide to using the Excel template with sheet-by-sheet instructions
 - 🎨 **[Palette Examples](palette_examples/PALETTE_EXAMPLES.md)** - Visual comparisons of all color palette variants
 - 📋 [CSV/Excel Import Spec](docs/CSV_EXCEL_IMPORT_SPEC.md) - Import specifications
+- 🔐 **[Apple Code Signing](docs/APPLE_CODE_SIGNING.md)** - Setup guide for macOS code signing and notarization
 
 ---
 
