@@ -60,7 +60,7 @@ The following GitHub repository secrets must be configured for code signing:
 
 | Secret Name | Description | Example/Format |
 |-------------|-------------|----------------|
-| `MAC_CERT_P12_BASE64` | Base64-encoded .p12 certificate file | `cat certificate.p12 \| base64` |
+| `MAC_CERT_P12_BASE64` | Base64-encoded .p12 certificate file | `cat certificate.p12 | base64` |
 | `MAC_CERT_PASSWORD` | Password for the .p12 certificate | Your certificate password |
 | `APPLE_SIGNING_IDENTITY` | Common name of the signing certificate | `"Developer ID Application: Company Name (TEAM_ID)"` |
 | `APPLE_ID` | Apple ID for notarization (optional) | `developer@example.com` |
