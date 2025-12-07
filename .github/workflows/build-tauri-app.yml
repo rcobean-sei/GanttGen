@@ -212,13 +212,21 @@ jobs:
             XVFB_PID=$!
             
             # Wait for Xvfb to be ready (up to 5 seconds)
+            XVFB_READY=false
             for i in {1..10}; do
               if xdpyinfo -display :99 >/dev/null 2>&1; then
                 echo "Xvfb is ready"
+                XVFB_READY=true
                 break
               fi
               sleep 0.5
             done
+            
+            if [ "$XVFB_READY" != "true" ]; then
+              echo "ERROR: Xvfb failed to start within 5 seconds"
+              kill $XVFB_PID 2>/dev/null || true
+              exit 1
+            fi
 
             # Run in background with timeout (Linux has 'timeout' command)
             set +e
@@ -227,8 +235,10 @@ jobs:
             set -e
 
             # Clean up Xvfb
-            kill $XVFB_PID 2>/dev/null || true
-            wait $XVFB_PID 2>/dev/null || true
+            if [ -n "$XVFB_PID" ]; then
+              kill $XVFB_PID 2>/dev/null || true
+              wait $XVFB_PID 2>/dev/null || true
+            fi
 
             echo "Exit code: $EXIT_CODE"
             echo "Output captured:"
