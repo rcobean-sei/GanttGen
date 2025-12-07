@@ -42,7 +42,6 @@
     "longDescription": "GanttGen is a professional Gantt chart generator that creates presentation-ready timeline visualizations from JSON or Excel input files. Features the SEI brand color palette."
   },
   "plugins": {
-    "dialog": {},
     "shell": {
       "open": true
     },
