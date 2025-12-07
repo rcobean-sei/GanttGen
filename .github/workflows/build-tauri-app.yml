@@ -87,9 +87,9 @@ jobs:
           # Import certificate to keychain
           CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
           echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
-          
-          # Import certificate using stdin for password (more secure than command line)
-          printf '%s' "$APPLE_CERT_PASSWORD" | security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -P - -T /usr/bin/codesign -T /usr/bin/productsign
+
+          # Import certificate (password passed directly - safe in CI environment)
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -f pkcs12 -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
           
           # Set the keychain as default
           security list-keychain -d user -s "$KEYCHAIN_PATH"
