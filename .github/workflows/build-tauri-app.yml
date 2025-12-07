@@ -159,8 +159,13 @@ jobs:
             export RUST_BACKTRACE=1
 
             # Run with timeout and capture ALL output (stdout + stderr)
+            # Note: macOS doesn't have 'timeout' command, so we use a background process
             set +e  # Don't exit on error
-            timeout --preserve-status 2s "$BINARY" > /tmp/launch_test.log 2>&1
+            "$BINARY" > /tmp/launch_test.log 2>&1 &
+            BINARY_PID=$!
+            sleep 2
+            kill $BINARY_PID 2>/dev/null || true
+            wait $BINARY_PID 2>/dev/null
             EXIT_CODE=$?
             set -e
 
@@ -168,11 +173,10 @@ jobs:
             echo "Output captured:"
             cat /tmp/launch_test.log
 
-            # Exit code 124 = timeout killed it (expected for GUI apps)
-            # Exit code 143 = SIGTERM from timeout (also expected)
-            # Exit code 0 or 124 or 143 = OK
+            # Exit code 143 = SIGTERM (expected when we kill it)
+            # Exit code 0 = clean exit (unexpected for GUI but OK)
             # Anything else = crash
-            if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
+            if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 143 ] && [ $EXIT_CODE -ne 137 ]; then
               echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
               exit 1
             fi
@@ -202,8 +206,9 @@ jobs:
 
             export RUST_BACKTRACE=1
 
+            # Run in background with timeout (Linux has 'timeout' command)
             set +e
-            timeout --preserve-status 2s "$BINARY" > /tmp/launch_test.log 2>&1
+            timeout 2s "$BINARY" > /tmp/launch_test.log 2>&1
             EXIT_CODE=$?
             set -e
 
@@ -211,6 +216,8 @@ jobs:
             echo "Output captured:"
             cat /tmp/launch_test.log
 
+            # Exit code 124 = timeout (expected)
+            # Exit code 143 = SIGTERM (expected)
             if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
               echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
               exit 1
@@ -239,8 +246,9 @@ jobs:
 
             export RUST_BACKTRACE=1
 
+            # Run in background with timeout (Windows has 'timeout' via Git Bash)
             set +e
-            timeout --preserve-status 2s "$BINARY" > /tmp/launch_test.log 2>&1
+            timeout 2s "$BINARY" > /tmp/launch_test.log 2>&1
             EXIT_CODE=$?
             set -e
 
@@ -248,6 +256,8 @@ jobs:
             echo "Output captured:"
             cat /tmp/launch_test.log
 
+            # Exit code 124 = timeout (expected)
+            # Exit code 143 = SIGTERM (expected)
             if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
               echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
               exit 1
