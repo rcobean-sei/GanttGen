@@ -68,6 +68,13 @@ jobs:
           APPLE_CERTIFICATE: ${{ secrets.MAC_CERT_P12_BASE64 }}
           APPLE_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
         run: |
+          # Check if required secrets are available
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERT_PASSWORD" ]; then
+            echo "⚠️  Code signing secrets not found. Build will continue without signing."
+            echo "To enable code signing, add MAC_CERT_P12_BASE64 and MAC_CERT_PASSWORD secrets."
+            exit 0
+          fi
+          
           # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           KEYCHAIN_PASSWORD=$(openssl rand -base64 32)

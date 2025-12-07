@@ -72,7 +72,11 @@ The following GitHub repository secrets must be configured for code signing:
 1. Export your Apple Developer certificate as a .p12 file from Keychain Access
 2. Convert it to base64:
    ```bash
+   # On macOS
    base64 -i certificate.p12 -o certificate.p12.base64
+   
+   # On Linux (use -w 0 to disable line wrapping)
+   base64 -w 0 -i certificate.p12 -o certificate.p12.base64
    ```
 3. Add the base64 content to GitHub Secrets as `MAC_CERT_P12_BASE64`
 4. Add the certificate password to GitHub Secrets as `MAC_CERT_PASSWORD`

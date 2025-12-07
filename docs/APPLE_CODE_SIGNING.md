@@ -59,7 +59,11 @@ On a Mac with your Apple Developer certificate installed:
 6. Set a strong password when prompted
 7. Convert to base64:
    ```bash
+   # On macOS
    base64 -i certificate.p12 -o certificate.p12.base64
+   
+   # On Linux (use -w 0 to disable line wrapping)
+   base64 -w 0 -i certificate.p12 -o certificate.p12.base64
    ```
 8. Copy the contents of `certificate.p12.base64`
 
@@ -116,6 +120,23 @@ Add the following secrets to GitHub:
 - `APPLE_ID`: Your Apple Developer email
 - `APPLE_PASSWORD`: The app-specific password
 - `APPLE_TEAM_ID`: Your 10-character team ID
+
+## Configuration Details
+
+### Tauri Configuration
+
+The `tauri.conf.json` file includes macOS-specific settings:
+
+```json
+"macOS": {
+  "signingIdentity": null,
+  "providerShortName": null,
+  "entitlements": null,
+  "minimumSystemVersion": "10.13"
+}
+```
+
+**Note:** Setting `signingIdentity` to `null` tells Tauri to use the `APPLE_SIGNING_IDENTITY` environment variable, which is set during the CI/CD build. This allows for dynamic configuration without hardcoding credentials in the repository.
 
 ## How Code Signing Works in CI/CD
 
