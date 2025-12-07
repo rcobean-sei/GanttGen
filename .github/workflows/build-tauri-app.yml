@@ -137,6 +137,79 @@ jobs:
           projectPath: tauri-app
           args: ${{ matrix.args }}
 
+      - name: Verify app launches without crashing
+        shell: bash
+        run: |
+          echo "=== Verifying app can launch without crashing ==="
+
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            # Find the app bundle
+            APP_PATH=$(find tauri-app/src-tauri/target -name "GanttGen.app" -type d 2>/dev/null | head -n 1)
+            if [ -z "$APP_PATH" ]; then
+              echo "ERROR: GanttGen.app not found!"
+              exit 1
+            fi
+            echo "Found app: $APP_PATH"
+
+            # Run the binary directly and capture output
+            BINARY="$APP_PATH/Contents/MacOS/ganttgen-app"
+            echo "Testing binary: $BINARY"
+
+            # Run in background with timeout, capture stderr
+            timeout 5s "$BINARY" 2>&1 | tee /tmp/launch_test.log || true
+
+            # Check for panic in output
+            if grep -q "panicked at" /tmp/launch_test.log; then
+              echo "❌ ERROR: App panicked during launch!"
+              cat /tmp/launch_test.log
+              exit 1
+            fi
+
+            echo "✓ App launched without panic (GUI apps don't exit, this is expected)"
+
+          elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
+            # Find the Linux binary
+            BINARY=$(find tauri-app/src-tauri/target -name "ganttgen-app" -type f -executable 2>/dev/null | head -n 1)
+            if [ -z "$BINARY" ]; then
+              echo "ERROR: ganttgen-app binary not found!"
+              exit 1
+            fi
+            echo "Testing binary: $BINARY"
+
+            # Test that it doesn't panic immediately
+            timeout 5s "$BINARY" 2>&1 | tee /tmp/launch_test.log || true
+
+            if grep -q "panicked at" /tmp/launch_test.log; then
+              echo "❌ ERROR: App panicked during launch!"
+              cat /tmp/launch_test.log
+              exit 1
+            fi
+
+            echo "✓ App launched without panic"
+
+          elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            # Find the Windows executable
+            BINARY=$(find tauri-app/src-tauri/target -name "ganttgen-app.exe" -type f 2>/dev/null | head -n 1)
+            if [ -z "$BINARY" ]; then
+              echo "ERROR: ganttgen-app.exe not found!"
+              exit 1
+            fi
+            echo "Testing binary: $BINARY"
+
+            # Run briefly and check for crashes
+            timeout 5s "$BINARY" 2>&1 | tee /tmp/launch_test.log || true
+
+            if grep -qi "panic" /tmp/launch_test.log; then
+              echo "❌ ERROR: App panicked during launch!"
+              cat /tmp/launch_test.log
+              exit 1
+            fi
+
+            echo "✓ App launched without panic"
+          fi
+
+          echo "=== Launch verification passed ==="
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
