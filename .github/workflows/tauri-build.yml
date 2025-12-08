@@ -1,0 +1,79 @@
+name: Tauri Build with Caching
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            name: 'macOS-arm64'
+          - platform: 'windows-latest'
+            args: ''
+            name: 'Windows-x64'
+
+    runs-on: ${{ matrix.platform }}
+    name: Build (${{ matrix.name }})
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'tauri-app/src-tauri -> target'
+          cache-on-failure: true
+
+      - name: Install root project dependencies
+        run: npm ci
+
+      - name: Install Tauri app dependencies
+        run: npm ci
+        working-directory: tauri-app
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: tauri-app
+          args: ${{ matrix.args }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GanttGen-Cached-${{ matrix.name }}
+          path: |
+            tauri-app/src-tauri/target/release/bundle/
+            tauri-app/src-tauri/target/*/release/bundle/
+          retention-days: 7
+          if-no-files-found: warn
