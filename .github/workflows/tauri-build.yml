@@ -124,20 +124,31 @@ jobs:
           node --version
           npm --version
 
-      - name: Configure Keychain for Build
+      - name: Build Tauri app (macOS with signing)
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        working-directory: tauri-app
         run: |
-          # Re-configure keychain for this shell session
+          # Configure keychain in the same shell that runs the build
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
           security default-keychain -s "$KEYCHAIN_PATH"
-          echo "Keychain configured for build step"
+          echo "Keychain configured, starting build..."
+          npm run tauri build -- --target aarch64-apple-darwin
 
-      - name: Build Tauri app
+      - name: Build Tauri app (macOS unsigned for PRs)
+        if: matrix.platform == 'macos-latest' && github.event_name == 'pull_request'
+        working-directory: tauri-app
+        run: |
+          echo "Building unsigned app for PR..."
+          npm run tauri build -- --target aarch64-apple-darwin
+
+      - name: Build Tauri app (Windows)
+        if: matrix.platform == 'windows-latest'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         with:
           projectPath: tauri-app
           args: ${{ matrix.args }}
