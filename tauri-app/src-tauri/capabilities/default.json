@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:path:default",
     "shell:allow-open",
     "dialog:default",
     "fs:allow-read",
@@ -22,7 +23,8 @@
         "$APPDATA/**",
         "$DESKTOP/**",
         "$DOCUMENT/**",
-        "$DOWNLOAD/**"
+        "$DOWNLOAD/**",
+        "$TEMP/**"
       ]
     }
   ]

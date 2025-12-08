@@ -34,16 +34,42 @@ fn get_scripts_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map(|p| p.parent().map(|pp| pp.join("scripts")).unwrap_or_default())
         .unwrap_or_default();
 
-    if dev_path.exists() {
+    if dev_path.exists() && dev_path.join("build.js").exists() {
         return Ok(dev_path);
     }
 
-    // In production, use bundled resources
-    app_handle
-        .path()
-        .resource_dir()
-        .map(|p| p.join("scripts"))
-        .map_err(|e| format!("Failed to get resource directory: {}", e))
+    // In production, try multiple possible locations for bundled resources
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        // Primary location: resources/scripts (explicit mapping in tauri.conf.json)
+        let scripts_path = resource_dir.join("scripts");
+        if scripts_path.exists() && scripts_path.join("build.js").exists() {
+            return Ok(scripts_path);
+        }
+
+        // Fallback 1: scripts directly in resource directory (flat structure)
+        if resource_dir.join("build.js").exists() {
+            return Ok(resource_dir.clone());
+        }
+
+        // Fallback 2: Check if scripts are in a _up_ directory (macOS .app bundle structure)
+        let macos_path = resource_dir.parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("Resources").join("scripts"));
+        if let Some(path) = macos_path {
+            if path.exists() && path.join("build.js").exists() {
+                return Ok(path);
+            }
+        }
+
+        // Return the expected path with a helpful error message
+        return Err(format!(
+            "Build script not found. Checked locations:\n  - {}\n  - {}/build.js\nPlease ensure the app is properly installed.",
+            scripts_path.display(),
+            resource_dir.display()
+        ));
+    }
+
+    Err("Failed to get resource directory. Please reinstall the application.".to_string())
 }
 
 /// Get Node.js executable path

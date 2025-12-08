@@ -10,46 +10,158 @@
     <!-- Header -->
     <header class="header">
         <div class="header-content">
-            <h1 class="logo">GanttGen</h1>
+            <div class="logo-section">
+                <svg class="sei-logo" width="48" height="32" viewBox="0 0 48 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- SEI Logo - Stylized wordmark -->
+                    <rect x="0" y="0" width="48" height="32" rx="4" fill="url(#sei-gradient)"/>
+                    <text x="24" y="22" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="700" fill="#FFFFF8">SEI</text>
+                    <defs>
+                        <linearGradient id="sei-gradient" x1="0" y1="0" x2="48" y2="32" gradientUnits="userSpaceOnUse">
+                            <stop offset="0%" stop-color="#F01840"/>
+                            <stop offset="100%" stop-color="#901226"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1 class="logo">GanttGen</h1>
+            </div>
             <span class="tagline">Data-driven Gantt Chart Generator</span>
         </div>
     </header>
 
     <!-- Main Content -->
     <main class="main-content">
-        <!-- File Input Section -->
-        <section class="section file-section">
+        <!-- Input Source Section -->
+        <section class="section input-section">
             <h2 class="section-title">
                 <span class="step-number">1</span>
-                Select Input File
+                Project Data
             </h2>
-            <div class="file-drop-zone" id="dropZone">
-                <div class="drop-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                </div>
-                <p class="drop-text">Drag and drop your file here</p>
-                <p class="drop-subtext">or</p>
-                <button class="btn btn-secondary" id="browseBtn">Browse Files</button>
-                <p class="file-types">Supported: .json, .xlsx</p>
-            </div>
-            <div class="selected-file" id="selectedFile" style="display: none;">
-                <div class="file-info">
-                    <svg class="file-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            
+            <!-- Input Mode Tabs -->
+            <div class="input-tabs">
+                <button class="tab-btn active" data-tab="file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                     </svg>
-                    <span class="file-name" id="fileName"></span>
-                </div>
-                <button class="btn-icon" id="clearFileBtn" title="Remove file">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
+                    Import File
                 </button>
+                <button class="tab-btn" data-tab="manual">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Manual Entry
+                </button>
+            </div>
+            
+            <!-- File Import Tab -->
+            <div class="tab-content active" id="fileTab">
+                <div class="file-drop-zone" id="dropZone">
+                    <div class="drop-icon">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <p class="drop-text">Drag and drop your file here</p>
+                    <p class="drop-subtext">or</p>
+                    <button class="btn btn-secondary" id="browseBtn">Browse Files</button>
+                    <p class="file-types">Supported: .json, .xlsx</p>
+                </div>
+                <div class="selected-file" id="selectedFile" style="display: none;">
+                    <div class="file-info">
+                        <svg class="file-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                        </svg>
+                        <span class="file-name" id="fileName"></span>
+                    </div>
+                    <button class="btn-icon" id="clearFileBtn" title="Remove file">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Manual Entry Tab -->
+            <div class="tab-content" id="manualTab">
+                <!-- Project Metadata -->
+                <div class="form-section">
+                    <h3 class="form-section-title">Project Settings</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="projectTitle">Project Title</label>
+                            <input type="text" id="projectTitle" value="PROJECT TIMELINE" placeholder="Enter project title">
+                        </div>
+                        <div class="form-group">
+                            <label for="timelineStart">Start Date</label>
+                            <input type="date" id="timelineStart">
+                        </div>
+                        <div class="form-group">
+                            <label for="timelineEnd">End Date</label>
+                            <input type="date" id="timelineEnd">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tasks -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <h3 class="form-section-title">Tasks</h3>
+                        <button class="btn btn-secondary btn-sm" id="addTaskBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Task
+                        </button>
+                    </div>
+                    <div class="tasks-list" id="tasksList">
+                        <!-- Tasks will be added here dynamically -->
+                    </div>
+                </div>
+                
+                <!-- Milestones -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <h3 class="form-section-title">Milestones</h3>
+                        <button class="btn btn-secondary btn-sm" id="addMilestoneBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Milestone
+                        </button>
+                    </div>
+                    <div class="milestones-list" id="milestonesList">
+                        <!-- Milestones will be added here dynamically -->
+                    </div>
+                </div>
+                
+                <!-- JSON Preview Toggle -->
+                <div class="form-section">
+                    <div class="form-section-header">
+                        <h3 class="form-section-title">JSON Preview</h3>
+                        <button class="btn btn-secondary btn-sm" id="toggleJsonBtn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg>
+                            Show JSON
+                        </button>
+                    </div>
+                    <div class="json-preview" id="jsonPreview" style="display: none;">
+                        <textarea id="jsonEditor" readonly></textarea>
+                        <div class="json-actions">
+                            <button class="btn btn-secondary btn-sm" id="copyJsonBtn">Copy JSON</button>
+                            <button class="btn btn-secondary btn-sm" id="saveJsonBtn">Save as File</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
