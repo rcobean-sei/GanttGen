@@ -613,7 +613,7 @@ async function exportPNG(htmlPath, pngPath) {
 }
 
 // Main function
-// Options: { palette: 'reds' | 'purples' | 'alternating' | null }
+// Options: { palette: 'reds' | 'purples' | 'alternating' | null, exportPng: boolean }
 async function build(inputPath, outputPath, options = {}) {
     const inputExt = path.extname(inputPath).toLowerCase();
     const isExcel = inputExt === '.xlsx' || inputExt === '.xls';
@@ -700,8 +700,9 @@ async function build(inputPath, outputPath, options = {}) {
     generateHTML(config, templatePath, htmlOutputPath);
     console.log(`✓ Generated HTML at ${htmlOutputPath}`);
     
-    // Generate PNG export with transparent background (if Playwright is available)
-    if (playwright) {
+    // Generate PNG export with transparent background (if requested and Playwright is available)
+    const shouldExportPng = options.exportPng !== false; // Default to true for CLI backwards compatibility
+    if (shouldExportPng && playwright) {
         const pngOutputPath = htmlOutputPath.replace(/\.html$/, '.png');
         console.log('✓ Exporting PNG...');
         try {
@@ -711,10 +712,12 @@ async function build(inputPath, outputPath, options = {}) {
             console.warn(`⚠️  PNG export failed: ${error.message}`);
             console.warn('   (HTML file was generated successfully)');
         }
-    } else {
+    } else if (shouldExportPng && !playwright) {
         console.log('ℹ️  Skipping PNG export (Playwright not installed)');
         console.log('   Install with: npm install @playwright/test');
         console.log('   Will use system Chrome/Edge if available, or download Chromium');
+    } else {
+        console.log('ℹ️  PNG export not requested');
     }
     
     // Optionally save JSON config
@@ -741,6 +744,8 @@ if (require.main === module) {
     const inputIndex = args.indexOf('--input') !== -1 ? args.indexOf('--input') : args.indexOf('-i');
     const outputIndex = args.indexOf('--output') !== -1 ? args.indexOf('--output') : args.indexOf('-o');
     const paletteIndex = args.indexOf('--palette') !== -1 ? args.indexOf('--palette') : args.indexOf('-p');
+    const pngFlag = args.includes('--png');
+    const noPngFlag = args.includes('--no-png');
     
     if (inputIndex === -1 || !args[inputIndex + 1]) {
         console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [options]');
@@ -749,6 +754,8 @@ if (require.main === module) {
         console.error('  --input, -i     Input file (JSON or XLSX) [required]');
         console.error('  --output, -o    Output HTML file (defaults to output/<inputname>_gantt_chart.html)');
         console.error('  --palette, -p   Color palette preset: reds, purples, alternating');
+        console.error('  --png           Export PNG image (default for CLI)');
+        console.error('  --no-png        Skip PNG export');
         console.error('');
         console.error('Palette presets:');
         console.error('  reds          Red gradient (RED 1 → RED 5) - warm, attention-grabbing');
@@ -767,8 +774,10 @@ if (require.main === module) {
     const palette = paletteIndex !== -1 && args[paletteIndex + 1]
         ? args[paletteIndex + 1]
         : null;
+    // Default to true for CLI (backwards compatible), but respect --no-png flag
+    const exportPng = noPngFlag ? false : true;
     
-    build(inputPath, outputPath, { palette }).catch(error => {
+    build(inputPath, outputPath, { palette, exportPng }).catch(error => {
         console.error('✗ Error:', error.message);
         process.exit(1);
     });

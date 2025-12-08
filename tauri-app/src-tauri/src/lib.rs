@@ -171,6 +171,13 @@ async fn generate_gantt(
         args.push(output.clone());
     }
 
+    // Add PNG export flag
+    if options.export_png {
+        args.push("--png".to_string());
+    } else {
+        args.push("--no-png".to_string());
+    }
+
     let _ = window.emit(
         "generation-progress",
         ProgressUpdate {

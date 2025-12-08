@@ -5,7 +5,7 @@ const { invoke } = window.__TAURI__.core;
 const { open, save } = window.__TAURI__.dialog;
 const { listen } = window.__TAURI__.event;
 const { open: shellOpen } = window.__TAURI__.shell;
-const { dirname, join: pathJoin, tempDir } = window.__TAURI__.path;
+const { dirname, join: pathJoin, tempDir, desktopDir } = window.__TAURI__.path;
 const { writeTextFile } = window.__TAURI__.fs;
 
 // State
@@ -81,7 +81,33 @@ async function init() {
     setupManualEntry();
     await setupProgressListener();
     initializeDefaultDates();
+    await initializeDefaultOutputFolder();
     updateGenerateButton();
+}
+
+// Generate a date-time stamp for folder naming
+function getDateTimeStamp() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}_${hours}-${minutes}`;
+}
+
+// Initialize default output folder to Desktop with date-time stamp
+async function initializeDefaultOutputFolder() {
+    try {
+        const desktop = await desktopDir();
+        const folderName = `GanttGen_${getDateTimeStamp()}`;
+        const defaultFolder = await pathJoin(desktop, folderName);
+        state.outputDir = defaultFolder;
+        elements.outputDir.value = defaultFolder;
+    } catch (error) {
+        console.error('Failed to set default output folder:', error);
+        // Leave outputDir as null, user will need to select manually
+    }
 }
 
 // Initialize default dates for manual entry
@@ -487,6 +513,12 @@ function addSubtask(taskIndex, subtaskText) {
     state.manualData.tasks[taskIndex].subtasks.push(subtaskText);
     renderTasks();
     updateJsonPreview();
+    
+    // Refocus the subtask input for this task so user can add another
+    const subtaskInput = elements.tasksList.querySelector(`.subtask-input[data-task-index="${taskIndex}"]`);
+    if (subtaskInput) {
+        subtaskInput.focus();
+    }
 }
 
 function removeSubtask(taskIndex, subtaskIndex) {
@@ -932,29 +964,60 @@ function resetResults() {
 }
 
 async function openOutputFolder() {
-    if (state.outputDir) {
+    let folderPath = null;
+    
+    if (state.lastResult?.html_path) {
         try {
-            await shellOpen(state.outputDir);
+            folderPath = await dirname(state.lastResult.html_path);
+        } catch (error) {
+            console.error('Failed to get directory from html_path:', error);
+        }
+    }
+    
+    if (!folderPath && state.outputDir) {
+        folderPath = state.outputDir;
+    }
+    
+    if (folderPath) {
+        try {
+            // Use file:// URL format for folders on macOS
+            const folderUrl = folderPath.startsWith('file://') ? folderPath : `file://${folderPath}`;
+            await shellOpen(folderUrl);
         } catch (error) {
             console.error('Failed to open folder:', error);
+            // Fallback: try without file:// prefix
+            try {
+                await shellOpen(folderPath);
+            } catch (fallbackError) {
+                console.error('Fallback also failed:', fallbackError);
+                alert(`Unable to open folder: ${folderPath}\nError: ${error.message || error}`);
+            }
         }
-    } else if (state.lastResult?.html_path) {
-        try {
-            const dir = await dirname(state.lastResult.html_path);
-            await shellOpen(dir);
-        } catch (error) {
-            console.error('Failed to open folder:', error);
-        }
+    } else {
+        alert('No output folder available. Generate a chart first.');
     }
 }
 
 async function viewHtmlFile() {
     if (state.lastResult?.html_path) {
         try {
-            await shellOpen(state.lastResult.html_path);
+            // Use file:// URL format for local files
+            const fileUrl = state.lastResult.html_path.startsWith('file://') 
+                ? state.lastResult.html_path 
+                : `file://${state.lastResult.html_path}`;
+            await shellOpen(fileUrl);
         } catch (error) {
             console.error('Failed to open HTML file:', error);
+            // Fallback: try without file:// prefix
+            try {
+                await shellOpen(state.lastResult.html_path);
+            } catch (fallbackError) {
+                console.error('Fallback also failed:', fallbackError);
+                alert(`Unable to open file: ${state.lastResult.html_path}\nError: ${error.message || error}`);
+            }
         }
+    } else {
+        alert('No HTML file available. Generate a chart first.');
     }
 }
 
