@@ -33,12 +33,13 @@
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
+      "icons/icon.png",
       "icons/icon.ico"
     ],
-    "resources": [
-      "../../scripts/*",
-      "../../templates/*"
-    ],
+    "resources": {
+      "../../scripts": "scripts",
+      "../../templates": "templates"
+    },
     "shortDescription": "Data-driven Gantt chart generator with SEI styling",
     "longDescription": "GanttGen is a professional Gantt chart generator that creates presentation-ready timeline visualizations from JSON or Excel input files. Features the SEI brand color palette."
   },

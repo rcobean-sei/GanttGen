@@ -34,26 +34,102 @@ fn get_scripts_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
         .map(|p| p.parent().map(|pp| pp.join("scripts")).unwrap_or_default())
         .unwrap_or_default();
 
-    if dev_path.exists() {
+    if dev_path.exists() && dev_path.join("build.js").exists() {
         return Ok(dev_path);
     }
 
-    // In production, use bundled resources
-    app_handle
-        .path()
-        .resource_dir()
-        .map(|p| p.join("scripts"))
-        .map_err(|e| format!("Failed to get resource directory: {}", e))
+    // In production, try multiple possible locations for bundled resources
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        // Primary location: resources/scripts (explicit mapping in tauri.conf.json)
+        let scripts_path = resource_dir.join("scripts");
+        if scripts_path.exists() && scripts_path.join("build.js").exists() {
+            return Ok(scripts_path);
+        }
+
+        // Fallback 1: scripts directly in resource directory (flat structure)
+        if resource_dir.join("build.js").exists() {
+            return Ok(resource_dir.clone());
+        }
+
+        // Fallback 2: Check if scripts are in a _up_ directory (macOS .app bundle structure)
+        let macos_path = resource_dir.parent()
+            .and_then(|p| p.parent())
+            .map(|p| p.join("Resources").join("scripts"));
+        if let Some(path) = macos_path {
+            if path.exists() && path.join("build.js").exists() {
+                return Ok(path);
+            }
+        }
+
+        // Return the expected path with a helpful error message
+        return Err(format!(
+            "Build script not found. Checked locations:\n  - {}\n  - {}/build.js\nPlease ensure the app is properly installed.",
+            scripts_path.display(),
+            resource_dir.display()
+        ));
+    }
+
+    Err("Failed to get resource directory. Please reinstall the application.".to_string())
 }
 
 /// Get Node.js executable path
-fn get_node_path() -> String {
-    // Try common node paths
-    if cfg!(target_os = "windows") {
-        std::env::var("NODE_PATH").unwrap_or_else(|_| "node.exe".to_string())
-    } else {
-        std::env::var("NODE_PATH").unwrap_or_else(|_| "node".to_string())
+fn get_node_path() -> Result<String, String> {
+    // First check if NODE_PATH environment variable is set
+    if let Ok(path) = std::env::var("NODE_PATH") {
+        if std::path::Path::new(&path).exists() {
+            return Ok(path);
+        }
     }
+
+    // Build list of common node locations
+    let home = std::env::var("HOME").unwrap_or_default();
+    
+    let common_paths: Vec<String> = if cfg!(target_os = "windows") {
+        vec![
+            "node.exe".to_string(),
+            "C:\\Program Files\\nodejs\\node.exe".to_string(),
+            "C:\\Program Files (x86)\\nodejs\\node.exe".to_string(),
+        ]
+    } else {
+        vec![
+            "/usr/local/bin/node".to_string(),
+            "/opt/homebrew/bin/node".to_string(),
+            "/usr/bin/node".to_string(),
+            "/opt/local/bin/node".to_string(),
+            // NVM paths
+            format!("{}/.nvm/current/bin/node", home),
+            format!("{}/.nvm/versions/node/*/bin/node", home), // Common NVM structure
+            // Volta paths  
+            format!("{}/.volta/bin/node", home),
+        ]
+    };
+
+    // Try each path
+    for path in &common_paths {
+        if std::path::Path::new(path).exists() {
+            return Ok(path.clone());
+        }
+    }
+
+    // Try using 'which' command on Unix systems to find node
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = std::process::Command::new("sh")
+            .args(["-c", "which node 2>/dev/null || command -v node 2>/dev/null"])
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() && std::path::Path::new(&path).exists() {
+                    return Ok(path);
+                }
+            }
+        }
+    }
+
+    // Last resort: try 'node' and hope it's in PATH
+    // This won't work in Tauri bundled app without a login shell
+    Err("Node.js not found. Please install Node.js and ensure it's in your PATH, or set the NODE_PATH environment variable.".to_string())
 }
 
 #[tauri::command]
@@ -81,7 +157,7 @@ async fn generate_gantt(
         },
     );
 
-    let node = get_node_path();
+    let node = get_node_path()?;
     let mut args = vec![
         build_script.to_string_lossy().to_string(),
         "--input".to_string(),
