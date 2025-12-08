@@ -38,6 +38,7 @@
     ],
     "resources": {
       "../../scripts": "scripts",
+      "../../scripts/node_modules": "scripts/node_modules",
       "../../templates": "templates"
     },
     "shortDescription": "Build Gantt charts for SEI documents",
