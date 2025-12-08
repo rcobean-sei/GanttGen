@@ -40,7 +40,7 @@
       "../../scripts": "scripts",
       "../../templates": "templates"
     },
-    "shortDescription": "Data-driven Gantt chart generator with SEI styling",
+    "shortDescription": "Build Gantt charts for SEI documents",
     "longDescription": "GanttGen is a professional Gantt chart generator that creates presentation-ready timeline visualizations from JSON or Excel input files. Features the SEI brand color palette."
   },
   "plugins": {

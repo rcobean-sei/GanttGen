@@ -104,7 +104,7 @@ body {
 }
 
 .sei-logo {
-    height: 28px;
+    height: 56px;
     width: auto;
     flex-shrink: 0;
 }
@@ -963,6 +963,8 @@ body {
     height: 32px;
     padding: var(--spacing-xs) var(--spacing-sm);
     font-size: 0.8125rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
 }
 
 .subtask-add-form .btn {
