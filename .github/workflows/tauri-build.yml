@@ -57,6 +57,10 @@ jobs:
       - name: Install root project dependencies
         run: npm ci
 
+      - name: Install scripts dependencies
+        run: npm ci
+        working-directory: scripts
+
       - name: Install Tauri app dependencies
         run: npm ci
         working-directory: tauri-app
