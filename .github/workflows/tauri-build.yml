@@ -46,6 +46,7 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+          cache: false
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
