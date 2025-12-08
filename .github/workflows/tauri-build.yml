@@ -157,8 +157,16 @@ jobs:
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
         run: |
           echo "=== Verifying code signature ==="
-          APP_PATH=$(find tauri-app/src-tauri/target -name "GanttGen.app" -type d 2>/dev/null | head -n 1)
-          if [ -z "$APP_PATH" ]; then
+          # Check the target-specific path first
+          APP_PATH="tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/GanttGen.app"
+          if [ ! -d "$APP_PATH" ]; then
+            # Fallback to find
+            echo "Searching for GanttGen.app..."
+            find tauri-app/src-tauri/target -name "*.app" -type d 2>/dev/null || true
+            APP_PATH=$(find tauri-app/src-tauri/target -name "GanttGen.app" -type d 2>/dev/null | head -n 1)
+          fi
+
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
             echo "::error::GanttGen.app not found!"
             exit 1
           fi
