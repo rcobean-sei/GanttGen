@@ -28,7 +28,14 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["dmg"],
+    "macOS": {
+      "dmg": {
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 },
+        "windowSize": { "width": 660, "height": 400 }
+      }
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -38,9 +45,10 @@
     ],
     "resources": {
       "../../scripts": "scripts",
+      "../../scripts/node_modules": "scripts/node_modules",
       "../../templates": "templates"
     },
-    "shortDescription": "Data-driven Gantt chart generator with SEI styling",
+    "shortDescription": "Build Gantt charts for SEI documents",
     "longDescription": "GanttGen is a professional Gantt chart generator that creates presentation-ready timeline visualizations from JSON or Excel input files. Features the SEI brand color palette."
   },
   "plugins": {

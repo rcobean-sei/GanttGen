@@ -57,6 +57,10 @@ jobs:
       - name: Install root project dependencies
         run: npm ci
 
+      - name: Install scripts dependencies
+        run: npm ci
+        working-directory: scripts
+
       - name: Install Tauri app dependencies
         run: npm ci
         working-directory: tauri-app
@@ -64,6 +68,17 @@ jobs:
       - name: Generate Icons
         run: npm run tauri:icon src-tauri/icons/icon.png
         working-directory: tauri-app
+
+      - name: Ensure Node.js available for Tauri action
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Verify node and npm on runner
+        run: |
+          node --version
+          npm --version
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0

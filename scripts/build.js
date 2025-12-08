@@ -718,9 +718,19 @@ async function build(inputPath, outputPath, options = {}) {
     }
     
     // Optionally save JSON config
-    const jsonOutputPath = path.join(__dirname, '..', 'config', 'project.json');
-    fs.writeFileSync(jsonOutputPath, JSON.stringify(config, null, 2), 'utf8');
-    console.log(`✓ Saved config to ${jsonOutputPath}`);
+    // In CLI/dev this writes to ./config/project.json; in bundled apps the
+    // Resources directory may be read-only, so treat failures as non-fatal.
+    try {
+        const configDir = path.join(__dirname, '..', 'config');
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
+        const jsonOutputPath = path.join(configDir, 'project.json');
+        fs.writeFileSync(jsonOutputPath, JSON.stringify(config, null, 2), 'utf8');
+        console.log(`✓ Saved config to ${jsonOutputPath}`);
+    } catch (error) {
+        console.warn(`ℹ️  Skipping config save (non-fatal): ${error.message}`);
+    }
     
     console.log(`\n  To preview: open ${htmlOutputPath} in a browser`);
 }
