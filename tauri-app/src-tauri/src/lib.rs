@@ -81,30 +81,33 @@ fn get_node_path() -> Result<String, String> {
         }
     }
 
-    // Common node locations on macOS/Linux
-    let common_paths = if cfg!(target_os = "windows") {
+    // Build list of common node locations
+    let home = std::env::var("HOME").unwrap_or_default();
+    
+    let common_paths: Vec<String> = if cfg!(target_os = "windows") {
         vec![
-            "node.exe",
-            "C:\\Program Files\\nodejs\\node.exe",
-            "C:\\Program Files (x86)\\nodejs\\node.exe",
+            "node.exe".to_string(),
+            "C:\\Program Files\\nodejs\\node.exe".to_string(),
+            "C:\\Program Files (x86)\\nodejs\\node.exe".to_string(),
         ]
     } else {
         vec![
-            "/usr/local/bin/node",
-            "/opt/homebrew/bin/node",
-            "/usr/bin/node",
-            "/opt/local/bin/node",
+            "/usr/local/bin/node".to_string(),
+            "/opt/homebrew/bin/node".to_string(),
+            "/usr/bin/node".to_string(),
+            "/opt/local/bin/node".to_string(),
             // NVM paths
-            &format!("{}/.nvm/current/bin/node", std::env::var("HOME").unwrap_or_default()),
+            format!("{}/.nvm/current/bin/node", home),
+            format!("{}/.nvm/versions/node/*/bin/node", home), // Common NVM structure
             // Volta paths  
-            &format!("{}/.volta/bin/node", std::env::var("HOME").unwrap_or_default()),
+            format!("{}/.volta/bin/node", home),
         ]
     };
 
     // Try each path
-    for path in common_paths {
+    for path in &common_paths {
         if std::path::Path::new(path).exists() {
-            return Ok(path.to_string());
+            return Ok(path.clone());
         }
     }
 

@@ -28,12 +28,6 @@ jobs:
           - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
             name: 'macOS-arm64'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            name: 'macOS-x64'
-          - platform: 'ubuntu-22.04'
-            args: ''
-            name: 'Linux-x64'
           - platform: 'windows-latest'
             args: ''
             name: 'Windows-x64'
@@ -54,13 +48,7 @@ jobs:
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-          target: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-
-      - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf xvfb x11-utils
+          target: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
       - name: Import Apple Code Signing Certificate
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
@@ -195,74 +183,6 @@ jobs:
 
             echo "✓ App launched without crash (exit code: $EXIT_CODE)"
 
-          elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
-            # Find the Linux binary
-            BINARY=$(find tauri-app/src-tauri/target -name "ganttgen-app" -type f -executable 2>/dev/null | head -n 1)
-            if [ -z "$BINARY" ]; then
-              echo "ERROR: ganttgen-app binary not found!"
-              exit 1
-            fi
-            echo "Testing binary: $BINARY"
-
-            export RUST_BACKTRACE=1
-
-            # Start Xvfb (virtual display) for headless GTK testing
-            export DISPLAY=:99
-            Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
-            XVFB_PID=$!
-            
-            # Wait for Xvfb to be ready (up to 5 seconds)
-            XVFB_READY=false
-            for i in {1..10}; do
-              if xdpyinfo -display :99 >/dev/null 2>&1; then
-                echo "Xvfb is ready"
-                XVFB_READY=true
-                break
-              fi
-              sleep 0.5
-            done
-            
-            if [ "$XVFB_READY" != "true" ]; then
-              echo "ERROR: Xvfb failed to start within 5 seconds"
-              kill $XVFB_PID 2>/dev/null || true
-              exit 1
-            fi
-
-            # Run in background with timeout (Linux has 'timeout' command)
-            set +e
-            timeout 2s "$BINARY" > /tmp/launch_test.log 2>&1
-            EXIT_CODE=$?
-            set -e
-
-            # Clean up Xvfb
-            if [ -n "$XVFB_PID" ]; then
-              kill $XVFB_PID 2>/dev/null || true
-              wait $XVFB_PID 2>/dev/null || true
-            fi
-
-            echo "Exit code: $EXIT_CODE"
-            echo "Output captured:"
-            cat /tmp/launch_test.log
-
-            # Exit code 124 = timeout (expected)
-            # Exit code 143 = SIGTERM (expected)
-            if [ $EXIT_CODE -ne 0 ] && [ $EXIT_CODE -ne 124 ] && [ $EXIT_CODE -ne 143 ]; then
-              echo "❌ ERROR: App exited with code $EXIT_CODE (crash detected)"
-              exit 1
-            fi
-
-            if grep -q "panicked at" /tmp/launch_test.log; then
-              echo "❌ ERROR: App panicked during launch!"
-              exit 1
-            fi
-
-            if grep -qi "error while running tauri application" /tmp/launch_test.log; then
-              echo "❌ ERROR: Tauri application error detected!"
-              exit 1
-            fi
-
-            echo "✓ App launched without crash (exit code: $EXIT_CODE)"
-
           elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
             # Find the Windows executable
             BINARY=$(find tauri-app/src-tauri/target -name "ganttgen-app.exe" -type f 2>/dev/null | head -n 1)
@@ -306,13 +226,51 @@ jobs:
 
           echo "=== Launch verification passed ==="
 
-      - name: Upload artifacts
+      - name: Find and prepare artifacts
+        id: artifacts
+        shell: bash
+        run: |
+          echo "=== Finding build artifacts ==="
+          
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            # Find the DMG file
+            DMG_PATH=$(find tauri-app/src-tauri/target -name "*.dmg" -type f 2>/dev/null | head -n 1)
+            if [ -n "$DMG_PATH" ]; then
+              echo "Found DMG: $DMG_PATH"
+              mkdir -p artifacts
+              cp "$DMG_PATH" artifacts/
+              echo "artifact_path=artifacts" >> $GITHUB_OUTPUT
+            else
+              echo "WARNING: DMG not found"
+              echo "artifact_path=tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg" >> $GITHUB_OUTPUT
+            fi
+          elif [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            # Find MSI and EXE installers
+            mkdir -p artifacts
+            find tauri-app/src-tauri/target -name "*.msi" -type f -exec cp {} artifacts/ \; 2>/dev/null || true
+            find tauri-app/src-tauri/target -name "*_x64-setup.exe" -type f -exec cp {} artifacts/ \; 2>/dev/null || true
+            echo "artifact_path=artifacts" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "=== Artifact contents ==="
+          ls -la artifacts/ 2>/dev/null || echo "No artifacts directory"
+
+      - name: Upload macOS DMG
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GanttGen-${{ matrix.name }}-DMG
+          path: ${{ steps.artifacts.outputs.artifact_path }}/*.dmg
+          if-no-files-found: warn
+
+      - name: Upload Windows installers
+        if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: GanttGen-${{ matrix.name }}
           path: |
-            tauri-app/src-tauri/target/release/bundle/
-            tauri-app/src-tauri/target/*/release/bundle/
+            ${{ steps.artifacts.outputs.artifact_path }}/*.msi
+            ${{ steps.artifacts.outputs.artifact_path }}/*.exe
           if-no-files-found: warn
 
       - name: Cleanup Keychain
@@ -334,11 +292,19 @@ jobs:
         with:
           path: artifacts
 
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded artifacts ==="
+          find artifacts -type f | head -50
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: artifacts/**/*
+          files: |
+            artifacts/**/*.dmg
+            artifacts/**/*.msi
+            artifacts/**/*.exe
           draft: true
           generate_release_notes: true
         env:
