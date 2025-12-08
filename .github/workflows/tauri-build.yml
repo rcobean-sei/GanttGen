@@ -51,7 +51,7 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: 'tauri-app/src-tauri -> target'
+          workspaces: 'tauri-app/src-tauri'
           cache-on-failure: true
 
       - name: Install root project dependencies
@@ -59,6 +59,10 @@ jobs:
 
       - name: Install Tauri app dependencies
         run: npm ci
+        working-directory: tauri-app
+
+      - name: Generate Icons
+        run: npm run tauri:icon src-tauri/icons/icon.png
         working-directory: tauri-app
 
       - name: Build Tauri app
