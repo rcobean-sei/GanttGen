@@ -8,12 +8,6 @@ on:
     paths:
       - 'tauri-app/**'
       - '.github/workflows/build-tauri-app.yml'
-  pull_request:
-    branches:
-      - main
-    paths:
-      - 'tauri-app/**'
-      - '.github/workflows/build-tauri-app.yml'
   workflow_dispatch:
 
 env:
