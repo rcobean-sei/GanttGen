@@ -72,8 +72,9 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: GanttGen-${{ matrix.name }}
+          name: GanttGen-Cached-${{ matrix.name }}
           path: |
             tauri-app/src-tauri/target/release/bundle/
+            tauri-app/src-tauri/target/*/release/bundle/
           retention-days: 7
           if-no-files-found: warn
