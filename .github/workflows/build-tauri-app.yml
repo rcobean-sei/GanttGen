@@ -21,6 +21,8 @@ env:
 
 jobs:
   build:
+    # Non-cached builds disabled per user request
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -284,7 +286,8 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Disabled since build job is disabled
+    if: false
 
     steps:
       - name: Download all artifacts
