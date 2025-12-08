@@ -398,8 +398,35 @@ function renderTasks() {
                 </div>
             </div>
             <div class="subtasks-section">
-                <label>Subtasks (one per line or comma-separated)</label>
-                <textarea class="subtasks-input task-subtasks-input" data-index="${index}" placeholder="Enter subtasks...">${task.subtasks.join('\n')}</textarea>
+                <label>Subtasks</label>
+                <div class="subtasks-container">
+                    <div class="subtasks-list" data-task-index="${index}">
+                        ${task.subtasks.length === 0 
+                            ? '<span class="subtasks-empty">No subtasks added</span>'
+                            : task.subtasks.map((subtask, subIndex) => `
+                                <span class="subtask-chip" data-task-index="${index}" data-subtask-index="${subIndex}">
+                                    ${escapeHtml(subtask)}
+                                    <button class="remove-subtask" data-task-index="${index}" data-subtask-index="${subIndex}" title="Remove subtask">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                </span>
+                            `).join('')
+                        }
+                    </div>
+                    <div class="subtask-add-form">
+                        <input type="text" class="subtask-input" data-task-index="${index}" placeholder="Add a subtask...">
+                        <button class="btn btn-secondary btn-sm add-subtask-btn" data-task-index="${index}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     `).join('');
@@ -417,12 +444,55 @@ function renderTasks() {
     elements.tasksList.querySelectorAll('.task-hours-input').forEach(input => {
         input.addEventListener('input', (e) => updateTask(parseInt(e.target.dataset.index), 'hours', e.target.value));
     });
-    elements.tasksList.querySelectorAll('.task-subtasks-input').forEach(input => {
-        input.addEventListener('input', (e) => updateTask(parseInt(e.target.dataset.index), 'subtasks', e.target.value));
-    });
     elements.tasksList.querySelectorAll('.delete-task-btn').forEach(btn => {
         btn.addEventListener('click', (e) => removeTask(parseInt(e.currentTarget.dataset.index)));
     });
+    
+    // Subtask event listeners
+    elements.tasksList.querySelectorAll('.add-subtask-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const taskIndex = parseInt(e.currentTarget.dataset.taskIndex);
+            const input = elements.tasksList.querySelector(`.subtask-input[data-task-index="${taskIndex}"]`);
+            if (input && input.value.trim()) {
+                addSubtask(taskIndex, input.value.trim());
+                input.value = '';
+            }
+        });
+    });
+    
+    elements.tasksList.querySelectorAll('.subtask-input').forEach(input => {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const taskIndex = parseInt(e.target.dataset.taskIndex);
+                if (e.target.value.trim()) {
+                    addSubtask(taskIndex, e.target.value.trim());
+                    e.target.value = '';
+                }
+            }
+        });
+    });
+    
+    elements.tasksList.querySelectorAll('.remove-subtask').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const taskIndex = parseInt(e.currentTarget.dataset.taskIndex);
+            const subtaskIndex = parseInt(e.currentTarget.dataset.subtaskIndex);
+            removeSubtask(taskIndex, subtaskIndex);
+        });
+    });
+}
+
+function addSubtask(taskIndex, subtaskText) {
+    state.manualData.tasks[taskIndex].subtasks.push(subtaskText);
+    renderTasks();
+    updateJsonPreview();
+}
+
+function removeSubtask(taskIndex, subtaskIndex) {
+    state.manualData.tasks[taskIndex].subtasks.splice(subtaskIndex, 1);
+    renderTasks();
+    updateJsonPreview();
 }
 
 function addMilestone() {

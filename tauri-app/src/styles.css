@@ -104,9 +104,9 @@ body {
 }
 
 .sei-logo {
+    height: 28px;
+    width: auto;
     flex-shrink: 0;
-    border-radius: var(--radius-sm);
-    box-shadow: 0 2px 8px rgba(240, 24, 64, 0.3);
 }
 
 .logo {
@@ -791,18 +791,37 @@ body {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
     padding: var(--spacing-sm) var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
     font-size: 0.875rem;
+    font-family: inherit;
     background: white;
     color: var(--text-primary);
     transition: border-color var(--transition-fast);
+    height: 38px;
+    line-height: 1.5;
+}
+
+.form-group textarea {
+    height: auto;
+    min-height: 60px;
+}
+
+.form-group select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23705E74' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
 }
 
 .form-group input:focus,
-.form-group textarea:focus {
+.form-group textarea:focus,
+.form-group select:focus {
     outline: none;
     border-color: var(--purple-3);
 }
@@ -876,18 +895,85 @@ body {
     border-top: 1px dashed var(--border-color);
 }
 
-.subtasks-section label {
+.subtasks-section > label {
     font-size: 0.8125rem;
     font-weight: 500;
     color: var(--text-secondary);
     display: block;
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
 }
 
-.subtasks-input {
-    width: 100%;
-    min-height: 60px;
-    resize: vertical;
+/* Subtask chips/tags system */
+.subtasks-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.subtasks-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
+}
+
+.subtask-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.subtask-chip:hover {
+    border-color: var(--purple-3);
+}
+
+.subtask-chip .remove-subtask {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all var(--transition-fast);
+}
+
+.subtask-chip .remove-subtask:hover {
+    background: rgba(240, 24, 64, 0.1);
+    color: var(--red-1);
+}
+
+.subtask-add-form {
+    display: flex;
+    gap: var(--spacing-xs);
+}
+
+.subtask-add-form input {
+    flex: 1;
+    height: 32px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.8125rem;
+}
+
+.subtask-add-form .btn {
+    height: 32px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+}
+
+.subtasks-empty {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 /* JSON Preview */
