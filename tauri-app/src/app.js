@@ -1548,16 +1548,28 @@ async function loadBuildInfo() {
     try {
         const buildInfo = await invoke('get_build_info');
         const footer = document.querySelector('.footer p');
-        
-        if (footer) {
-            if (buildInfo.is_release) {
-                // Release build - show standard version
-                footer.textContent = 'GanttGen v1.0.0 - SEI Brand Styling';
-            } else {
-                // Development build - show build number
-                footer.textContent = `GanttGen v1.0.0 - SEI Brand Styling | Build ${buildInfo.datetime}_${buildInfo.commit}`;
-            }
+        if (!footer) return;
+
+        if (buildInfo.is_release) {
+            footer.textContent = '';
+            return;
         }
+
+        const formatted = (() => {
+            const date = new Date(buildInfo.datetime.replace('_', 'T'));
+            if (isNaN(date.getTime())) {
+                return buildInfo.datetime;
+            }
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            const hh = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            return `${mm}-${dd}-${yyyy} ${hh}:${min}:${ss}`;
+        })();
+
+        footer.textContent = `${buildInfo.branch}:${buildInfo.commit_short} (${formatted})`;
     } catch (error) {
         console.error('Failed to load build info:', error);
         // Fallback to default if build info fails to load

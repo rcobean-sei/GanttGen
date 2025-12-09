@@ -19,6 +19,7 @@ fn generate_build_info() {
     
     // Get git commit hash (short, 7 chars)
     let commit = get_git_commit().unwrap_or_else(|| "unknown".to_string());
+    let branch = get_git_branch().unwrap_or_else(|| "detached".to_string());
     
     // Check if this is a release build (tagged commit)
     let is_release = check_is_release();
@@ -26,6 +27,7 @@ fn generate_build_info() {
     // Allow environment variable overrides
     let datetime = env::var("BUILD_DATETIME").unwrap_or(datetime);
     let commit = env::var("BUILD_COMMIT").unwrap_or(commit);
+    let branch = env::var("BUILD_BRANCH").unwrap_or(branch);
     let is_release = env::var("IS_RELEASE")
         .map(|v| v == "true" || v == "1")
         .unwrap_or(is_release);
@@ -36,9 +38,10 @@ fn generate_build_info() {
 
 pub const BUILD_DATETIME: &str = "{}";
 pub const BUILD_COMMIT: &str = "{}";
+pub const BUILD_BRANCH: &str = "{}";
 pub const IS_RELEASE: bool = {};
 "#,
-        datetime, commit, is_release
+        datetime, commit, branch, is_release
     );
     
     fs::write(&dest_path, build_info).expect("Failed to write build_info.rs");
@@ -62,6 +65,22 @@ fn get_git_commit() -> Option<String> {
         }
     }
     
+    None
+}
+
+fn get_git_branch() -> Option<String> {
+    let output = Command::new("git")
+        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let branch = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !branch.is_empty() {
+            return Some(branch);
+        }
+    }
+
     None
 }
 

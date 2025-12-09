@@ -54,6 +54,8 @@ pub struct LogEntry {
 pub struct BuildInfo {
     pub datetime: String,
     pub commit: String,
+    pub commit_short: String,
+    pub branch: String,
     pub is_release: bool,
 }
 
@@ -1165,6 +1167,8 @@ fn get_build_info() -> BuildInfo {
     BuildInfo {
         datetime: BUILD_DATETIME.to_string(),
         commit: BUILD_COMMIT.to_string(),
+        commit_short: BUILD_COMMIT.chars().take(7).collect(),
+        branch: BUILD_BRANCH.to_string(),
         is_release: IS_RELEASE,
     }
 }
