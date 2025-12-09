@@ -689,9 +689,9 @@ if (require.main === module) {
     const pngFlag = args.includes('--png');
     const noPngFlag = args.includes('--no-png');
     
-    // Validate input argument exists and is not empty/whitespace
+    // Validate input argument exists and is not empty/whitespace/drive-letter-only
     const inputArg = args[inputIndex + 1];
-    if (inputIndex === -1 || !inputArg || typeof inputArg !== 'string' || inputArg.trim() === '') {
+    if (inputIndex === -1 || !isValidPath(inputArg)) {
         console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [options]');
         console.error('');
         console.error('Options:');
