@@ -977,13 +977,11 @@ async fn install_dependencies(
     }
 
     if status.success() {
-        install_playwright_runtime(&app_handle, &window, &npm_cmd, &node_path, &deps_dir).await?;
-
         let _ = window.emit(
             "install-progress",
             InstallProgress {
                 stage: "Complete".to_string(),
-                message: "Dependencies installed successfully. PNG export is ready.".to_string(),
+                message: "Dependencies installed. Install the internal browser to enable PNG export.".to_string(),
                 progress: 100,
                 complete: true,
                 error: None,

@@ -648,7 +648,7 @@ Or install all browsers:
 npx playwright install
 ```
 
-**Note**: PNG export ships with its own Playwright-managed Chromium. When you click **Install Dependencies** inside the desktop app (or run `npx playwright install chromium` for CLI use), the required browser is downloaded automatically—no need for system Chrome/Edge. If the browser runtime ever goes missing, the setup overlay exposes an **Install Internal Browser (PNG)** button to reinstall it. The `npx playwright install` commands above are only required when running the Playwright test suites or preparing the CLI.
+**Note**: PNG export ships with its own Playwright-managed Chromium. After installing dependencies in the desktop app, use the **Install Internal Browser (PNG)** button (visible whenever the runtime is missing) to download the browser—no need for system Chrome/Edge. CLI users should run `npx playwright install chromium` once to prepare PNG export or test suites.
 
 ---
 
