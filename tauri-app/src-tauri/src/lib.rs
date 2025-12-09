@@ -234,6 +234,26 @@ fn get_node_modules_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
     Err("Dependencies not installed. Please use the Setup button to install required dependencies.".to_string())
 }
 
+fn get_browser_install_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    if let Ok(deps_dir) = get_dependencies_dir(app_handle) {
+        let path = deps_dir.join("playwright-browsers");
+        if path.exists() {
+            return Some(path);
+        }
+    }
+
+    if let Ok(scripts_dir) = get_scripts_dir(app_handle) {
+        if let Some(root) = scripts_dir.parent() {
+            let path = root.join("node_modules").join(".playwright");
+            if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    None
+}
+
 /// Get Node.js executable path
 fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
     // First check for bundled Node.js in the resource directory
