@@ -72,6 +72,7 @@ fn emit_log(window: &tauri::Window, level: &str, source: &str, message: &str) {
 }
 
 /// Emit a log entry with error details
+#[allow(dead_code)]
 fn emit_error_log(window: &tauri::Window, source: &str, error: &dyn std::error::Error) {
     let message = format!("{}: {}", error, error.source().map(|e| format!(" (caused by: {})", e)).unwrap_or_default());
     emit_log(window, "error", source, &message);
