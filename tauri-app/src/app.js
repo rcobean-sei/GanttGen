@@ -20,8 +20,6 @@ const setupElements = {
     reqNpmStatus: document.getElementById('reqNpmStatus'),
     reqDeps: document.getElementById('reqDeps'),
     reqDepsStatus: document.getElementById('reqDepsStatus'),
-    reqBrowser: document.getElementById('reqBrowser'),
-    reqBrowserStatus: document.getElementById('reqBrowserStatus'),
     recheckBtn: document.getElementById('recheckDepsBtn'),
     installBtn: document.getElementById('installDepsBtn'),
     setupError: document.getElementById('setupError'),
@@ -97,6 +95,9 @@ const elements = {
     viewPngBtn: document.getElementById('viewPngBtn'),
     tryAgainBtn: document.getElementById('tryAgainBtn')
 };
+
+let installProgressUnlisten = null;
+let appInitialized = false;
 
 // Initialize the app
 async function init() {
@@ -180,14 +181,6 @@ function showSetupScreen(status) {
         status.dependencies_installed ? 'Installed' : 'Not installed'
     );
 
-    // Update browser status (optional but needed for PNG export)
-    updateRequirementStatus(
-        setupElements.reqBrowser,
-        setupElements.reqBrowserStatus,
-        status.browser_available,
-        status.browser_name || 'Not found (PNG export will be unavailable)'
-    );
-
     // Enable/disable install button based on whether Node.js and npm are available
     const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
     setupElements.installBtn.disabled = !canInstall;
@@ -221,7 +214,6 @@ async function recheckDependencies() {
     resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
     resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
     resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
-    resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
 
     // Disable buttons during check
     setupElements.recheckBtn.disabled = true;
@@ -331,7 +323,11 @@ async function installDependencies() {
 }
 
 async function setupInstallProgressListener() {
-    await listen('install-progress', (event) => {
+    if (installProgressUnlisten) {
+        return;
+    }
+
+    installProgressUnlisten = await listen('install-progress', (event) => {
         const { stage, message, progress, complete, error } = event.payload;
 
         // Update progress bar
@@ -1367,11 +1363,92 @@ const debugElements = {
     count: document.getElementById('debugCount'),
     toggleBtn: document.getElementById('toggleDebugBtn'),
     clearBtn: document.getElementById('clearLogsBtn'),
+    exportBtn: document.getElementById('exportLogsBtn'),
     filterInfo: document.getElementById('filterInfo'),
     filterDebug: document.getElementById('filterDebug'),
     filterWarn: document.getElementById('filterWarn'),
     filterError: document.getElementById('filterError')
 };
+
+// Export logs to file
+async function exportLogs() {
+    try {
+        const { save } = window.__TAURI__.dialog;
+        const { writeTextFile } = window.__TAURI__.fs;
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filename = `ganttgen-logs-${timestamp}.txt`;
+        
+        const filePath = await save({
+            defaultPath: filename,
+            filters: [{
+                name: 'Text Files',
+                extensions: ['txt']
+            }]
+        });
+        
+        if (filePath) {
+            const logContent = debugState.logs.map(log => {
+                const stackTrace = log.stack ? `\nStack: ${log.stack}` : '';
+                return `[${log.timestamp}] [${log.source}] [${log.level.toUpperCase()}] ${log.message}${stackTrace}`;
+            }).join('\n');
+            
+            await writeTextFile(filePath, logContent);
+            addLogEntry({
+                level: 'info',
+                source: 'system',
+                message: `Logs exported to ${filePath}`,
+                timestamp: new Date().toLocaleTimeString()
+            });
+        }
+    } catch (error) {
+        console.error('Failed to export logs:', error);
+        addLogEntry({
+            level: 'error',
+            source: 'system',
+            message: `Failed to export logs: ${error}`,
+            timestamp: new Date().toLocaleTimeString()
+        });
+    }
+}
+
+// Setup global error handlers
+function setupGlobalErrorHandlers() {
+    // Catch uncaught JavaScript errors
+    window.onerror = (message, source, lineno, colno, error) => {
+        const errorMessage = error ? error.toString() : String(message);
+        const stack = error ? error.stack : `at ${source}:${lineno}:${colno}`;
+        
+        addLogEntry({
+            level: 'error',
+            source: 'javascript',
+            message: `Uncaught error: ${errorMessage}`,
+            stack: stack,
+            timestamp: new Date().toLocaleTimeString()
+        });
+        
+        // Don't prevent default error handling
+        return false;
+    };
+    
+    // Catch unhandled promise rejections
+    window.onunhandledrejection = (event) => {
+        const reason = event.reason;
+        const errorMessage = reason instanceof Error ? reason.toString() : String(reason);
+        const stack = reason instanceof Error ? reason.stack : undefined;
+        
+        addLogEntry({
+            level: 'error',
+            source: 'javascript',
+            message: `Unhandled promise rejection: ${errorMessage}`,
+            stack: stack,
+            timestamp: new Date().toLocaleTimeString()
+        });
+        
+        // Prevent default browser console error
+        event.preventDefault();
+    };
+}
 
 // Initialize debug console
 function initDebugConsole() {
@@ -1383,6 +1460,14 @@ function initDebugConsole() {
         e.stopPropagation();
         clearLogs();
     });
+    
+    // Export logs button
+    if (debugElements.exportBtn) {
+        debugElements.exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportLogs();
+        });
+    }
 
     // Filter checkboxes
     debugElements.filterInfo.addEventListener('change', () => {
@@ -1445,23 +1530,54 @@ function updateLogCount() {
 function renderLogs() {
     const filteredLogs = debugState.logs.filter(log => debugState.filters[log.level]);
 
-    debugElements.log.innerHTML = filteredLogs.map(log => `
+    debugElements.log.innerHTML = filteredLogs.map(log => {
+        const stackTrace = log.stack ? `<div class="log-stack">${escapeHtml(log.stack)}</div>` : '';
+        return `
         <div class="log-entry level-${log.level}">
             <span class="log-timestamp">${log.timestamp}</span>
             <span class="log-source">[${log.source}]</span>
             <span class="log-message">${escapeHtml(log.message)}</span>
+            ${stackTrace}
         </div>
-    `).join('');
+    `;
+    }).join('');
+}
+
+// Load and display build info
+async function loadBuildInfo() {
+    try {
+        const buildInfo = await invoke('get_build_info');
+        const footer = document.querySelector('.footer p');
+        
+        if (footer) {
+            if (buildInfo.is_release) {
+                // Release build - show standard version
+                footer.textContent = 'GanttGen v1.0.0 - SEI Brand Styling';
+            } else {
+                // Development build - show build number
+                footer.textContent = `GanttGen v1.0.0 - SEI Brand Styling | Build ${buildInfo.datetime}_${buildInfo.commit}`;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to load build info:', error);
+        // Fallback to default if build info fails to load
+    }
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+async function bootstrapApplication() {
+    if (appInitialized) {
+        return;
+    }
+    appInitialized = true;
+    setupGlobalErrorHandlers();
     initDebugConsole();
-    init();
-});
+    await init();
+    loadBuildInfo();
+}
 
-// Also try to init immediately if Tauri is already available
-if (window.__TAURI__) {
-    initDebugConsole();
-    init();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapApplication);
+} else {
+    bootstrapApplication();
 }

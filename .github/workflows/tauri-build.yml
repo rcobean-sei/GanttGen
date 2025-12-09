@@ -17,6 +17,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
 permissions:
   contents: read
@@ -231,10 +232,6 @@ jobs:
 
       - name: Install scripts dependencies
         run: npm ci
-        working-directory: scripts
-
-      - name: Install Playwright browser for PNG export
-        run: npx playwright install chromium
         working-directory: scripts
 
       - name: Install Tauri app dependencies

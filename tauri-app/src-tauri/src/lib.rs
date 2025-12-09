@@ -1,9 +1,13 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::panic;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use tauri::{Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
+
+// Include generated build info
+include!(concat!(env!("OUT_DIR"), "/build_info.rs"));
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DependencyStatus {
@@ -14,8 +18,6 @@ pub struct DependencyStatus {
     pub dependencies_installed: bool,
     pub dependencies_path: Option<String>,
     pub scripts_path: Option<String>,
-    pub browser_available: bool,
-    pub browser_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -48,6 +50,13 @@ pub struct LogEntry {
     pub timestamp: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BuildInfo {
+    pub datetime: String,
+    pub commit: String,
+    pub is_release: bool,
+}
+
 /// Emit a log entry to the frontend
 fn emit_log(window: &tauri::Window, level: &str, source: &str, message: &str) {
     let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
@@ -60,6 +69,42 @@ fn emit_log(window: &tauri::Window, level: &str, source: &str, message: &str) {
             timestamp,
         },
     );
+}
+
+/// Emit a log entry with error details
+fn emit_error_log(window: &tauri::Window, source: &str, error: &dyn std::error::Error) {
+    let message = format!("{}: {}", error, error.source().map(|e| format!(" (caused by: {})", e)).unwrap_or_default());
+    emit_log(window, "error", source, &message);
+}
+
+/// Setup panic handler to capture panics and log them
+pub fn setup_panic_handler(app_handle: tauri::AppHandle) {
+    panic::set_hook(Box::new(move |panic_info| {
+        let message = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            format!("Panic: {}", s)
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            format!("Panic: {}", s)
+        } else {
+            "Panic: unknown reason".to_string()
+        };
+
+        let location = if let Some(loc) = panic_info.location() {
+            format!(" at {}:{}:{}", loc.file(), loc.line(), loc.column())
+        } else {
+            String::new()
+        };
+
+        let full_message = format!("{}{}", message, location);
+
+        // Try to emit to all windows
+        if let Some(window) = app_handle.get_webview_window("main") {
+            let host_window = window.as_ref().window();
+            emit_log(&host_window, "error", "rust", &full_message);
+        }
+
+        // Also log to stderr for terminal output
+        eprintln!("{}", full_message);
+    }));
 }
 
 /// Get the path to the user data directory for storing dependencies
@@ -85,6 +130,42 @@ fn check_dependencies_installed(app_handle: &tauri::AppHandle) -> bool {
     } else {
         false
     }
+}
+
+fn npm_version_from_command(command: &str) -> Option<String> {
+    if command.is_empty() {
+        return None;
+    }
+
+    let output = std::process::Command::new(command)
+        .arg("--version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn npm_version_via_node(node_bin: &str, npm_cli: &Path) -> Option<String> {
+    let output = std::process::Command::new(node_bin)
+        .arg(npm_cli.to_string_lossy().to_string())
+        .arg("--version")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
 /// Get the path to the bundled scripts directory
@@ -427,18 +508,24 @@ async fn generate_gantt(
 }
 
 #[tauri::command]
-async fn read_json_file(path: String) -> Result<String, String> {
+async fn read_json_file(path: String, window: tauri::Window) -> Result<String, String> {
     tokio::fs::read_to_string(&path)
         .await
-        .map_err(|e| format!("Failed to read file: {}", e))
+        .map_err(|e| {
+            let err_msg = format!("Failed to read file {}: {}", path, e);
+            emit_log(&window, "error", "rust", &err_msg);
+            err_msg
+        })
 }
 
 #[tauri::command]
-async fn validate_input_file(path: String) -> Result<bool, String> {
+async fn validate_input_file(path: String, window: tauri::Window) -> Result<bool, String> {
     let path = PathBuf::from(&path);
 
     if !path.exists() {
-        return Err("File does not exist".to_string());
+        let err = format!("File does not exist: {}", path.display());
+        emit_log(&window, "error", "rust", &err);
+        return Err(err);
     }
 
     let extension = path
@@ -448,11 +535,15 @@ async fn validate_input_file(path: String) -> Result<bool, String> {
         .to_lowercase();
 
     match extension.as_str() {
-        "json" | "xlsx" => Ok(true),
-        _ => Err(format!(
-            "Invalid file type: .{}. Expected .json or .xlsx",
-            extension
-        )),
+        "json" | "xlsx" => {
+            emit_log(&window, "debug", "rust", &format!("File validated: {}", path.display()));
+            Ok(true)
+        }
+        _ => {
+            let err = format!("Invalid file type: .{}. Expected .json or .xlsx", extension);
+            emit_log(&window, "error", "rust", &err);
+            Err(err)
+        }
     }
 }
 
@@ -564,91 +655,6 @@ pub struct PaletteInfo {
     pub accent_color: Option<String>,
 }
 
-/// Find a Chrome-based browser for PNG export
-fn find_system_browser() -> Option<(String, String)> {
-    #[cfg(target_os = "macos")]
-    {
-        let browsers = vec![
-            ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "Google Chrome"),
-            ("/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary", "Chrome Canary"),
-            ("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "Microsoft Edge"),
-            ("/Applications/Chromium.app/Contents/MacOS/Chromium", "Chromium"),
-        ];
-
-        for (path, name) in browsers {
-            if std::path::Path::new(path).exists() {
-                return Some((path.to_string(), name.to_string()));
-            }
-        }
-
-        // Try mdfind for Chrome
-        if let Ok(output) = std::process::Command::new("mdfind")
-            .args(["kMDItemCFBundleIdentifier == 'com.google.Chrome'"])
-            .output()
-        {
-            if output.status.success() {
-                let chrome_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !chrome_path.is_empty() {
-                    let parts: Vec<&str> = chrome_path.lines().collect();
-                    if !parts.is_empty() {
-                        let app_path = format!("{}/Contents/MacOS/Google Chrome", parts[0]);
-                        if std::path::Path::new(&app_path).exists() {
-                            return Some((app_path, "Google Chrome".to_string()));
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let browsers = vec![
-            ("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "Google Chrome"),
-            ("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", "Google Chrome"),
-            ("C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe", "Microsoft Edge"),
-        ];
-
-        for (path, name) in browsers {
-            if std::path::Path::new(path).exists() {
-                return Some((path.to_string(), name.to_string()));
-            }
-        }
-
-        // Check LOCALAPPDATA
-        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-            let chrome_path = format!("{}\\Google\\Chrome\\Application\\chrome.exe", local_app_data);
-            if std::path::Path::new(&chrome_path).exists() {
-                return Some((chrome_path, "Google Chrome".to_string()));
-            }
-            let edge_path = format!("{}\\Microsoft\\Edge\\Application\\msedge.exe", local_app_data);
-            if std::path::Path::new(&edge_path).exists() {
-                return Some((edge_path, "Microsoft Edge".to_string()));
-            }
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let browsers = vec![
-            ("/usr/bin/google-chrome", "Google Chrome"),
-            ("/usr/bin/google-chrome-stable", "Google Chrome"),
-            ("/usr/bin/chromium", "Chromium"),
-            ("/usr/bin/chromium-browser", "Chromium"),
-            ("/usr/bin/microsoft-edge", "Microsoft Edge"),
-            ("/usr/bin/microsoft-edge-stable", "Microsoft Edge"),
-        ];
-
-        for (path, name) in browsers {
-            if std::path::Path::new(path).exists() {
-                return Some((path.to_string(), name.to_string()));
-            }
-        }
-    }
-
-    None
-}
-
 /// Check if Node.js and npm are available, and if dependencies are installed
 #[tauri::command]
 async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencyStatus, String> {
@@ -660,8 +666,6 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
         dependencies_installed: false,
         dependencies_path: None,
         scripts_path: None,
-        browser_available: false,
-        browser_name: None,
     };
 
     // Check Node.js
@@ -707,18 +711,42 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
     };
 
     for npm_path in &npm_paths {
-        if let Ok(output) = std::process::Command::new(npm_path)
-            .arg("--version")
-            .output()
-        {
-            if output.status.success() {
-                status.npm_available = true;
-                status.npm_version = Some(
-                    String::from_utf8_lossy(&output.stdout)
-                        .trim()
-                        .to_string(),
-                );
-                break;
+        if let Some(version) = npm_version_from_command(npm_path) {
+            status.npm_available = true;
+            status.npm_version = Some(version);
+            break;
+        }
+    }
+
+    // If npm still isn't resolved, look relative to the detected Node.js binary
+    if !status.npm_available {
+        if let Ok(node_path) = get_node_path(&app_handle) {
+            if let Some(node_dir) = Path::new(&node_path).parent() {
+                let candidate = node_dir.join(npm_cmd);
+                let candidate_str = candidate.to_string_lossy().to_string();
+                if let Some(version) = npm_version_from_command(&candidate_str) {
+                    status.npm_available = true;
+                    status.npm_version = Some(version);
+                } else {
+                    // For installs like nvm, npm may live under ../lib/node_modules/npm/bin/npm-cli.js
+                    #[cfg(not(target_os = "windows"))]
+                    {
+                        if let Some(grandparent) = node_dir.parent() {
+                            let npm_cli = grandparent
+                                .join("lib")
+                                .join("node_modules")
+                                .join("npm")
+                                .join("bin")
+                                .join("npm-cli.js");
+                            if npm_cli.exists() {
+                                if let Some(version) = npm_version_via_node(&node_path, &npm_cli) {
+                                    status.npm_available = true;
+                                    status.npm_version = Some(version);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -765,11 +793,6 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
     }
 
     // Check for Chrome-based browser (for PNG export)
-    if let Some((_, name)) = find_system_browser() {
-        status.browser_available = true;
-        status.browser_name = Some(name);
-    }
-
     Ok(status)
 }
 
@@ -839,8 +862,12 @@ async fn install_dependencies(
         let _ = tokio::fs::copy(&package_lock, deps_dir.join("package-lock.json")).await;
     }
 
-    // Find npm
+    // Find npm and node
     let npm_cmd = find_npm_path()?;
+    let node_path = get_node_path(&app_handle)?;
+    let node_dir = std::path::Path::new(&node_path)
+        .parent()
+        .map(|p| p.to_string_lossy().to_string());
 
     let _ = window.emit(
         "install-progress",
@@ -854,11 +881,30 @@ async fn install_dependencies(
     );
 
     // Run npm install
-    let mut child = Command::new(&npm_cmd)
+    let mut npm_cmd_builder = Command::new(&npm_cmd);
+    npm_cmd_builder
         .args(["install", "--production"])
         .current_dir(&deps_dir)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if let Some(node_dir) = node_dir {
+        let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
+        let existing_path = std::env::var("PATH").unwrap_or_default();
+        let path_value = if existing_path.is_empty() {
+            node_dir.clone()
+        } else if existing_path
+            .split(separator)
+            .any(|segment| segment == node_dir)
+        {
+            existing_path
+        } else {
+            format!("{}{}{}", node_dir, separator, existing_path)
+        };
+        npm_cmd_builder.env("PATH", path_value);
+    }
+
+    let mut child = npm_cmd_builder
         .spawn()
         .map_err(|e| format!("Failed to start npm install: {}", e))?;
 
@@ -992,6 +1038,16 @@ fn find_npm_path() -> Result<String, String> {
 #[tauri::command]
 async fn get_dependencies_path(app_handle: tauri::AppHandle) -> Result<String, String> {
     get_dependencies_dir(&app_handle).map(|p| p.to_string_lossy().to_string())
+}
+
+/// Get build information (datetime, commit, release status)
+#[tauri::command]
+fn get_build_info() -> BuildInfo {
+    BuildInfo {
+        datetime: BUILD_DATETIME.to_string(),
+        commit: BUILD_COMMIT.to_string(),
+        is_release: IS_RELEASE,
+    }
 }
 
 /// Open a file with the system's default application
@@ -1128,8 +1184,14 @@ pub fn run() {
             get_dependencies_path,
             open_file,
             open_folder,
-            reveal_file
+            reveal_file,
+            get_build_info
         ])
+        .setup(|app| {
+            // Setup panic handler after app is created
+            setup_panic_handler(app.handle().clone());
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -53,6 +53,9 @@
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
+
+    /* Safe area offsets */
+    --safe-area-top: env(safe-area-inset-top, 0px);
 }
 
 /* Reset & Base */
@@ -76,6 +79,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    padding-top: calc(var(--safe-area-top) + var(--spacing-md));
 }
 
 /* Header */
@@ -85,7 +89,7 @@ body {
     padding: var(--spacing-md) var(--spacing-xl);
     box-shadow: var(--shadow-md);
     position: sticky;
-    top: 0;
+    top: var(--safe-area-top);
     z-index: 100;
 }
 
@@ -1083,7 +1087,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--spacing-xl);
+    padding: calc(var(--safe-area-top) + var(--spacing-xl)) var(--spacing-xl) var(--spacing-xl);
 }
 
 .setup-container {
@@ -1469,6 +1473,16 @@ body {
 
 .log-message {
     flex: 1;
+    word-break: break-word;
+}
+
+.log-stack {
+    margin-top: 4px;
+    padding-left: 20px;
+    font-size: 0.85em;
+    color: var(--purple-3);
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
     word-break: break-word;
 }
 

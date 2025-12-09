@@ -192,14 +192,14 @@ This is the old uncached Tauri build workflow. Delete it entirely.
 
 ### 3. Delete `.github/workflows/build-electron-app.yml`
 
-This is the Electron build workflow. Delete it entirely since we're going full Tauri.
+This was the Electron build workflow. Delete it entirely since we're going full Tauri. *(If the file has already been removed, you can skip this step.)*
 
 ### 4. Commit and Push
 
 ```bash
 git add .github/workflows/tauri-build.yml
 git rm .github/workflows/build-tauri-app.yml
-git rm .github/workflows/build-electron-app.yml
+git rm .github/workflows/build-electron-app.yml  # remove if still present
 git commit -m "Enable macOS code signing for Tauri builds
 
 - Add certificate import step to tauri-build.yml
@@ -207,7 +207,7 @@ git commit -m "Enable macOS code signing for Tauri builds
 - Add signature verification step after build
 - Add keychain cleanup step
 - Remove unused build-tauri-app.yml (uncached Tauri build)
-- Remove unused build-electron-app.yml (Electron build)
+- Remove unused build-electron-app.yml (Electron build) if it still exists
 
 Fixes #29"
 
@@ -224,7 +224,7 @@ gh pr create --title "Enable macOS code signing for all Tauri builds" --body "Fi
 - Added APPLE_SIGNING_IDENTITY env var to tauri-action build step
 - Added signature verification step that fails build if signing didn't work
 - Added keychain cleanup step
-- Removed unused workflow files (build-tauri-app.yml, build-electron-app.yml)
+- Removed unused workflow files (build-tauri-app.yml, build-electron-app.yml if still present)
 
 ## Testing
 Push to this branch triggers the workflow - check that:
@@ -239,4 +239,4 @@ Push to this branch triggers the workflow - check that:
 |------|--------|
 | `.github/workflows/tauri-build.yml` | Update with signing |
 | `.github/workflows/build-tauri-app.yml` | Delete |
-| `.github/workflows/build-electron-app.yml` | Delete |
+| `.github/workflows/build-electron-app.yml` | Delete (skip if already removed) |

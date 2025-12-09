@@ -7,8 +7,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
-const os = require('os');
 const ExcelJS = require('exceljs');
 
 // Optional Playwright for PNG export
@@ -20,84 +18,14 @@ try {
     playwright = null;
 }
 
-// Find system-installed Chrome or Edge for Playwright
-function findSystemBrowser() {
-    const platform = os.platform();
-    
-    const browserPaths = {
-        darwin: [
-            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-            '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
-            '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-            '/Applications/Chromium.app/Contents/MacOS/Chromium'
-        ],
-        win32: [
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-            (process.env.LOCALAPPDATA || '') + '\\Google\\Chrome\\Application\\chrome.exe',
-            (process.env.LOCALAPPDATA || '') + '\\Microsoft\\Edge\\Application\\msedge.exe'
-        ],
-        linux: [
-            '/usr/bin/google-chrome',
-            '/usr/bin/google-chrome-stable',
-            '/usr/bin/chromium',
-            '/usr/bin/chromium-browser',
-            '/usr/bin/microsoft-edge',
-            '/usr/bin/microsoft-edge-stable'
-        ]
-    };
-    
-    const paths = browserPaths[platform] || [];
-    
-    // Check common installation paths
-    for (const browserPath of paths) {
-        if (browserPath && fs.existsSync(browserPath)) {
-            return browserPath;
-        }
+
+// Determine which browser channel Playwright should attempt
+function getBrowserChannel() {
+    if (process.env.PLAYWRIGHT_BROWSER_CHANNEL) {
+        return process.env.PLAYWRIGHT_BROWSER_CHANNEL;
     }
-    
-    // Try to find via system commands
-    try {
-        if (platform === 'darwin') {
-            // Use mdfind on macOS
-            try {
-                const chrome = execSync('mdfind "kMDItemCFBundleIdentifier == \'com.google.Chrome\'" 2>/dev/null', { encoding: 'utf8' }).trim();
-                if (chrome) {
-                    const chromePath = chrome.split('\n')[0];
-                    return path.join(chromePath, 'Contents/MacOS/Google Chrome');
-                }
-            } catch (e) {}
-            
-            try {
-                const edge = execSync('mdfind "kMDItemCFBundleIdentifier == \'com.microsoft.edgemac\'" 2>/dev/null', { encoding: 'utf8' }).trim();
-                if (edge) {
-                    const edgePath = edge.split('\n')[0];
-                    return path.join(edgePath, 'Contents/MacOS/Microsoft Edge');
-                }
-            } catch (e) {}
-        } else if (platform === 'linux') {
-            // Use which command on Linux
-            try {
-                const chrome = execSync('which google-chrome 2>/dev/null', { encoding: 'utf8' }).trim();
-                if (chrome) return chrome;
-            } catch (e) {
-                try {
-                    const chromium = execSync('which chromium 2>/dev/null', { encoding: 'utf8' }).trim();
-                    if (chromium) return chromium;
-                } catch (e) {
-                    try {
-                        const edge = execSync('which microsoft-edge 2>/dev/null', { encoding: 'utf8' }).trim();
-                        if (edge) return edge;
-                    } catch (e) {}
-                }
-            }
-        }
-    } catch (e) {
-        // Ignore errors
-    }
-    
-    return null;
+    // Default to Chrome on macOS/Linux and Edge on Windows
+    return process.platform === 'win32' ? 'msedge' : 'chrome';
 }
 
 // ============================================================
@@ -521,25 +449,18 @@ async function exportPNG(htmlPath, pngPath) {
         throw new Error('Playwright is not installed');
     }
     
-    // Try to find system browser first
-    const systemBrowser = findSystemBrowser();
     const launchOptions = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        channel: getBrowserChannel()
     };
-    
-    if (systemBrowser) {
-        launchOptions.executablePath = systemBrowser;
-        console.log(`   Using system browser: ${path.basename(systemBrowser)}`);
-    } else {
-        console.log('   Using Playwright bundled Chromium');
-    }
-    
+
+    console.log(`   Using browser channel: ${launchOptions.channel}`);
+
     let browser;
     try {
-        // Launch Chromium browser (use system browser if available, otherwise use bundled)
         browser = await playwright.chromium.launch(launchOptions);
-        
+
         const context = await browser.newContext({
             viewport: {
                 width: 1920,
@@ -604,7 +525,11 @@ async function exportPNG(htmlPath, pngPath) {
         }
         
     } catch (error) {
-        throw new Error(`Failed to export PNG: ${error.message}`);
+        const message = (error && error.message) || String(error);
+        if (/executable doesn't exist/i.test(message) || /Failed to launch/i.test(message)) {
+            throw new Error('Failed to export PNG: Install Google Chrome or Microsoft Edge and try again.');
+        }
+        throw new Error(`Failed to export PNG: ${message}`);
     } finally {
         if (browser) {
             await browser.close();
@@ -715,7 +640,7 @@ async function build(inputPath, outputPath, options = {}) {
     } else if (shouldExportPng && !playwright) {
         console.log('ℹ️  Skipping PNG export (Playwright not installed)');
         console.log('   Install with: npm install @playwright/test');
-        console.log('   Will use system Chrome/Edge if available, or download Chromium');
+        console.log('   PNG export requires Google Chrome or Microsoft Edge');
     } else {
         console.log('ℹ️  PNG export not requested');
     }
@@ -794,4 +719,3 @@ module.exports = {
     collectSubtasks,
     BRAND_COLORS
 };
-

@@ -647,7 +647,7 @@ Or install all browsers:
 npx playwright install
 ```
 
-**Note**: The build script will automatically use locally installed Chrome/Edge browsers if available, falling back to Playwright's bundled Chromium if not found. This avoids unnecessary browser downloads when system browsers are already installed.
+**Note**: PNG export uses your locally installed Chrome/Edge browser. Install Google Chrome or Microsoft Edge before exporting PNGs—Chromium is no longer bundled or downloaded automatically. If no supported browser is available, PNG export will fail with a helpful error. The `npx playwright install` commands above are only required when running the Playwright test suites.
 
 ---
 
