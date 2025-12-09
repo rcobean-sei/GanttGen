@@ -98,6 +98,27 @@ jobs:
 
           echo "Code signing certificate imported successfully"
 
+      - name: Debug - List certificates in keychain
+        if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
+        run: |
+          echo "=== Certificates available for code signing ==="
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo ""
+          echo "=== Expected signing identity ==="
+          echo "Looking for: $APPLE_SIGNING_IDENTITY"
+          echo ""
+          echo "=== Checking if expected identity exists ==="
+          if security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -q "Developer ID Application"; then
+            echo "✓ Developer ID Application certificate found"
+          else
+            echo "::error::No Developer ID Application certificate found in keychain!"
+            echo "The .p12 file may contain the wrong certificate type."
+            echo "Make sure you exported 'Developer ID Application' (not 'Apple Development')"
+            exit 1
+          fi
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+
       - name: Install root project dependencies
         run: npm ci
 
@@ -230,14 +251,35 @@ jobs:
           fi
           echo "Found app: $APP_PATH"
 
-          # Verify signature
-          if codesign -v --verbose=4 "$APP_PATH" 2>&1; then
-            echo "App is properly code-signed"
-            codesign -dv "$APP_PATH" 2>&1 | grep -E "Authority|Identifier" || true
-          else
-            echo "::error::App is NOT properly signed!"
+          # Show full signature details
+          echo ""
+          echo "=== Full signature details ==="
+          codesign -dv --verbose=4 "$APP_PATH" 2>&1 || true
+
+          # Check for Developer ID signature (must have Authority line)
+          echo ""
+          echo "=== Checking for Developer ID signature ==="
+          AUTHORITY=$(codesign -dv "$APP_PATH" 2>&1 | grep "Authority=Developer ID" || true)
+          if [ -z "$AUTHORITY" ]; then
+            echo "::error::App is NOT signed with a Developer ID certificate!"
+            echo "The APPLE_SIGNING_IDENTITY secret must be the exact certificate name from Keychain Access, e.g.:"
+            echo "  Developer ID Application: Your Company Name (TEAMID)"
+            echo ""
+            echo "Current signature info:"
+            codesign -dv "$APP_PATH" 2>&1 || true
             exit 1
           fi
+          echo "Found Developer ID signature: $AUTHORITY"
+
+          # Verify signature is valid
+          echo ""
+          echo "=== Verifying signature validity ==="
+          codesign -v --verbose=4 "$APP_PATH" 2>&1
+
+          # Check what Gatekeeper thinks
+          echo ""
+          echo "=== Gatekeeper assessment ==="
+          spctl -a -vv "$APP_PATH" 2>&1 || echo "spctl check failed (expected without notarization)"
 
       - name: Notarize macOS DMG
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
