@@ -23,7 +23,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: paletteName });
+        await build(inputPath, outputPath, { palette: paletteName, exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         
@@ -42,7 +42,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'reds' });
+        await build(inputPath, outputPath, { palette: 'reds', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         expect(html).toContain('#F01840'); // RED 1
@@ -58,7 +58,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'purples_a' });
+        await build(inputPath, outputPath, { palette: 'purples_a', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for purple colors
@@ -78,7 +78,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'purples_b' });
+        await build(inputPath, outputPath, { palette: 'purples_b', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for accent border
@@ -95,7 +95,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'purples_c' });
+        await build(inputPath, outputPath, { palette: 'purples_c', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for both accent color and border
@@ -114,7 +114,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'reds_b' });
+        await build(inputPath, outputPath, { palette: 'reds_b', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for accent border
@@ -131,7 +131,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'alternating_b' });
+        await build(inputPath, outputPath, { palette: 'alternating_b', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for accent border
@@ -150,7 +150,7 @@ describe('Palette Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'reds' });
+        await build(inputPath, outputPath, { palette: 'reds', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Should use reds palette, not the template palette

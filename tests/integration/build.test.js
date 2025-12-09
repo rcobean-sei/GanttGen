@@ -23,7 +23,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath);
+        await build(inputPath, outputPath, { exportPng: false });
 
         expect(fs.existsSync(outputPath)).toBe(true);
         const html = fs.readFileSync(outputPath, 'utf8');
@@ -37,7 +37,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(excelPath, outputPath);
+        await build(excelPath, outputPath, { exportPng: false });
 
         expect(fs.existsSync(outputPath)).toBe(true);
         const html = fs.readFileSync(outputPath, 'utf8');
@@ -53,7 +53,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'reds' });
+        await build(inputPath, outputPath, { palette: 'reds', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check that reds palette colors are in the HTML
@@ -69,7 +69,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output_purples_a.html');
 
-        await build(inputPath, outputPath, { palette: 'purples_a' });
+        await build(inputPath, outputPath, { palette: 'purples_a', exportPng: false });
 
         // Check that file was created with palette suffix
         expect(fs.existsSync(outputPath)).toBe(true);
@@ -85,7 +85,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await expect(build(inputPath, outputPath)).rejects.toThrow();
+        await expect(build(inputPath, outputPath, { exportPng: false })).rejects.toThrow();
     });
 
     test('should generate HTML with correct structure', async () => {
@@ -97,7 +97,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath);
+        await build(inputPath, outputPath, { exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         
@@ -117,7 +117,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath);
+        await build(inputPath, outputPath, { exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         expect(html).toContain('Project Kickoff');
@@ -133,7 +133,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'purples_a' });
+        await build(inputPath, outputPath, { palette: 'purples_a', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for accent color in config
@@ -150,7 +150,7 @@ describe('Build Integration Tests', () => {
         tempDirs.push(outputDir);
         const outputPath = path.join(outputDir, 'test_output.html');
 
-        await build(inputPath, outputPath, { palette: 'reds_b' });
+        await build(inputPath, outputPath, { palette: 'reds_b', exportPng: false });
 
         const html = fs.readFileSync(outputPath, 'utf8');
         // Check for accent border in config

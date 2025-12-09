@@ -282,44 +282,43 @@ jobs:
           echo "=== Full signature details ==="
           codesign -dv --verbose=4 "$APP_PATH" 2>&1 || true
 
-          # Verify signature is valid (cryptographic verification)
+          # Verify signature is valid (cryptographic verification - this is the real test)
           echo ""
           echo "=== Verifying signature validity ==="
-          if ! codesign -v --verbose=4 "$APP_PATH" 2>&1; then
+          if ! codesign -v "$APP_PATH" 2>&1; then
             echo "::error::Signature verification failed!"
             exit 1
           fi
           echo "✓ Signature is cryptographically valid"
 
           # Check for Developer ID signature using multiple indicators
-          # Note: GitHub may redact the first Authority line if it matches a secret
+          # Note: GitHub redacts output matching secrets, so use direct pipes not variables
           echo ""
           echo "=== Checking for Developer ID certificate ==="
-          CODESIGN_INFO=$(codesign -dv "$APP_PATH" 2>&1)
 
           # Check 1: TeamIdentifier should be present (not "not set")
-          TEAM_ID=$(echo "$CODESIGN_INFO" | grep "TeamIdentifier=" | cut -d= -f2)
+          # Use direct pipe to avoid variable capture issues with GitHub redaction
+          TEAM_ID=$(codesign -dv "$APP_PATH" 2>&1 | grep "TeamIdentifier=" | cut -d= -f2)
           if [ -z "$TEAM_ID" ] || [ "$TEAM_ID" = "not set" ]; then
             echo "::error::App is NOT signed with a Developer ID certificate (no TeamIdentifier)!"
             echo "The APPLE_SIGNING_IDENTITY secret must be the exact certificate name from Keychain Access."
             exit 1
           fi
-          echo "✓ TeamIdentifier: $TEAM_ID"
+          echo "✓ TeamIdentifier present (value may be redacted in logs)"
 
           # Check 2: Apple Root CA should be in the certificate chain
-          if ! echo "$CODESIGN_INFO" | grep -q "Authority=Apple Root CA"; then
+          if ! codesign -dv "$APP_PATH" 2>&1 | grep -q "Authority=Apple Root CA"; then
             echo "::error::Certificate chain does not include Apple Root CA!"
             exit 1
           fi
           echo "✓ Apple Root CA found in certificate chain"
 
-          # Check 3: Look for Developer ID in the chain (intermediate or leaf cert)
-          # The first Authority line may be redacted by GitHub if it matches a secret
-          if echo "$CODESIGN_INFO" | grep -q "Authority=Developer ID"; then
+          # Check 3: Look for Developer ID in the chain (intermediate cert)
+          if codesign -dv "$APP_PATH" 2>&1 | grep -q "Authority=Developer ID"; then
             echo "✓ Developer ID certificate found in chain"
           else
-            echo "Note: First Authority line may be redacted by GitHub (matches secret)"
-            echo "Signature is valid with Apple Root CA chain - proceeding"
+            echo "Note: Developer ID line may be redacted by GitHub (matches secret)"
+            echo "Signature is valid with proper Apple certificate chain - proceeding"
           fi
 
           # Check what Gatekeeper thinks
