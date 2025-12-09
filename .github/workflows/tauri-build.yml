@@ -40,6 +40,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch full history for git describe
+
+      - name: Check if release build
+        id: check-release
+        run: |
+          if git describe --tags --exact-match HEAD 2>/dev/null; then
+            echo "is_release=true" >> $GITHUB_OUTPUT
+            echo "✓ This is a release build (tagged commit)"
+          else
+            echo "is_release=false" >> $GITHUB_OUTPUT
+            echo "ℹ This is a development build"
+          fi
+
+          # Get commit hash and datetime for build info
+          COMMIT=$(git rev-parse --short=7 HEAD)
+          DATETIME=$(date +"%Y%m%d_%H%M%S")
+          echo "commit=$COMMIT" >> $GITHUB_OUTPUT
+          echo "datetime=$DATETIME" >> $GITHUB_OUTPUT
+          echo "Build info: $DATETIME_$COMMIT"
 
       # Generate cache key from source files that affect the build
       - name: Generate build cache key
@@ -253,6 +273,9 @@ jobs:
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          BUILD_DATETIME: ${{ steps.check-release.outputs.datetime }}
+          BUILD_COMMIT: ${{ steps.check-release.outputs.commit }}
+          IS_RELEASE: ${{ steps.check-release.outputs.is_release }}
         working-directory: tauri-app
         run: |
           # Configure keychain in the same shell that runs the build
@@ -264,6 +287,10 @@ jobs:
 
       - name: Build Tauri app (macOS unsigned for PRs)
         if: matrix.platform == 'macos-latest' && github.event_name == 'pull_request'
+        env:
+          BUILD_DATETIME: ${{ steps.check-release.outputs.datetime }}
+          BUILD_COMMIT: ${{ steps.check-release.outputs.commit }}
+          IS_RELEASE: ${{ steps.check-release.outputs.is_release }}
         working-directory: tauri-app
         run: |
           echo "Building unsigned app for PR..."
@@ -274,6 +301,9 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILD_DATETIME: ${{ steps.check-release.outputs.datetime }}
+          BUILD_COMMIT: ${{ steps.check-release.outputs.commit }}
+          IS_RELEASE: ${{ steps.check-release.outputs.is_release }}
         with:
           projectPath: tauri-app
           args: ${{ matrix.args }}
@@ -409,6 +439,20 @@ jobs:
 
           echo "Notarization complete!"
 
+      - name: Rename macOS artifacts (non-release)
+        if: matrix.platform == 'macos-latest' && steps.check-release.outputs.is_release == 'false'
+        run: |
+          cd tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg
+          for file in *.dmg; do
+            if [ -f "$file" ]; then
+              # Extract base name and extension
+              base="${file%.dmg}"
+              newname="${base}_${{ steps.check-release.outputs.datetime }}_${{ steps.check-release.outputs.commit }}.dmg"
+              mv "$file" "$newname"
+              echo "Renamed: $file -> $newname"
+            fi
+          done
+
       - name: Upload macOS DMG
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
@@ -417,6 +461,33 @@ jobs:
           path: tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           retention-days: 7
           if-no-files-found: warn
+
+      - name: Rename Windows artifacts (non-release)
+        if: matrix.platform == 'windows-latest' && steps.check-release.outputs.is_release == 'false'
+        shell: pwsh
+        run: |
+          $datetime = "${{ steps.check-release.outputs.datetime }}"
+          $commit = "${{ steps.check-release.outputs.commit }}"
+
+          # Rename NSIS installers
+          Get-ChildItem -Path "tauri-app/src-tauri/target/release/bundle/nsis/*.exe" | ForEach-Object {
+            $base = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+            $ext = $_.Extension
+            $newname = "${base}_${datetime}_${commit}${ext}"
+            $newpath = Join-Path $_.DirectoryName $newname
+            Move-Item $_.FullName $newpath
+            Write-Host "Renamed: $($_.Name) -> $newname"
+          }
+
+          # Rename MSI installers
+          Get-ChildItem -Path "tauri-app/src-tauri/target/release/bundle/msi/*.msi" | ForEach-Object {
+            $base = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+            $ext = $_.Extension
+            $newname = "${base}_${datetime}_${commit}${ext}"
+            $newpath = Join-Path $_.DirectoryName $newname
+            Move-Item $_.FullName $newpath
+            Write-Host "Renamed: $($_.Name) -> $newname"
+          }
 
       - name: Upload Windows installer
         if: matrix.platform == 'windows-latest'
