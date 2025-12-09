@@ -38,6 +38,28 @@ pub struct ProgressUpdate {
     pub progress: u8,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LogEntry {
+    pub level: String,      // "info", "warn", "error", "debug"
+    pub source: String,     // "rust", "node", "system"
+    pub message: String,
+    pub timestamp: String,
+}
+
+/// Emit a log entry to the frontend
+fn emit_log(window: &tauri::Window, level: &str, source: &str, message: &str) {
+    let timestamp = chrono::Local::now().format("%H:%M:%S%.3f").to_string();
+    let _ = window.emit(
+        "app-log",
+        LogEntry {
+            level: level.to_string(),
+            source: source.to_string(),
+            message: message.to_string(),
+            timestamp,
+        },
+    );
+}
+
 /// Get the path to the user data directory for storing dependencies
 fn get_user_data_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     app_handle
@@ -207,15 +229,21 @@ async fn generate_gantt(
     options: GenerateOptions,
     window: tauri::Window,
 ) -> Result<GenerateResult, String> {
+    emit_log(&window, "info", "rust", "Starting Gantt chart generation...");
+    emit_log(&window, "debug", "rust", &format!("Options: input={}, palette={}, export_png={}",
+        options.input_path, options.palette, options.export_png));
+
     let scripts_dir = get_scripts_dir(&app_handle)?;
+    emit_log(&window, "debug", "rust", &format!("Scripts directory: {}", scripts_dir.display()));
+
     let build_script = scripts_dir.join("build.js");
 
     if !build_script.exists() {
-        return Err(format!(
-            "Build script not found at: {}",
-            build_script.display()
-        ));
+        let err = format!("Build script not found at: {}", build_script.display());
+        emit_log(&window, "error", "rust", &err);
+        return Err(err);
     }
+    emit_log(&window, "debug", "rust", &format!("Build script found: {}", build_script.display()));
 
     // Emit progress update
     let _ = window.emit(
@@ -227,6 +255,7 @@ async fn generate_gantt(
     );
 
     let node = get_node_path(&app_handle)?;
+    emit_log(&window, "info", "rust", &format!("Using Node.js: {}", node));
     let mut args = vec![
         build_script.to_string_lossy().to_string(),
         "--input".to_string(),
@@ -267,9 +296,15 @@ async fn generate_gantt(
         cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
     }
 
+    emit_log(&window, "debug", "rust", &format!("Running: {} {}", node, args.join(" ")));
+
     let mut child = cmd
         .spawn()
-        .map_err(|e| format!("Failed to start node process: {}", e))?;
+        .map_err(|e| {
+            let err = format!("Failed to start node process: {}", e);
+            emit_log(&window, "error", "rust", &err);
+            err
+        })?;
 
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
@@ -285,13 +320,16 @@ async fn generate_gantt(
     // Read stdout
     while let Ok(Some(line)) = stdout_reader.next_line().await {
         output_lines.push(line.clone());
+        emit_log(&window, "debug", "node", &line);
 
         // Parse output to find generated file paths
         if line.contains("Generated:") || line.contains("Output:") {
             if line.ends_with(".html") {
                 html_path = Some(line.split_whitespace().last().unwrap_or("").to_string());
+                emit_log(&window, "info", "node", &format!("HTML generated: {}", html_path.as_ref().unwrap_or(&String::new())));
             } else if line.ends_with(".png") {
                 png_path = Some(line.split_whitespace().last().unwrap_or("").to_string());
+                emit_log(&window, "info", "node", &format!("PNG generated: {}", png_path.as_ref().unwrap_or(&String::new())));
             }
         }
 
@@ -325,13 +363,22 @@ async fn generate_gantt(
 
     // Read stderr
     while let Ok(Some(line)) = stderr_reader.next_line().await {
-        error_lines.push(line);
+        error_lines.push(line.clone());
+        if !line.trim().is_empty() {
+            emit_log(&window, "warn", "node", &line);
+        }
     }
 
     let status = child
         .wait()
         .await
-        .map_err(|e| format!("Failed to wait for process: {}", e))?;
+        .map_err(|e| {
+            let err = format!("Failed to wait for process: {}", e);
+            emit_log(&window, "error", "rust", &err);
+            err
+        })?;
+
+    emit_log(&window, "info", "rust", &format!("Build process exited with status: {:?}", status));
 
     let _ = window.emit(
         "generation-progress",

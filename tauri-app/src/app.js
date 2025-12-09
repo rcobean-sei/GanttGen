@@ -845,7 +845,7 @@ function validateMilestoneDate(milestoneIndex) {
         if (dateInput) {
             dateInput.classList.add('input-error');
 
-            // Add warning message
+            // Add warning message with US date format
             const warning = document.createElement('div');
             warning.className = 'milestone-date-warning';
             warning.innerHTML = `
@@ -854,13 +854,23 @@ function validateMilestoneDate(milestoneIndex) {
                     <line x1="12" y1="8" x2="12" y2="12"></line>
                     <line x1="12" y1="16" x2="12.01" y2="16"></line>
                 </svg>
-                <span>Date should be between ${task.start} and ${task.end}</span>
+                <span>Date should be between ${formatDateUS(task.start)} and ${formatDateUS(task.end)}</span>
             `;
             dateInput.parentNode.appendChild(warning);
         }
     } else {
         if (dateInput) dateInput.classList.remove('input-error');
     }
+}
+
+// Format date as MM/DD/YYYY for US locale
+function formatDateUS(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
 }
 
 function renderMilestones() {
@@ -1325,10 +1335,122 @@ async function viewPngFile() {
     }
 }
 
+// Debug console state
+const debugState = {
+    logs: [],
+    expanded: false,
+    filters: {
+        info: true,
+        debug: true,
+        warn: true,
+        error: true
+    }
+};
+
+// Debug console elements
+const debugElements = {
+    console: document.getElementById('debugConsole'),
+    header: document.getElementById('debugHeader'),
+    content: document.getElementById('debugContent'),
+    log: document.getElementById('debugLog'),
+    count: document.getElementById('debugCount'),
+    toggleBtn: document.getElementById('toggleDebugBtn'),
+    clearBtn: document.getElementById('clearLogsBtn'),
+    filterInfo: document.getElementById('filterInfo'),
+    filterDebug: document.getElementById('filterDebug'),
+    filterWarn: document.getElementById('filterWarn'),
+    filterError: document.getElementById('filterError')
+};
+
+// Initialize debug console
+function initDebugConsole() {
+    // Toggle console
+    debugElements.header.addEventListener('click', toggleDebugConsole);
+
+    // Clear logs
+    debugElements.clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearLogs();
+    });
+
+    // Filter checkboxes
+    debugElements.filterInfo.addEventListener('change', () => {
+        debugState.filters.info = debugElements.filterInfo.checked;
+        renderLogs();
+    });
+    debugElements.filterDebug.addEventListener('change', () => {
+        debugState.filters.debug = debugElements.filterDebug.checked;
+        renderLogs();
+    });
+    debugElements.filterWarn.addEventListener('change', () => {
+        debugState.filters.warn = debugElements.filterWarn.checked;
+        renderLogs();
+    });
+    debugElements.filterError.addEventListener('change', () => {
+        debugState.filters.error = debugElements.filterError.checked;
+        renderLogs();
+    });
+
+    // Listen for app-log events from Rust
+    listen('app-log', (event) => {
+        addLogEntry(event.payload);
+    });
+
+    // Add initial log entry
+    addLogEntry({
+        level: 'info',
+        source: 'system',
+        message: 'GanttGen started',
+        timestamp: new Date().toLocaleTimeString()
+    });
+}
+
+function toggleDebugConsole() {
+    debugState.expanded = !debugState.expanded;
+    debugElements.console.classList.toggle('expanded', debugState.expanded);
+    debugElements.content.style.display = debugState.expanded ? 'block' : 'none';
+}
+
+function addLogEntry(entry) {
+    debugState.logs.push(entry);
+    updateLogCount();
+    renderLogs();
+
+    // Auto-scroll to bottom
+    debugElements.log.scrollTop = debugElements.log.scrollHeight;
+}
+
+function clearLogs() {
+    debugState.logs = [];
+    updateLogCount();
+    renderLogs();
+}
+
+function updateLogCount() {
+    const count = debugState.logs.length;
+    debugElements.count.textContent = `${count} ${count === 1 ? 'entry' : 'entries'}`;
+}
+
+function renderLogs() {
+    const filteredLogs = debugState.logs.filter(log => debugState.filters[log.level]);
+
+    debugElements.log.innerHTML = filteredLogs.map(log => `
+        <div class="log-entry level-${log.level}">
+            <span class="log-timestamp">${log.timestamp}</span>
+            <span class="log-source">[${log.source}]</span>
+            <span class="log-message">${escapeHtml(log.message)}</span>
+        </div>
+    `).join('');
+}
+
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    initDebugConsole();
+    init();
+});
 
 // Also try to init immediately if Tauri is already available
 if (window.__TAURI__) {
+    initDebugConsole();
     init();
 }

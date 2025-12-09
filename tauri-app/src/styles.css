@@ -1345,3 +1345,138 @@ body {
     flex-shrink: 0;
     color: var(--red-1);
 }
+
+/* Debug Console */
+.debug-console {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--black);
+    color: var(--cream);
+    z-index: 1000;
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.75rem;
+}
+
+.debug-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    user-select: none;
+}
+
+.debug-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--purple-2);
+    font-weight: 500;
+}
+
+.debug-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.debug-count {
+    color: var(--purple-2);
+    font-size: 0.7rem;
+}
+
+.debug-console .btn-icon {
+    color: var(--purple-2);
+    padding: 2px;
+}
+
+.debug-console .btn-icon:hover {
+    color: var(--cream);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.chevron-icon {
+    transition: transform var(--transition-fast);
+}
+
+.debug-console.expanded .chevron-icon {
+    transform: rotate(180deg);
+}
+
+.debug-content {
+    max-height: 200px;
+    overflow: hidden;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.debug-filters {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.debug-filters label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--purple-2);
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+
+.debug-filters input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+}
+
+.debug-log {
+    height: 160px;
+    overflow-y: auto;
+    padding: var(--spacing-xs);
+}
+
+.log-entry {
+    display: flex;
+    gap: var(--spacing-sm);
+    padding: 2px var(--spacing-xs);
+    border-radius: 2px;
+}
+
+.log-entry:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.log-entry.level-info { color: #60A5FA; }
+.log-entry.level-debug { color: var(--purple-2); }
+.log-entry.level-warn { color: #FBBF24; }
+.log-entry.level-error { color: var(--red-1); }
+
+.log-timestamp {
+    color: var(--purple-3);
+    flex-shrink: 0;
+}
+
+.log-source {
+    color: var(--purple-2);
+    flex-shrink: 0;
+    min-width: 40px;
+}
+
+.log-message {
+    flex: 1;
+    word-break: break-word;
+}
+
+/* Adjust footer when debug console is present */
+body:has(.debug-console) .footer {
+    padding-bottom: 32px;
+}
+
+body:has(.debug-console.expanded) .footer {
+    padding-bottom: 240px;
+}
