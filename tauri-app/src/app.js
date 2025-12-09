@@ -20,6 +20,7 @@ const setupElements = {
     reqNpmStatus: document.getElementById('reqNpmStatus'),
     reqDeps: document.getElementById('reqDeps'),
     reqDepsStatus: document.getElementById('reqDepsStatus'),
+    recheckBtn: document.getElementById('recheckDepsBtn'),
     installBtn: document.getElementById('installDepsBtn'),
     setupError: document.getElementById('setupError'),
     setupErrorText: document.getElementById('setupErrorText'),
@@ -192,6 +193,7 @@ function showSetupScreen(status) {
     }
 
     // Set up button handlers
+    setupElements.recheckBtn.onclick = recheckDependencies;
     setupElements.installBtn.onclick = installDependencies;
     setupElements.startAppBtn.onclick = () => {
         hideSetupScreen();
@@ -200,6 +202,51 @@ function showSetupScreen(status) {
 
     // Set up install progress listener
     setupInstallProgressListener();
+}
+
+// Re-check dependencies (called when user clicks Re-check button)
+async function recheckDependencies() {
+    // Reset status icons to loading state
+    resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
+    resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
+    resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
+
+    // Disable buttons during check
+    setupElements.recheckBtn.disabled = true;
+    setupElements.installBtn.disabled = true;
+    hideSetupError();
+
+    try {
+        const status = await invoke('check_dependencies');
+
+        // If all dependencies are now installed, close setup and start app
+        if (status.node_available && status.npm_available && status.dependencies_installed) {
+            hideSetupScreen();
+            await initializeMainApp();
+            return;
+        }
+
+        // Update the display with new status
+        showSetupScreen(status);
+    } catch (error) {
+        console.error('Failed to re-check dependencies:', error);
+        showSetupError(`Failed to check dependencies: ${error}`);
+    } finally {
+        setupElements.recheckBtn.disabled = false;
+    }
+}
+
+function resetRequirementToLoading(element, statusElement) {
+    const iconElement = element.querySelector('.requirement-icon');
+    iconElement.classList.remove('success', 'error');
+    iconElement.classList.add('loading');
+    iconElement.innerHTML = `
+        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+        </svg>
+    `;
+    statusElement.textContent = 'Checking...';
 }
 
 function updateRequirementStatus(element, statusElement, isSuccess, statusText) {

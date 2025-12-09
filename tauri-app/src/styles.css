@@ -1299,3 +1299,20 @@ body {
 .requirement-icon.error .spinner {
     display: none;
 }
+
+/* Setup actions button layout */
+.setup-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.setup-actions .btn {
+    min-width: auto;
+}
+
+.setup-actions .btn-large {
+    min-width: 200px;
+}
