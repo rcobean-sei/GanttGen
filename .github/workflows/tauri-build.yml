@@ -98,6 +98,27 @@ jobs:
 
           echo "Code signing certificate imported successfully"
 
+      - name: Debug - List certificates in keychain
+        if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
+        run: |
+          echo "=== Certificates available for code signing ==="
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo ""
+          echo "=== Expected signing identity ==="
+          echo "Looking for: $APPLE_SIGNING_IDENTITY"
+          echo ""
+          echo "=== Checking if expected identity exists ==="
+          if security find-identity -v -p codesigning "$KEYCHAIN_PATH" | grep -q "Developer ID Application"; then
+            echo "✓ Developer ID Application certificate found"
+          else
+            echo "::error::No Developer ID Application certificate found in keychain!"
+            echo "The .p12 file may contain the wrong certificate type."
+            echo "Make sure you exported 'Developer ID Application' (not 'Apple Development')"
+            exit 1
+          fi
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+
       - name: Install root project dependencies
         run: npm ci
 
@@ -116,6 +137,32 @@ jobs:
       - name: Install ImageMagick (macOS)
         if: matrix.platform == 'macos-latest'
         run: brew install imagemagick
+
+      - name: Download Node.js for bundling (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # Download Node.js for macOS ARM64
+          NODE_VERSION="20.18.1"
+          NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-arm64.tar.gz"
+          NODE_PATH="tauri-app/src-tauri/node-bundle"
+
+          echo "Downloading Node.js v${NODE_VERSION} for macOS ARM64..."
+          curl -L "$NODE_URL" -o node.tar.gz
+
+          echo "Extracting Node.js..."
+          tar -xzf node.tar.gz
+
+          # Create bundle directory and copy node binary
+          mkdir -p "$NODE_PATH"
+          cp "node-v${NODE_VERSION}-darwin-arm64/bin/node" "$NODE_PATH/node"
+          chmod +x "$NODE_PATH/node"
+
+          # Verify
+          "$NODE_PATH/node" --version
+          echo "Node.js bundled successfully for macOS"
+
+          # Cleanup
+          rm -rf node.tar.gz "node-v${NODE_VERSION}-darwin-arm64"
 
       - name: Add padding to macOS icon
         if: matrix.platform == 'macos-latest'
@@ -162,6 +209,33 @@ jobs:
           echo "Building unsigned app for PR..."
           npm run tauri build -- --target aarch64-apple-darwin
 
+      - name: Download Node.js for bundling (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Download Node.js portable for Windows
+          $nodeVersion = "20.18.1"
+          $nodeUrl = "https://nodejs.org/dist/v$nodeVersion/node-v$nodeVersion-win-x64.zip"
+          $nodePath = "tauri-app/src-tauri/node-bundle"
+
+          Write-Host "Downloading Node.js v$nodeVersion..."
+          Invoke-WebRequest -Uri $nodeUrl -OutFile "node.zip"
+
+          Write-Host "Extracting Node.js..."
+          Expand-Archive -Path "node.zip" -DestinationPath "node-temp" -Force
+
+          # Create bundle directory and copy only node.exe
+          New-Item -ItemType Directory -Force -Path $nodePath
+          Copy-Item "node-temp/node-v$nodeVersion-win-x64/node.exe" "$nodePath/node.exe"
+
+          # Verify
+          & "$nodePath/node.exe" --version
+          Write-Host "Node.js bundled successfully"
+
+          # Cleanup
+          Remove-Item "node.zip" -Force
+          Remove-Item "node-temp" -Recurse -Force
+
       - name: Build Tauri app (Windows)
         if: matrix.platform == 'windows-latest'
         uses: tauri-apps/tauri-action@v0
@@ -170,6 +244,21 @@ jobs:
         with:
           projectPath: tauri-app
           args: ${{ matrix.args }}
+
+      - name: Verify bundled Node.js in Windows build
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Check if node.exe exists in the bundle
+          $bundlePath = "tauri-app/src-tauri/target/release/node-bundle/node.exe"
+          if (Test-Path $bundlePath) {
+            Write-Host "Node.js successfully bundled at: $bundlePath"
+            & $bundlePath --version
+          } else {
+            Write-Host "::warning::Node.js bundle not found at expected location"
+            # List what's in the target directory
+            Get-ChildItem -Path "tauri-app/src-tauri/target/release" -Recurse -Name | Select-Object -First 50
+          }
 
       - name: Verify code signature
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
@@ -188,14 +277,79 @@ jobs:
           fi
           echo "Found app: $APP_PATH"
 
-          # Verify signature
-          if codesign -v --verbose=4 "$APP_PATH" 2>&1; then
-            echo "App is properly code-signed"
-            codesign -dv "$APP_PATH" 2>&1 | grep -E "Authority|Identifier" || true
-          else
-            echo "::error::App is NOT properly signed!"
+          # Show full signature details
+          echo ""
+          echo "=== Full signature details ==="
+          codesign -dv --verbose=4 "$APP_PATH" 2>&1 || true
+
+          # Check for Developer ID signature (must have Authority line)
+          echo ""
+          echo "=== Checking for Developer ID signature ==="
+          AUTHORITY=$(codesign -dv "$APP_PATH" 2>&1 | grep "Authority=Developer ID" || true)
+          if [ -z "$AUTHORITY" ]; then
+            echo "::error::App is NOT signed with a Developer ID certificate!"
+            echo "The APPLE_SIGNING_IDENTITY secret must be the exact certificate name from Keychain Access, e.g.:"
+            echo "  Developer ID Application: Your Company Name (TEAMID)"
+            echo ""
+            echo "Current signature info:"
+            codesign -dv "$APP_PATH" 2>&1 || true
             exit 1
           fi
+          echo "Found Developer ID signature: $AUTHORITY"
+
+          # Verify signature is valid
+          echo ""
+          echo "=== Verifying signature validity ==="
+          codesign -v --verbose=4 "$APP_PATH" 2>&1
+
+          # Check what Gatekeeper thinks
+          echo ""
+          echo "=== Gatekeeper assessment ==="
+          spctl -a -vv "$APP_PATH" 2>&1 || echo "spctl check failed (expected without notarization)"
+
+      - name: Notarize macOS DMG
+        if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # Check if notarization secrets are available
+          if [ -z "$APPLE_ID" ] || [ -z "$APPLE_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+            echo "::warning::Notarization secrets not configured. Skipping notarization."
+            echo "To enable notarization, add these GitHub secrets:"
+            echo "  - APPLE_ID: Your Apple Developer account email"
+            echo "  - APPLE_PASSWORD: An app-specific password"
+            echo "  - APPLE_TEAM_ID: Your 10-character Team ID"
+            exit 0
+          fi
+
+          echo "=== Notarizing DMG ==="
+          DMG_PATH=$(find tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg -name "*.dmg" | head -n 1)
+          if [ -z "$DMG_PATH" ]; then
+            echo "::error::DMG not found!"
+            exit 1
+          fi
+          echo "Found DMG: $DMG_PATH"
+
+          # Submit for notarization
+          echo "Submitting for notarization..."
+          xcrun notarytool submit "$DMG_PATH" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+
+          # Staple the notarization ticket
+          echo "Stapling notarization ticket..."
+          xcrun stapler staple "$DMG_PATH"
+
+          # Verify
+          echo "Verifying notarization..."
+          xcrun stapler validate "$DMG_PATH"
+          spctl -a -t open --context context:primary-signature -v "$DMG_PATH" || true
+
+          echo "Notarization complete!"
 
       - name: Upload macOS DMG
         if: matrix.platform == 'macos-latest'

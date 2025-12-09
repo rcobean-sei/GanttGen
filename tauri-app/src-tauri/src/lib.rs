@@ -73,8 +73,21 @@ fn get_scripts_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Get Node.js executable path
-fn get_node_path() -> Result<String, String> {
-    // First check if NODE_PATH environment variable is set
+fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    // First check for bundled Node.js in the resource directory
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        let bundled_node = if cfg!(target_os = "windows") {
+            resource_dir.join("node-bundle").join("node.exe")
+        } else {
+            resource_dir.join("node-bundle").join("node")
+        };
+
+        if bundled_node.exists() {
+            return Ok(bundled_node.to_string_lossy().to_string());
+        }
+    }
+
+    // Check if NODE_PATH environment variable is set
     if let Ok(path) = std::env::var("NODE_PATH") {
         if std::path::Path::new(&path).exists() {
             return Ok(path);
@@ -83,7 +96,7 @@ fn get_node_path() -> Result<String, String> {
 
     // Build list of common node locations
     let home = std::env::var("HOME").unwrap_or_default();
-    
+
     let common_paths: Vec<String> = if cfg!(target_os = "windows") {
         vec![
             "node.exe".to_string(),
@@ -99,7 +112,7 @@ fn get_node_path() -> Result<String, String> {
             // NVM paths
             format!("{}/.nvm/current/bin/node", home),
             format!("{}/.nvm/versions/node/*/bin/node", home), // Common NVM structure
-            // Volta paths  
+            // Volta paths
             format!("{}/.volta/bin/node", home),
         ]
     };
@@ -157,7 +170,7 @@ async fn generate_gantt(
         },
     );
 
-    let node = get_node_path()?;
+    let node = get_node_path(&app_handle)?;
     let mut args = vec![
         build_script.to_string_lossy().to_string(),
         "--input".to_string(),
