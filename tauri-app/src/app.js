@@ -8,6 +8,27 @@ const { open: shellOpen } = window.__TAURI__.shell;
 const { dirname, join: pathJoin, tempDir, desktopDir } = window.__TAURI__.path;
 const { writeTextFile } = window.__TAURI__.fs;
 
+// Setup screen elements
+const setupElements = {
+    overlay: document.getElementById('setupOverlay'),
+    statusView: document.getElementById('setupStatusView'),
+    installingView: document.getElementById('setupInstallingView'),
+    completeView: document.getElementById('setupCompleteView'),
+    reqNode: document.getElementById('reqNode'),
+    reqNodeStatus: document.getElementById('reqNodeStatus'),
+    reqNpm: document.getElementById('reqNpm'),
+    reqNpmStatus: document.getElementById('reqNpmStatus'),
+    reqDeps: document.getElementById('reqDeps'),
+    reqDepsStatus: document.getElementById('reqDepsStatus'),
+    installBtn: document.getElementById('installDepsBtn'),
+    setupError: document.getElementById('setupError'),
+    setupErrorText: document.getElementById('setupErrorText'),
+    installStage: document.getElementById('installStage'),
+    setupProgressBar: document.getElementById('setupProgressBar'),
+    installLog: document.getElementById('installLog'),
+    startAppBtn: document.getElementById('startAppBtn')
+};
+
 // State
 let state = {
     inputFile: null,
@@ -75,6 +96,20 @@ const elements = {
 
 // Initialize the app
 async function init() {
+    // First check dependencies
+    const depsReady = await checkAndSetupDependencies();
+
+    if (!depsReady) {
+        // Show setup screen and wait for user to install
+        return;
+    }
+
+    // Dependencies are ready, initialize the main app
+    await initializeMainApp();
+}
+
+// Initialize the main application UI
+async function initializeMainApp() {
     await loadPalettes();
     setupEventListeners();
     setupDragAndDrop();
@@ -83,6 +118,177 @@ async function init() {
     initializeDefaultDates();
     await initializeDefaultOutputFolder();
     updateGenerateButton();
+}
+
+// Check dependencies and show setup screen if needed
+async function checkAndSetupDependencies() {
+    try {
+        const status = await invoke('check_dependencies');
+
+        // If all dependencies are installed, skip setup
+        if (status.node_available && status.npm_available && status.dependencies_installed) {
+            return true;
+        }
+
+        // Show setup screen
+        showSetupScreen(status);
+        return false;
+    } catch (error) {
+        console.error('Failed to check dependencies:', error);
+        // If we can't check, assume deps are needed
+        showSetupScreen({
+            node_available: false,
+            npm_available: false,
+            dependencies_installed: false
+        });
+        return false;
+    }
+}
+
+// Show the setup screen with current status
+function showSetupScreen(status) {
+    setupElements.overlay.style.display = 'flex';
+    setupElements.statusView.style.display = 'block';
+    setupElements.installingView.style.display = 'none';
+    setupElements.completeView.style.display = 'none';
+
+    // Update Node.js status
+    updateRequirementStatus(
+        setupElements.reqNode,
+        setupElements.reqNodeStatus,
+        status.node_available,
+        status.node_version || 'Not found'
+    );
+
+    // Update npm status
+    updateRequirementStatus(
+        setupElements.reqNpm,
+        setupElements.reqNpmStatus,
+        status.npm_available,
+        status.npm_version || 'Not found'
+    );
+
+    // Update dependencies status
+    updateRequirementStatus(
+        setupElements.reqDeps,
+        setupElements.reqDepsStatus,
+        status.dependencies_installed,
+        status.dependencies_installed ? 'Installed' : 'Not installed'
+    );
+
+    // Enable/disable install button based on whether Node.js and npm are available
+    const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
+    setupElements.installBtn.disabled = !canInstall;
+
+    // Show error if Node.js or npm is not available
+    if (!status.node_available || !status.npm_available) {
+        showSetupError('Node.js and npm are required. Please install Node.js from https://nodejs.org');
+    } else if (status.dependencies_installed) {
+        // Dependencies are already installed, close setup and initialize
+        hideSetupScreen();
+        initializeMainApp();
+    } else {
+        hideSetupError();
+    }
+
+    // Set up button handlers
+    setupElements.installBtn.onclick = installDependencies;
+    setupElements.startAppBtn.onclick = () => {
+        hideSetupScreen();
+        initializeMainApp();
+    };
+
+    // Set up install progress listener
+    setupInstallProgressListener();
+}
+
+function updateRequirementStatus(element, statusElement, isSuccess, statusText) {
+    const iconElement = element.querySelector('.requirement-icon');
+
+    // Remove loading state
+    iconElement.classList.remove('loading');
+
+    if (isSuccess) {
+        iconElement.classList.add('success');
+        iconElement.classList.remove('error');
+        iconElement.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        `;
+    } else {
+        iconElement.classList.add('error');
+        iconElement.classList.remove('success');
+        iconElement.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+        `;
+    }
+
+    statusElement.textContent = statusText;
+}
+
+function showSetupError(message) {
+    setupElements.setupError.style.display = 'flex';
+    setupElements.setupErrorText.textContent = message;
+}
+
+function hideSetupError() {
+    setupElements.setupError.style.display = 'none';
+}
+
+function hideSetupScreen() {
+    setupElements.overlay.style.display = 'none';
+}
+
+async function installDependencies() {
+    // Switch to installing view
+    setupElements.statusView.style.display = 'none';
+    setupElements.installingView.style.display = 'block';
+    setupElements.installLog.innerHTML = '';
+
+    try {
+        await invoke('install_dependencies');
+        // Success - show complete view
+        setupElements.installingView.style.display = 'none';
+        setupElements.completeView.style.display = 'block';
+    } catch (error) {
+        // Error - go back to status view with error
+        setupElements.installingView.style.display = 'none';
+        setupElements.statusView.style.display = 'block';
+        showSetupError(`Installation failed: ${error}`);
+
+        // Re-check status
+        try {
+            const status = await invoke('check_dependencies');
+            showSetupScreen(status);
+        } catch (e) {
+            console.error('Failed to re-check dependencies:', e);
+        }
+    }
+}
+
+async function setupInstallProgressListener() {
+    await listen('install-progress', (event) => {
+        const { stage, message, progress, complete, error } = event.payload;
+
+        // Update progress bar
+        setupElements.setupProgressBar.style.width = `${progress}%`;
+
+        // Update stage text
+        setupElements.installStage.textContent = message;
+
+        // Add to log
+        if (message && message.trim()) {
+            const logLine = document.createElement('div');
+            logLine.textContent = message;
+            setupElements.installLog.appendChild(logLine);
+            setupElements.installLog.scrollTop = setupElements.installLog.scrollHeight;
+        }
+    });
 }
 
 // Generate a date-time stamp for folder naming

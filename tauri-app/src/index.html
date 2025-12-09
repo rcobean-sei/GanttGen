@@ -7,6 +7,124 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <!-- Setup Screen (shown when dependencies are missing) -->
+    <div class="setup-overlay" id="setupOverlay" style="display: none;">
+        <div class="setup-container">
+            <div class="setup-header">
+                <img src="sei_logo.svg" alt="SEI" class="setup-logo">
+                <h1 class="setup-title">GanttGen Setup</h1>
+            </div>
+
+            <div class="setup-content" id="setupContent">
+                <!-- Status Check View -->
+                <div class="setup-view" id="setupStatusView">
+                    <div class="setup-icon">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                            <path d="M2 17l10 5 10-5"></path>
+                            <path d="M2 12l10 5 10-5"></path>
+                        </svg>
+                    </div>
+                    <h2>First-Time Setup Required</h2>
+                    <p class="setup-description">
+                        GanttGen needs to install some dependencies to work properly.
+                        This is a one-time process.
+                    </p>
+
+                    <div class="setup-requirements">
+                        <div class="requirement-item" id="reqNode">
+                            <span class="requirement-icon loading">
+                                <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            <span class="requirement-text">Node.js</span>
+                            <span class="requirement-status" id="reqNodeStatus">Checking...</span>
+                        </div>
+                        <div class="requirement-item" id="reqNpm">
+                            <span class="requirement-icon loading">
+                                <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            <span class="requirement-text">npm</span>
+                            <span class="requirement-status" id="reqNpmStatus">Checking...</span>
+                        </div>
+                        <div class="requirement-item" id="reqDeps">
+                            <span class="requirement-icon loading">
+                                <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            <span class="requirement-text">Dependencies</span>
+                            <span class="requirement-status" id="reqDepsStatus">Checking...</span>
+                        </div>
+                    </div>
+
+                    <div class="setup-actions">
+                        <button class="btn btn-primary btn-large" id="installDepsBtn" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Install Dependencies
+                        </button>
+                    </div>
+
+                    <div class="setup-error" id="setupError" style="display: none;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <p id="setupErrorText"></p>
+                    </div>
+                </div>
+
+                <!-- Installing View -->
+                <div class="setup-view" id="setupInstallingView" style="display: none;">
+                    <div class="setup-icon installing">
+                        <svg class="spinner-large" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                        </svg>
+                    </div>
+                    <h2>Installing Dependencies</h2>
+                    <p class="setup-description" id="installStage">Preparing...</p>
+                    <div class="setup-progress">
+                        <div class="setup-progress-bar" id="setupProgressBar"></div>
+                    </div>
+                    <div class="install-log" id="installLog"></div>
+                </div>
+
+                <!-- Complete View -->
+                <div class="setup-view" id="setupCompleteView" style="display: none;">
+                    <div class="setup-icon success">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                    <h2>Setup Complete!</h2>
+                    <p class="setup-description">GanttGen is ready to use.</p>
+                    <div class="setup-actions">
+                        <button class="btn btn-primary btn-large" id="startAppBtn">
+                            Get Started
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="header">
         <div class="header-content">

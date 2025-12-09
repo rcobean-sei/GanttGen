@@ -1067,3 +1067,235 @@ body {
         flex-direction: column;
     }
 }
+
+/* ========================================
+   Setup Screen Styles
+   ======================================== */
+
+.setup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-primary);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-xl);
+}
+
+.setup-container {
+    width: 100%;
+    max-width: 500px;
+    background: white;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.setup-header {
+    background: var(--black);
+    padding: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.setup-logo {
+    height: 48px;
+    width: auto;
+}
+
+.setup-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.setup-content {
+    padding: var(--spacing-xl);
+}
+
+.setup-view {
+    text-align: center;
+}
+
+.setup-icon {
+    margin-bottom: var(--spacing-lg);
+    color: var(--purple-4);
+}
+
+.setup-icon.success {
+    color: #22C55E;
+}
+
+.setup-icon.installing {
+    color: var(--red-1);
+}
+
+.setup-view h2 {
+    font-size: 1.25rem;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.setup-description {
+    color: var(--text-secondary);
+    font-size: 0.9375rem;
+    margin-bottom: var(--spacing-lg);
+}
+
+.setup-requirements {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+    text-align: left;
+}
+
+.requirement-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.requirement-item:last-child {
+    border-bottom: none;
+}
+
+.requirement-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.requirement-icon.success {
+    color: #22C55E;
+}
+
+.requirement-icon.error {
+    color: var(--red-1);
+}
+
+.requirement-text {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.requirement-status {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+}
+
+.setup-actions {
+    margin-top: var(--spacing-lg);
+}
+
+.setup-actions .btn {
+    min-width: 200px;
+}
+
+.setup-error {
+    margin-top: var(--spacing-lg);
+    padding: var(--spacing-md);
+    background: rgba(240, 24, 64, 0.08);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(240, 24, 64, 0.2);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    text-align: left;
+}
+
+.setup-error svg {
+    color: var(--red-1);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.setup-error p {
+    font-size: 0.875rem;
+    color: var(--red-2);
+    margin: 0;
+}
+
+.setup-progress {
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-md);
+}
+
+.setup-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--red-1) 0%, var(--red-2) 100%);
+    border-radius: 4px;
+    width: 0%;
+    transition: width var(--transition-normal);
+}
+
+.install-log {
+    max-height: 120px;
+    overflow-y: auto;
+    background: var(--black);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 0.75rem;
+    color: var(--purple-2);
+    text-align: left;
+    margin-top: var(--spacing-md);
+}
+
+.install-log:empty {
+    display: none;
+}
+
+/* Spinner animation */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner,
+.spinner-large {
+    animation: spin 1s linear infinite;
+}
+
+/* Checkmark icon for requirements */
+.requirement-icon .check-icon {
+    display: none;
+}
+
+.requirement-icon .error-icon {
+    display: none;
+}
+
+.requirement-icon.success .check-icon {
+    display: block;
+}
+
+.requirement-icon.error .error-icon {
+    display: block;
+}
+
+.requirement-icon.success .spinner,
+.requirement-icon.error .spinner {
+    display: none;
+}

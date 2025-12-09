@@ -5,6 +5,17 @@ use tauri::{Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DependencyStatus {
+    pub node_available: bool,
+    pub node_version: Option<String>,
+    pub npm_available: bool,
+    pub npm_version: Option<String>,
+    pub dependencies_installed: bool,
+    pub dependencies_path: Option<String>,
+    pub scripts_path: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GenerateOptions {
     pub input_path: String,
@@ -25,6 +36,31 @@ pub struct GenerateResult {
 pub struct ProgressUpdate {
     pub step: String,
     pub progress: u8,
+}
+
+/// Get the path to the user data directory for storing dependencies
+fn get_user_data_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to get app data directory: {}", e))
+}
+
+/// Get the path where dependencies (node_modules) should be installed
+fn get_dependencies_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let data_dir = get_user_data_dir(app_handle)?;
+    Ok(data_dir.join("dependencies"))
+}
+
+/// Check if dependencies are installed in the user data directory
+fn check_dependencies_installed(app_handle: &tauri::AppHandle) -> bool {
+    if let Ok(deps_dir) = get_dependencies_dir(app_handle) {
+        let node_modules = deps_dir.join("node_modules");
+        // Check for a key dependency that we know is required
+        node_modules.exists() && node_modules.join("exceljs").exists()
+    } else {
+        false
+    }
 }
 
 /// Get the path to the bundled scripts directory
@@ -70,6 +106,26 @@ fn get_scripts_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     }
 
     Err("Failed to get resource directory. Please reinstall the application.".to_string())
+}
+
+/// Get the path to node_modules - either in user data dir or bundled with scripts
+fn get_node_modules_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // First, check user data directory (for in-app installed dependencies)
+    if let Ok(deps_dir) = get_dependencies_dir(app_handle) {
+        let user_node_modules = deps_dir.join("node_modules");
+        if user_node_modules.exists() && user_node_modules.join("exceljs").exists() {
+            return Ok(user_node_modules);
+        }
+    }
+
+    // Fallback to bundled node_modules in scripts directory (development mode)
+    let scripts_dir = get_scripts_dir(app_handle)?;
+    let bundled_node_modules = scripts_dir.join("node_modules");
+    if bundled_node_modules.exists() && bundled_node_modules.join("exceljs").exists() {
+        return Ok(bundled_node_modules);
+    }
+
+    Err("Dependencies not installed. Please use the Setup button to install required dependencies.".to_string())
 }
 
 /// Get Node.js executable path
@@ -199,11 +255,19 @@ async fn generate_gantt(
         },
     );
 
-    let mut child = Command::new(&node)
-        .args(&args)
+    // Set up environment for the node process
+    let mut cmd = Command::new(&node);
+    cmd.args(&args)
         .current_dir(scripts_dir.parent().unwrap_or(&scripts_dir))
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    // Set NODE_PATH to include user-installed dependencies if available
+    if let Ok(node_modules) = get_node_modules_dir(&app_handle) {
+        cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
+    }
+
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to start node process: {}", e))?;
 
@@ -451,6 +515,331 @@ pub struct PaletteInfo {
     pub accent_color: Option<String>,
 }
 
+/// Check if Node.js and npm are available, and if dependencies are installed
+#[tauri::command]
+async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencyStatus, String> {
+    let mut status = DependencyStatus {
+        node_available: false,
+        node_version: None,
+        npm_available: false,
+        npm_version: None,
+        dependencies_installed: false,
+        dependencies_path: None,
+        scripts_path: None,
+    };
+
+    // Check Node.js
+    if let Ok(node_path) = get_node_path(&app_handle) {
+        // Try to get version
+        if let Ok(output) = std::process::Command::new(&node_path)
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                status.node_available = true;
+                status.node_version = Some(
+                    String::from_utf8_lossy(&output.stdout)
+                        .trim()
+                        .to_string(),
+                );
+            }
+        }
+    }
+
+    // Check npm (look for it relative to node or in PATH)
+    let npm_cmd = if cfg!(target_os = "windows") {
+        "npm.cmd"
+    } else {
+        "npm"
+    };
+
+    // Try common npm locations
+    let home = std::env::var("HOME").unwrap_or_default();
+    let npm_paths: Vec<String> = if cfg!(target_os = "windows") {
+        vec![
+            npm_cmd.to_string(),
+            "C:\\Program Files\\nodejs\\npm.cmd".to_string(),
+        ]
+    } else {
+        vec![
+            "/usr/local/bin/npm".to_string(),
+            "/opt/homebrew/bin/npm".to_string(),
+            "/usr/bin/npm".to_string(),
+            format!("{}/.nvm/current/bin/npm", home),
+            format!("{}/.volta/bin/npm", home),
+        ]
+    };
+
+    for npm_path in &npm_paths {
+        if let Ok(output) = std::process::Command::new(npm_path)
+            .arg("--version")
+            .output()
+        {
+            if output.status.success() {
+                status.npm_available = true;
+                status.npm_version = Some(
+                    String::from_utf8_lossy(&output.stdout)
+                        .trim()
+                        .to_string(),
+                );
+                break;
+            }
+        }
+    }
+
+    // Also try which/where to find npm
+    if !status.npm_available {
+        #[cfg(not(target_os = "windows"))]
+        {
+            if let Ok(output) = std::process::Command::new("sh")
+                .args(["-c", "which npm 2>/dev/null || command -v npm 2>/dev/null"])
+                .output()
+            {
+                if output.status.success() {
+                    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !path.is_empty() {
+                        if let Ok(ver_output) = std::process::Command::new(&path)
+                            .arg("--version")
+                            .output()
+                        {
+                            if ver_output.status.success() {
+                                status.npm_available = true;
+                                status.npm_version = Some(
+                                    String::from_utf8_lossy(&ver_output.stdout)
+                                        .trim()
+                                        .to_string(),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Check if dependencies are installed
+    status.dependencies_installed = check_dependencies_installed(&app_handle);
+
+    // Get paths for display
+    if let Ok(deps_dir) = get_dependencies_dir(&app_handle) {
+        status.dependencies_path = Some(deps_dir.to_string_lossy().to_string());
+    }
+    if let Ok(scripts_dir) = get_scripts_dir(&app_handle) {
+        status.scripts_path = Some(scripts_dir.to_string_lossy().to_string());
+    }
+
+    Ok(status)
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InstallProgress {
+    pub stage: String,
+    pub message: String,
+    pub progress: u8,
+    pub complete: bool,
+    pub error: Option<String>,
+}
+
+/// Install dependencies by running npm install
+#[tauri::command]
+async fn install_dependencies(
+    app_handle: tauri::AppHandle,
+    window: tauri::Window,
+) -> Result<bool, String> {
+    // Emit initial progress
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Preparing".to_string(),
+            message: "Setting up dependency directory...".to_string(),
+            progress: 5,
+            complete: false,
+            error: None,
+        },
+    );
+
+    // Get the scripts directory to find package.json
+    let scripts_dir = get_scripts_dir(&app_handle)?;
+    let package_json = scripts_dir.join("package.json");
+
+    if !package_json.exists() {
+        return Err(format!(
+            "package.json not found at {}",
+            package_json.display()
+        ));
+    }
+
+    // Create dependencies directory in user data
+    let deps_dir = get_dependencies_dir(&app_handle)?;
+    tokio::fs::create_dir_all(&deps_dir)
+        .await
+        .map_err(|e| format!("Failed to create dependencies directory: {}", e))?;
+
+    // Copy package.json and package-lock.json to deps directory
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Copying".to_string(),
+            message: "Copying package files...".to_string(),
+            progress: 10,
+            complete: false,
+            error: None,
+        },
+    );
+
+    tokio::fs::copy(&package_json, deps_dir.join("package.json"))
+        .await
+        .map_err(|e| format!("Failed to copy package.json: {}", e))?;
+
+    // Copy package-lock.json if it exists
+    let package_lock = scripts_dir.join("package-lock.json");
+    if package_lock.exists() {
+        let _ = tokio::fs::copy(&package_lock, deps_dir.join("package-lock.json")).await;
+    }
+
+    // Find npm
+    let npm_cmd = find_npm_path()?;
+
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Installing".to_string(),
+            message: "Installing dependencies (this may take a few minutes)...".to_string(),
+            progress: 20,
+            complete: false,
+            error: None,
+        },
+    );
+
+    // Run npm install
+    let mut child = Command::new(&npm_cmd)
+        .args(["install", "--production"])
+        .current_dir(&deps_dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to start npm install: {}", e))?;
+
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+
+    let mut stdout_reader = BufReader::new(stdout).lines();
+    let mut progress = 20u8;
+
+    // Read stdout and update progress
+    while let Ok(Some(line)) = stdout_reader.next_line().await {
+        // Update progress based on npm output
+        if line.contains("added") || line.contains("packages") {
+            progress = progress.saturating_add(10).min(90);
+        }
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Installing".to_string(),
+                message: line,
+                progress,
+                complete: false,
+                error: None,
+            },
+        );
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait for npm: {}", e))?;
+
+    // Read stderr for error messages
+    let mut error_lines = Vec::new();
+    let mut stderr_reader = BufReader::new(stderr).lines();
+    while let Ok(Some(line)) = stderr_reader.next_line().await {
+        if !line.contains("WARN") && !line.is_empty() {
+            error_lines.push(line);
+        }
+    }
+
+    if status.success() {
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Complete".to_string(),
+                message: "Dependencies installed successfully!".to_string(),
+                progress: 100,
+                complete: true,
+                error: None,
+            },
+        );
+        Ok(true)
+    } else {
+        let error_msg = if error_lines.is_empty() {
+            "npm install failed".to_string()
+        } else {
+            error_lines.join("\n")
+        };
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Error".to_string(),
+                message: "Installation failed".to_string(),
+                progress: 100,
+                complete: true,
+                error: Some(error_msg.clone()),
+            },
+        );
+        Err(error_msg)
+    }
+}
+
+/// Find npm executable path
+fn find_npm_path() -> Result<String, String> {
+    let home = std::env::var("HOME").unwrap_or_default();
+
+    let npm_paths: Vec<String> = if cfg!(target_os = "windows") {
+        vec![
+            "npm.cmd".to_string(),
+            "C:\\Program Files\\nodejs\\npm.cmd".to_string(),
+        ]
+    } else {
+        vec![
+            "/usr/local/bin/npm".to_string(),
+            "/opt/homebrew/bin/npm".to_string(),
+            "/usr/bin/npm".to_string(),
+            format!("{}/.nvm/current/bin/npm", home),
+            format!("{}/.volta/bin/npm", home),
+        ]
+    };
+
+    for path in &npm_paths {
+        if std::path::Path::new(path).exists() {
+            return Ok(path.clone());
+        }
+    }
+
+    // Try using which command
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = std::process::Command::new("sh")
+            .args(["-c", "which npm 2>/dev/null || command -v npm 2>/dev/null"])
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() && std::path::Path::new(&path).exists() {
+                    return Ok(path);
+                }
+            }
+        }
+    }
+
+    Err("npm not found. Please install Node.js (which includes npm) from https://nodejs.org".to_string())
+}
+
+/// Get the path where dependencies will be installed (for UI display)
+#[tauri::command]
+async fn get_dependencies_path(app_handle: tauri::AppHandle) -> Result<String, String> {
+    get_dependencies_dir(&app_handle).map(|p| p.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -461,7 +850,10 @@ pub fn run() {
             generate_gantt,
             read_json_file,
             validate_input_file,
-            get_palette_info
+            get_palette_info,
+            check_dependencies,
+            install_dependencies,
+            get_dependencies_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
