@@ -19,6 +19,34 @@ try {
 }
 
 // ============================================================
+// PATH VALIDATION HELPERS
+// ============================================================
+
+/**
+ * Validates that a path is valid and not just a drive letter (Windows issue)
+ * @param {string} pathStr - The path to validate
+ * @returns {boolean} - True if valid, false otherwise
+ */
+function isValidPath(pathStr) {
+    if (!pathStr || typeof pathStr !== 'string' || pathStr.trim() === '') {
+        return false;
+    }
+    
+    const trimmed = pathStr.trim();
+    
+    // Check for Windows drive letter only (e.g., "C:" without path)
+    // This is invalid and causes EISDIR errors
+    const windowsDriveOnly = /^[A-Za-z]:$/;
+    if (windowsDriveOnly.test(trimmed)) {
+        return false;
+    }
+    
+    // Path should have meaningful content
+    const normalized = path.normalize(trimmed);
+    return normalized.length > 0 && normalized !== '.';
+}
+
+// ============================================================
 // BRAND COLOR PALETTES
 // ============================================================
 
@@ -661,7 +689,9 @@ if (require.main === module) {
     const pngFlag = args.includes('--png');
     const noPngFlag = args.includes('--no-png');
     
-    if (inputIndex === -1 || !args[inputIndex + 1]) {
+    // Validate input argument exists and is not empty/whitespace
+    const inputArg = args[inputIndex + 1];
+    if (inputIndex === -1 || !inputArg || typeof inputArg !== 'string' || inputArg.trim() === '') {
         console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [options]');
         console.error('');
         console.error('Options:');
@@ -681,10 +711,29 @@ if (require.main === module) {
         process.exit(1);
     }
     
-    const inputPath = path.resolve(args[inputIndex + 1]);
-    const outputPath = outputIndex !== -1 && args[outputIndex + 1] 
-        ? path.resolve(args[outputIndex + 1])
-        : null;
+    const inputPath = path.resolve(inputArg.trim());
+    
+    // Validate that the resolved path is valid (not just a drive letter on Windows)
+    if (!isValidPath(inputPath)) {
+        console.error('✗ Error: Invalid input path provided. Path cannot be a drive letter only (e.g., "C:")');
+        console.error('  Provided: "%s"', inputArg);
+        console.error('  Resolved to: "%s"', inputPath);
+        process.exit(1);
+    }
+    
+    // Validate output argument if provided
+    const outputArg = args[outputIndex + 1];
+    let outputPath = null;
+    if (outputIndex !== -1 && outputArg && typeof outputArg === 'string' && outputArg.trim() !== '') {
+        outputPath = path.resolve(outputArg.trim());
+        if (!isValidPath(outputPath)) {
+            console.error('✗ Error: Invalid output path provided. Path cannot be a drive letter only (e.g., "C:")');
+            console.error('  Provided: "%s"', outputArg);
+            console.error('  Resolved to: "%s"', outputPath);
+            process.exit(1);
+        }
+    }
+    
     const palette = paletteIndex !== -1 && args[paletteIndex + 1]
         ? args[paletteIndex + 1]
         : null;
@@ -706,5 +755,6 @@ module.exports = {
     getPaletteByName,
     assignTaskColors,
     collectSubtasks,
-    BRAND_COLORS
+    BRAND_COLORS,
+    isValidPath
 };

@@ -1,16 +1,16 @@
 {
-  "palette": [
-    "#F01840",
-    "#402848",
-    "#C01830",
-    "#705E74",
-    "#901226",
-    "#2A1C30"
-  ],
-  "title": "PROJECT TIMELINE",
+  "title": "Test Project Timeline",
   "timelineStart": "2025-01-01",
   "timelineEnd": "2025-03-31",
   "showMilestones": true,
+  "palette": [
+    "#F01840",
+    "#C01830",
+    "#901226",
+    "#600C1C",
+    "#300810",
+    "#F01840"
+  ],
   "tasks": [
     {
       "name": "Phase 1: Discovery",
@@ -22,6 +22,7 @@
         "Requirements gathering",
         "Initial assessment"
       ],
+      "colorIndex": 0,
       "color": "#F01840"
     },
     {
@@ -34,7 +35,8 @@
         "Create project plan",
         "Resource allocation"
       ],
-      "color": "#402848"
+      "colorIndex": 1,
+      "color": "#C01830"
     },
     {
       "name": "Phase 3: Execution",
@@ -46,7 +48,8 @@
         "Quality assurance",
         "Progress tracking"
       ],
-      "color": "#C01830"
+      "colorIndex": 2,
+      "color": "#901226"
     },
     {
       "name": "Phase 4: Delivery",
@@ -58,7 +61,8 @@
         "Documentation",
         "Handoff and training"
       ],
-      "color": "#705E74"
+      "colorIndex": 3,
+      "color": "#600C1C"
     }
   ],
   "milestones": [
@@ -78,6 +82,12 @@
       "taskIndex": 3
     }
   ],
-  "pausePeriods": [],
-  "palettePreset": "alternating"
+  "pausePeriods": [
+    {
+      "start": "2025-02-10",
+      "end": "2025-02-12"
+    }
+  ],
+  "palettePreset": "reds_b",
+  "accentBorder": "#402848"
 }
