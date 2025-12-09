@@ -282,11 +282,12 @@ jobs:
           echo "=== Full signature details ==="
           codesign -dv --verbose=4 "$APP_PATH" 2>&1 || true
 
-          # Check for Developer ID signature (must have Authority line)
+          # Check for Developer ID signature (check for cert chain, not first Authority which GitHub may redact)
           echo ""
           echo "=== Checking for Developer ID signature ==="
-          AUTHORITY=$(codesign -dv "$APP_PATH" 2>&1 | grep "Authority=Developer ID" || true)
-          if [ -z "$AUTHORITY" ]; then
+          # GitHub redacts the first Authority line if it matches a secret, so check for the cert chain instead
+          CERT_CHAIN=$(codesign -dv "$APP_PATH" 2>&1 | grep "Authority=Developer ID Certification Authority" || true)
+          if [ -z "$CERT_CHAIN" ]; then
             echo "::error::App is NOT signed with a Developer ID certificate!"
             echo "The APPLE_SIGNING_IDENTITY secret must be the exact certificate name from Keychain Access, e.g.:"
             echo "  Developer ID Application: Your Company Name (TEAMID)"
@@ -295,7 +296,7 @@ jobs:
             codesign -dv "$APP_PATH" 2>&1 || true
             exit 1
           fi
-          echo "Found Developer ID signature: $AUTHORITY"
+          echo "Found Developer ID certificate chain: $CERT_CHAIN"
 
           # Verify signature is valid
           echo ""
