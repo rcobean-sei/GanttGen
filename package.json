@@ -13,6 +13,7 @@
     "test:visual": "playwright test --config playwright.visual.config.js",
     "test:all": "npm run test && npm run test:e2e",
     "update-snapshots:ci": "bash scripts/update-visual-snapshots.sh",
+    "install:mac": "bash scripts/install-mac.sh",
     "tauri": "npm --prefix tauri-app run tauri",
     "tauri:dev": "npm --prefix tauri-app run tauri:dev",
     "tauri:build": "npm --prefix tauri-app run tauri:build",
