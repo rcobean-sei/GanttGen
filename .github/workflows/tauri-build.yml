@@ -226,6 +226,8 @@ jobs:
 
       - name: Download Node.js for bundling (macOS)
         if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           # Download Node.js for macOS ARM64
           NODE_VERSION="20.18.1"
@@ -242,6 +244,18 @@ jobs:
           mkdir -p "$NODE_PATH"
           cp "node-v${NODE_VERSION}-darwin-arm64/bin/node" "$NODE_PATH/node"
           chmod +x "$NODE_PATH/node"
+
+          # Sign the bundled Node.js binary (required for notarization)
+          # All binaries in the app bundle must be signed
+          if [ -n "$APPLE_SIGNING_IDENTITY" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Signing bundled Node.js binary..."
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+            codesign --force --options runtime --sign "$APPLE_SIGNING_IDENTITY" "$NODE_PATH/node"
+            echo "✓ Node.js binary signed"
+            codesign -dv "$NODE_PATH/node" 2>&1 | head -5
+          else
+            echo "Skipping Node.js signing (PR build or no signing identity)"
+          fi
 
           # Verify
           "$NODE_PATH/node" --version
