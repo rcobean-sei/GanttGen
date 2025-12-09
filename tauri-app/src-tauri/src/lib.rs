@@ -14,6 +14,8 @@ pub struct DependencyStatus {
     pub dependencies_installed: bool,
     pub dependencies_path: Option<String>,
     pub scripts_path: Option<String>,
+    pub browser_available: bool,
+    pub browser_name: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -562,6 +564,91 @@ pub struct PaletteInfo {
     pub accent_color: Option<String>,
 }
 
+/// Find a Chrome-based browser for PNG export
+fn find_system_browser() -> Option<(String, String)> {
+    #[cfg(target_os = "macos")]
+    {
+        let browsers = vec![
+            ("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "Google Chrome"),
+            ("/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary", "Chrome Canary"),
+            ("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "Microsoft Edge"),
+            ("/Applications/Chromium.app/Contents/MacOS/Chromium", "Chromium"),
+        ];
+
+        for (path, name) in browsers {
+            if std::path::Path::new(path).exists() {
+                return Some((path.to_string(), name.to_string()));
+            }
+        }
+
+        // Try mdfind for Chrome
+        if let Ok(output) = std::process::Command::new("mdfind")
+            .args(["kMDItemCFBundleIdentifier == 'com.google.Chrome'"])
+            .output()
+        {
+            if output.status.success() {
+                let chrome_path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !chrome_path.is_empty() {
+                    let parts: Vec<&str> = chrome_path.lines().collect();
+                    if !parts.is_empty() {
+                        let app_path = format!("{}/Contents/MacOS/Google Chrome", parts[0]);
+                        if std::path::Path::new(&app_path).exists() {
+                            return Some((app_path, "Google Chrome".to_string()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let browsers = vec![
+            ("C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe", "Google Chrome"),
+            ("C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe", "Google Chrome"),
+            ("C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe", "Microsoft Edge"),
+        ];
+
+        for (path, name) in browsers {
+            if std::path::Path::new(path).exists() {
+                return Some((path.to_string(), name.to_string()));
+            }
+        }
+
+        // Check LOCALAPPDATA
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let chrome_path = format!("{}\\Google\\Chrome\\Application\\chrome.exe", local_app_data);
+            if std::path::Path::new(&chrome_path).exists() {
+                return Some((chrome_path, "Google Chrome".to_string()));
+            }
+            let edge_path = format!("{}\\Microsoft\\Edge\\Application\\msedge.exe", local_app_data);
+            if std::path::Path::new(&edge_path).exists() {
+                return Some((edge_path, "Microsoft Edge".to_string()));
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let browsers = vec![
+            ("/usr/bin/google-chrome", "Google Chrome"),
+            ("/usr/bin/google-chrome-stable", "Google Chrome"),
+            ("/usr/bin/chromium", "Chromium"),
+            ("/usr/bin/chromium-browser", "Chromium"),
+            ("/usr/bin/microsoft-edge", "Microsoft Edge"),
+            ("/usr/bin/microsoft-edge-stable", "Microsoft Edge"),
+        ];
+
+        for (path, name) in browsers {
+            if std::path::Path::new(path).exists() {
+                return Some((path.to_string(), name.to_string()));
+            }
+        }
+    }
+
+    None
+}
+
 /// Check if Node.js and npm are available, and if dependencies are installed
 #[tauri::command]
 async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencyStatus, String> {
@@ -573,6 +660,8 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
         dependencies_installed: false,
         dependencies_path: None,
         scripts_path: None,
+        browser_available: false,
+        browser_name: None,
     };
 
     // Check Node.js
@@ -673,6 +762,12 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
     }
     if let Ok(scripts_dir) = get_scripts_dir(&app_handle) {
         status.scripts_path = Some(scripts_dir.to_string_lossy().to_string());
+    }
+
+    // Check for Chrome-based browser (for PNG export)
+    if let Some((_, name)) = find_system_browser() {
+        status.browser_available = true;
+        status.browser_name = Some(name);
     }
 
     Ok(status)
@@ -806,11 +901,23 @@ async fn install_dependencies(
     }
 
     if status.success() {
+        // Now install Playwright browsers for PNG export
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Installing".to_string(),
+                message: "Installing browser for PNG export...".to_string(),
+                progress: 92,
+                complete: false,
+                error: None,
+            },
+        );
+
         let _ = window.emit(
             "install-progress",
             InstallProgress {
                 stage: "Complete".to_string(),
-                message: "Dependencies installed successfully!".to_string(),
+                message: "Dependencies installed successfully! PNG export will use your system browser (Chrome/Edge).".to_string(),
                 progress: 100,
                 complete: true,
                 error: None,

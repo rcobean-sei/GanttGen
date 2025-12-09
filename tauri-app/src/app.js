@@ -20,6 +20,8 @@ const setupElements = {
     reqNpmStatus: document.getElementById('reqNpmStatus'),
     reqDeps: document.getElementById('reqDeps'),
     reqDepsStatus: document.getElementById('reqDepsStatus'),
+    reqBrowser: document.getElementById('reqBrowser'),
+    reqBrowserStatus: document.getElementById('reqBrowserStatus'),
     recheckBtn: document.getElementById('recheckDepsBtn'),
     installBtn: document.getElementById('installDepsBtn'),
     setupError: document.getElementById('setupError'),
@@ -178,6 +180,14 @@ function showSetupScreen(status) {
         status.dependencies_installed ? 'Installed' : 'Not installed'
     );
 
+    // Update browser status (optional but needed for PNG export)
+    updateRequirementStatus(
+        setupElements.reqBrowser,
+        setupElements.reqBrowserStatus,
+        status.browser_available,
+        status.browser_name || 'Not found (PNG export will be unavailable)'
+    );
+
     // Enable/disable install button based on whether Node.js and npm are available
     const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
     setupElements.installBtn.disabled = !canInstall;
@@ -211,6 +221,7 @@ async function recheckDependencies() {
     resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
     resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
     resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
+    resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
 
     // Disable buttons during check
     setupElements.recheckBtn.disabled = true;
