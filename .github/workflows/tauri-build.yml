@@ -8,6 +8,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force full rebuild (clear cache)'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
   CARGO_TERM_COLOR: always
@@ -34,6 +40,86 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Generate cache key from source files that affect the build
+      - name: Generate build cache key
+        id: cache-key
+        shell: bash
+        run: |
+          # Hash files that would require a rebuild
+          if [ "${{ matrix.platform }}" == "macos-latest" ]; then
+            HASH=$(cat \
+              tauri-app/src-tauri/Cargo.toml \
+              tauri-app/src-tauri/Cargo.lock \
+              tauri-app/src-tauri/tauri.conf.json \
+              tauri-app/package.json \
+              $(find tauri-app/src-tauri/src -type f -name "*.rs") \
+              $(find tauri-app/src -type f) \
+              $(find scripts -type f -name "*.js") \
+              $(find templates -type f) \
+              2>/dev/null | sha256sum | cut -d' ' -f1)
+            echo "hash=$HASH" >> $GITHUB_OUTPUT
+            echo "Build cache key: macos-build-$HASH"
+          else
+            HASH=$(cat \
+              tauri-app/src-tauri/Cargo.toml \
+              tauri-app/src-tauri/Cargo.lock \
+              tauri-app/src-tauri/tauri.conf.json \
+              tauri-app/package.json \
+              2>/dev/null | sha256sum | cut -d' ' -f1)
+            echo "hash=$HASH" >> $GITHUB_OUTPUT
+            echo "Build cache key: windows-build-$HASH"
+          fi
+
+      # Try to restore cached build artifacts (excludes bundle dir so we can re-sign)
+      - name: Restore build cache (macOS)
+        if: matrix.platform == 'macos-latest' && github.event.inputs.force_rebuild != 'true'
+        id: cache-macos
+        uses: actions/cache@v4
+        with:
+          path: |
+            tauri-app/src-tauri/target/aarch64-apple-darwin/release/deps
+            tauri-app/src-tauri/target/aarch64-apple-darwin/release/build
+            tauri-app/src-tauri/target/aarch64-apple-darwin/release/.fingerprint
+            tauri-app/src-tauri/target/aarch64-apple-darwin/release/ganttgen-app
+          key: macos-build-v2-${{ steps.cache-key.outputs.hash }}
+
+      - name: Restore build cache (Windows)
+        if: matrix.platform == 'windows-latest' && github.event.inputs.force_rebuild != 'true'
+        id: cache-windows
+        uses: actions/cache@v4
+        with:
+          path: |
+            tauri-app/src-tauri/target/release/deps
+            tauri-app/src-tauri/target/release/build
+            tauri-app/src-tauri/target/release/.fingerprint
+            tauri-app/src-tauri/target/release/ganttgen-app.exe
+          key: windows-build-v2-${{ steps.cache-key.outputs.hash }}
+
+      - name: Check cache status
+        shell: bash
+        run: |
+          FORCE_REBUILD="${{ github.event.inputs.force_rebuild }}"
+          if [ "$FORCE_REBUILD" == "true" ]; then
+            echo "⚠️ Force rebuild requested - ignoring cache"
+            echo "BUILD_CACHE_HIT=false" >> $GITHUB_ENV
+          elif [ "${{ matrix.platform }}" == "macos-latest" ]; then
+            if [ "${{ steps.cache-macos.outputs.cache-hit }}" == "true" ]; then
+              echo "✓ Build cache HIT - Cargo will use cached artifacts (faster build)"
+              echo "BUILD_CACHE_HIT=true" >> $GITHUB_ENV
+            else
+              echo "✗ Build cache MISS - full compilation required"
+              echo "BUILD_CACHE_HIT=false" >> $GITHUB_ENV
+            fi
+          else
+            if [ "${{ steps.cache-windows.outputs.cache-hit }}" == "true" ]; then
+              echo "✓ Build cache HIT - Cargo will use cached artifacts (faster build)"
+              echo "BUILD_CACHE_HIT=true" >> $GITHUB_ENV
+            else
+              echo "✗ Build cache MISS - full compilation required"
+              echo "BUILD_CACHE_HIT=false" >> $GITHUB_ENV
+            fi
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
