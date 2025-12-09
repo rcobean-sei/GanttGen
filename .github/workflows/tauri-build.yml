@@ -138,6 +138,14 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: brew install imagemagick
 
+      - name: Create empty node-bundle directory (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # Create empty node-bundle directory so Tauri doesn't fail on missing resource
+          # macOS uses system Node.js, so this is just a placeholder
+          mkdir -p tauri-app/src-tauri/node-bundle
+          echo "Placeholder for Windows node.exe bundle" > tauri-app/src-tauri/node-bundle/README.txt
+
       - name: Add padding to macOS icon
         if: matrix.platform == 'macos-latest'
         run: |
