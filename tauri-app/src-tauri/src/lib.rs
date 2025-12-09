@@ -840,6 +840,124 @@ async fn get_dependencies_path(app_handle: tauri::AppHandle) -> Result<String, S
     get_dependencies_dir(&app_handle).map(|p| p.to_string_lossy().to_string())
 }
 
+/// Open a file with the system's default application
+#[tauri::command]
+async fn open_file(path: String) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", path.display()));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| format!("Failed to open file: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// Open a folder in the system's file browser
+#[tauri::command]
+async fn open_folder(path: String) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&path);
+
+    // If path is a file, get its parent directory
+    let folder_path = if path.is_file() {
+        path.parent()
+            .map(|p| p.to_path_buf())
+            .unwrap_or(path.clone())
+    } else {
+        path.clone()
+    };
+
+    if !folder_path.exists() {
+        return Err(format!("Folder not found: {}", folder_path.display()));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&folder_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&folder_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&folder_path)
+            .spawn()
+            .map_err(|e| format!("Failed to open folder: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// Open a folder and select/highlight a specific file
+#[tauri::command]
+async fn reveal_file(path: String) -> Result<(), String> {
+    let path = std::path::PathBuf::from(&path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", path.display()));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .args(["-R", &path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to reveal file: {}", e))?;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .args(["/select,", &path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| format!("Failed to reveal file: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // On Linux, just open the parent folder
+        if let Some(parent) = path.parent() {
+            std::process::Command::new("xdg-open")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| format!("Failed to open folder: {}", e))?;
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -853,7 +971,10 @@ pub fn run() {
             get_palette_info,
             check_dependencies,
             install_dependencies,
-            get_dependencies_path
+            get_dependencies_path,
+            open_file,
+            open_folder,
+            reveal_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

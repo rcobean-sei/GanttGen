@@ -1316,3 +1316,32 @@ body {
 .setup-actions .btn-large {
     min-width: 200px;
 }
+
+/* Input validation error state */
+.input-error {
+    border-color: var(--red-1) !important;
+    background-color: rgba(240, 24, 64, 0.04) !important;
+}
+
+.input-error:focus {
+    border-color: var(--red-2) !important;
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.15);
+}
+
+/* Milestone date validation warning */
+.milestone-date-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: rgba(240, 24, 64, 0.08);
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    color: var(--red-2);
+}
+
+.milestone-date-warning svg {
+    flex-shrink: 0;
+    color: var(--red-1);
+}

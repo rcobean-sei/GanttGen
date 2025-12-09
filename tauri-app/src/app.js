@@ -92,6 +92,7 @@ const elements = {
     errorMessage: document.getElementById('errorMessage'),
     openOutputBtn: document.getElementById('openOutputBtn'),
     viewHtmlBtn: document.getElementById('viewHtmlBtn'),
+    viewPngBtn: document.getElementById('viewPngBtn'),
     tryAgainBtn: document.getElementById('tryAgainBtn')
 };
 
@@ -524,6 +525,7 @@ function setupEventListeners() {
     // Result actions
     elements.openOutputBtn.addEventListener('click', openOutputFolder);
     elements.viewHtmlBtn.addEventListener('click', viewHtmlFile);
+    elements.viewPngBtn.addEventListener('click', viewPngFile);
     elements.tryAgainBtn.addEventListener('click', resetResults);
 }
 
@@ -805,7 +807,60 @@ function updateMilestone(index, field, value) {
     } else {
         state.manualData.milestones[index][field] = value;
     }
+
+    // Validate milestone date is within task span
+    validateMilestoneDate(index);
     updateJsonPreview();
+}
+
+function validateMilestoneDate(milestoneIndex) {
+    const milestone = state.manualData.milestones[milestoneIndex];
+    if (!milestone) return;
+
+    const taskIndex = milestone.taskIndex;
+    const task = state.manualData.tasks[taskIndex];
+
+    // Get the milestone card element for showing validation state
+    const milestoneCard = elements.milestonesList?.querySelector(`.milestone-card[data-index="${milestoneIndex}"]`);
+    const dateInput = milestoneCard?.querySelector('.milestone-date-input');
+    const existingWarning = milestoneCard?.querySelector('.milestone-date-warning');
+
+    // Remove existing warning if any
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+
+    // If no task or no milestone date, skip validation
+    if (!task || !milestone.date) {
+        if (dateInput) dateInput.classList.remove('input-error');
+        return;
+    }
+
+    const milestoneDate = new Date(milestone.date);
+    const taskStart = new Date(task.start);
+    const taskEnd = new Date(task.end);
+
+    // Check if milestone date is within task span
+    if (milestoneDate < taskStart || milestoneDate > taskEnd) {
+        if (dateInput) {
+            dateInput.classList.add('input-error');
+
+            // Add warning message
+            const warning = document.createElement('div');
+            warning.className = 'milestone-date-warning';
+            warning.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>Date should be between ${task.start} and ${task.end}</span>
+            `;
+            dateInput.parentNode.appendChild(warning);
+        }
+    } else {
+        if (dateInput) dateInput.classList.remove('input-error');
+    }
 }
 
 function renderMilestones() {
@@ -1199,8 +1254,9 @@ function showSuccess(result) {
 
     elements.resultFiles.innerHTML = filesHtml || '<p>Files generated successfully!</p>';
 
-    // Show/hide view HTML button based on whether HTML was generated
+    // Show/hide view buttons based on what was generated
     elements.viewHtmlBtn.style.display = result.html_path ? 'inline-flex' : 'none';
+    elements.viewPngBtn.style.display = result.png_path ? 'inline-flex' : 'none';
 }
 
 function showError(error) {
@@ -1218,7 +1274,7 @@ function resetResults() {
 
 async function openOutputFolder() {
     let folderPath = null;
-    
+
     if (state.lastResult?.html_path) {
         try {
             folderPath = await dirname(state.lastResult.html_path);
@@ -1226,25 +1282,17 @@ async function openOutputFolder() {
             console.error('Failed to get directory from html_path:', error);
         }
     }
-    
+
     if (!folderPath && state.outputDir) {
         folderPath = state.outputDir;
     }
-    
+
     if (folderPath) {
         try {
-            // Use file:// URL format for folders on macOS
-            const folderUrl = folderPath.startsWith('file://') ? folderPath : `file://${folderPath}`;
-            await shellOpen(folderUrl);
+            await invoke('open_folder', { path: folderPath });
         } catch (error) {
             console.error('Failed to open folder:', error);
-            // Fallback: try without file:// prefix
-            try {
-                await shellOpen(folderPath);
-            } catch (fallbackError) {
-                console.error('Fallback also failed:', fallbackError);
-                alert(`Unable to open folder: ${folderPath}\nError: ${error.message || error}`);
-            }
+            alert(`Unable to open folder: ${folderPath}\nError: ${error}`);
         }
     } else {
         alert('No output folder available. Generate a chart first.');
@@ -1254,23 +1302,26 @@ async function openOutputFolder() {
 async function viewHtmlFile() {
     if (state.lastResult?.html_path) {
         try {
-            // Use file:// URL format for local files
-            const fileUrl = state.lastResult.html_path.startsWith('file://') 
-                ? state.lastResult.html_path 
-                : `file://${state.lastResult.html_path}`;
-            await shellOpen(fileUrl);
+            await invoke('open_file', { path: state.lastResult.html_path });
         } catch (error) {
             console.error('Failed to open HTML file:', error);
-            // Fallback: try without file:// prefix
-            try {
-                await shellOpen(state.lastResult.html_path);
-            } catch (fallbackError) {
-                console.error('Fallback also failed:', fallbackError);
-                alert(`Unable to open file: ${state.lastResult.html_path}\nError: ${error.message || error}`);
-            }
+            alert(`Unable to open file: ${state.lastResult.html_path}\nError: ${error}`);
         }
     } else {
         alert('No HTML file available. Generate a chart first.');
+    }
+}
+
+async function viewPngFile() {
+    if (state.lastResult?.png_path) {
+        try {
+            await invoke('open_file', { path: state.lastResult.png_path });
+        } catch (error) {
+            console.error('Failed to open PNG file:', error);
+            alert(`Unable to open file: ${state.lastResult.png_path}\nError: ${error}`);
+        }
+    } else {
+        alert('No PNG file available. Generate a chart with PNG export enabled first.');
     }
 }
 
