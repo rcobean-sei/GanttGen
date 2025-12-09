@@ -56,8 +56,7 @@ GanttGen/
 ├── output/            # Generated charts (gitignored)
 ├── config/            # Build artifacts (gitignored)
 ├── palette_examples/  # Example palette output images
-├── electron-app/      # Electron desktop app
-└── tauri-app/         # Tauri desktop app alternative
+└── tauri-app/         # Tauri desktop app
 ```
 
 ## Key Technologies
@@ -127,6 +126,6 @@ GitHub Actions workflow (`.github/workflows/test.yml`):
 
 ## Important Notes
 
-- PNG export uses system Chrome/Edge if available, falls back to Playwright's Chromium
+- PNG export bundles Playwright’s Chromium during dependency installation (or via `npx playwright install chromium` in CLI). If the browser binaries are missing, PNG export fails with a clear error telling the user to reinstall dependencies.
 - Visual regression snapshots are platform-specific (macOS vs Linux)
 - The `input/` and `output/` directories are gitignored for user data

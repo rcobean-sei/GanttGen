@@ -24,6 +24,7 @@ const setupElements = {
     reqBrowserStatus: document.getElementById('reqBrowserStatus'),
     recheckBtn: document.getElementById('recheckDepsBtn'),
     installBtn: document.getElementById('installDepsBtn'),
+    installBrowserBtn: document.getElementById('installBrowserBtn'),
     setupError: document.getElementById('setupError'),
     setupErrorText: document.getElementById('setupErrorText'),
     installStage: document.getElementById('installStage'),
@@ -98,6 +99,9 @@ const elements = {
     tryAgainBtn: document.getElementById('tryAgainBtn')
 };
 
+let installProgressUnlisten = null;
+let appInitialized = false;
+
 // Initialize the app
 async function init() {
     // First check dependencies
@@ -129,8 +133,8 @@ async function checkAndSetupDependencies() {
     try {
         const status = await invoke('check_dependencies');
 
-        // If all dependencies are installed, skip setup
-        if (status.node_available && status.npm_available && status.dependencies_installed) {
+        // If all dependencies AND browser are installed, skip setup
+        if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
             return true;
         }
 
@@ -143,7 +147,8 @@ async function checkAndSetupDependencies() {
         showSetupScreen({
             node_available: false,
             npm_available: false,
-            dependencies_installed: false
+            dependencies_installed: false,
+            browser_installed: false
         });
         return false;
     }
@@ -180,23 +185,39 @@ function showSetupScreen(status) {
         status.dependencies_installed ? 'Installed' : 'Not installed'
     );
 
-    // Update browser status (optional but needed for PNG export)
-    updateRequirementStatus(
-        setupElements.reqBrowser,
-        setupElements.reqBrowserStatus,
-        status.browser_available,
-        status.browser_name || 'Not found (PNG export will be unavailable)'
-    );
+    // Update browser runtime status
+    const browserInstalled = Boolean(status.browser_installed);
+
+    if (setupElements.reqBrowser) {
+        updateRequirementStatus(
+            setupElements.reqBrowser,
+            setupElements.reqBrowserStatus,
+            browserInstalled,
+            browserInstalled ? 'Installed' : 'Not installed'
+        );
+    }
 
     // Enable/disable install button based on whether Node.js and npm are available
-    const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
-    setupElements.installBtn.disabled = !canInstall;
+    const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
+    setupElements.installBtn.disabled = !canInstallDeps;
+    // Hide install deps button if dependencies are already installed
+    setupElements.installBtn.style.display = status.dependencies_installed ? 'none' : 'inline-flex';
+
+    if (setupElements.installBrowserBtn) {
+        // Show browser install button when:
+        // - Node/npm are available
+        // - Dependencies are installed (or being installed)
+        // - Browser is NOT installed
+        const canInstallBrowser = status.node_available && status.npm_available && status.dependencies_installed && !browserInstalled;
+        setupElements.installBrowserBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
+        setupElements.installBrowserBtn.disabled = !canInstallBrowser;
+    }
 
     // Show error if Node.js or npm is not available
     if (!status.node_available || !status.npm_available) {
         showSetupError('Node.js and npm are required. Please install Node.js from https://nodejs.org');
-    } else if (status.dependencies_installed) {
-        // Dependencies are already installed, close setup and initialize
+    } else if (status.dependencies_installed && browserInstalled) {
+        // All dependencies AND browser are installed, close setup and initialize
         hideSetupScreen();
         initializeMainApp();
     } else {
@@ -206,6 +227,9 @@ function showSetupScreen(status) {
     // Set up button handlers
     setupElements.recheckBtn.onclick = recheckDependencies;
     setupElements.installBtn.onclick = installDependencies;
+    if (setupElements.installBrowserBtn) {
+        setupElements.installBrowserBtn.onclick = installBrowserRuntime;
+    }
     setupElements.startAppBtn.onclick = () => {
         hideSetupScreen();
         initializeMainApp();
@@ -221,18 +245,23 @@ async function recheckDependencies() {
     resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
     resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
     resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
-    resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
+    if (setupElements.reqBrowser) {
+        resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
+    }
 
     // Disable buttons during check
     setupElements.recheckBtn.disabled = true;
     setupElements.installBtn.disabled = true;
+    if (setupElements.installBrowserBtn) {
+        setupElements.installBrowserBtn.disabled = true;
+    }
     hideSetupError();
 
     try {
         const status = await invoke('check_dependencies');
 
-        // If all dependencies are now installed, close setup and start app
-        if (status.node_available && status.npm_available && status.dependencies_installed) {
+        // If all dependencies AND browser are now installed, close setup and start app
+        if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
             hideSetupScreen();
             await initializeMainApp();
             return;
@@ -303,17 +332,32 @@ function hideSetupScreen() {
     setupElements.overlay.style.display = 'none';
 }
 
-async function installDependencies() {
-    // Switch to installing view
+function beginInstallView(message) {
+    setupElements.overlay.style.display = 'flex';
     setupElements.statusView.style.display = 'none';
     setupElements.installingView.style.display = 'block';
+    setupElements.completeView.style.display = 'none';
+    setupElements.installStage.textContent = message;
+    setupElements.setupProgressBar.style.width = '5%';
     setupElements.installLog.innerHTML = '';
+    hideSetupError();
+}
+
+async function installDependencies() {
+    beginInstallView('Installing dependencies...');
 
     try {
         await invoke('install_dependencies');
-        // Success - show complete view
-        setupElements.installingView.style.display = 'none';
-        setupElements.completeView.style.display = 'block';
+        // Success - re-check status to see if browser also needs installing
+        const status = await invoke('check_dependencies');
+        if (status.browser_installed) {
+            // All done - show complete view
+            setupElements.installingView.style.display = 'none';
+            setupElements.completeView.style.display = 'block';
+        } else {
+            // Dependencies installed but browser still needed - show status view with browser button
+            showSetupScreen(status);
+        }
     } catch (error) {
         // Error - go back to status view with error
         setupElements.installingView.style.display = 'none';
@@ -330,8 +374,38 @@ async function installDependencies() {
     }
 }
 
+async function installBrowserRuntime() {
+    if (!setupElements.installBrowserBtn || setupElements.installBrowserBtn.disabled) {
+        return;
+    }
+
+    setupElements.installBrowserBtn.disabled = true;
+    beginInstallView('Installing internal browser for PNG export...');
+
+    try {
+        await invoke('install_browser_runtime');
+        const status = await invoke('check_dependencies');
+        if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
+            hideSetupScreen();
+            await initializeMainApp();
+        } else {
+            showSetupScreen(status);
+        }
+    } catch (error) {
+        setupElements.statusView.style.display = 'block';
+        setupElements.installingView.style.display = 'none';
+        showSetupError(`Browser install failed: ${error}`);
+    } finally {
+        setupElements.installBrowserBtn.disabled = false;
+    }
+}
+
 async function setupInstallProgressListener() {
-    await listen('install-progress', (event) => {
+    if (installProgressUnlisten) {
+        return;
+    }
+
+    installProgressUnlisten = await listen('install-progress', (event) => {
         const { stage, message, progress, complete, error } = event.payload;
 
         // Update progress bar
@@ -340,12 +414,23 @@ async function setupInstallProgressListener() {
         // Update stage text
         setupElements.installStage.textContent = message;
 
-        // Add to log
+        // Add to install log panel
         if (message && message.trim()) {
             const logLine = document.createElement('div');
             logLine.textContent = message;
             setupElements.installLog.appendChild(logLine);
             setupElements.installLog.scrollTop = setupElements.installLog.scrollHeight;
+        }
+
+        // Also log to debug console
+        if (message && message.trim()) {
+            const level = error ? 'error' : (stage === 'Error' ? 'error' : 'info');
+            addLogEntry({
+                level: level,
+                source: 'install',
+                message: `[${stage}] ${message}`,
+                timestamp: new Date().toLocaleTimeString()
+            });
         }
     });
 }
@@ -1367,11 +1452,92 @@ const debugElements = {
     count: document.getElementById('debugCount'),
     toggleBtn: document.getElementById('toggleDebugBtn'),
     clearBtn: document.getElementById('clearLogsBtn'),
+    exportBtn: document.getElementById('exportLogsBtn'),
     filterInfo: document.getElementById('filterInfo'),
     filterDebug: document.getElementById('filterDebug'),
     filterWarn: document.getElementById('filterWarn'),
     filterError: document.getElementById('filterError')
 };
+
+// Export logs to file
+async function exportLogs() {
+    try {
+        const { save } = window.__TAURI__.dialog;
+        const { writeTextFile } = window.__TAURI__.fs;
+        
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const filename = `ganttgen-logs-${timestamp}.txt`;
+        
+        const filePath = await save({
+            defaultPath: filename,
+            filters: [{
+                name: 'Text Files',
+                extensions: ['txt']
+            }]
+        });
+        
+        if (filePath) {
+            const logContent = debugState.logs.map(log => {
+                const stackTrace = log.stack ? `\nStack: ${log.stack}` : '';
+                return `[${log.timestamp}] [${log.source}] [${log.level.toUpperCase()}] ${log.message}${stackTrace}`;
+            }).join('\n');
+            
+            await writeTextFile(filePath, logContent);
+            addLogEntry({
+                level: 'info',
+                source: 'system',
+                message: `Logs exported to ${filePath}`,
+                timestamp: new Date().toLocaleTimeString()
+            });
+        }
+    } catch (error) {
+        console.error('Failed to export logs:', error);
+        addLogEntry({
+            level: 'error',
+            source: 'system',
+            message: `Failed to export logs: ${error}`,
+            timestamp: new Date().toLocaleTimeString()
+        });
+    }
+}
+
+// Setup global error handlers
+function setupGlobalErrorHandlers() {
+    // Catch uncaught JavaScript errors
+    window.onerror = (message, source, lineno, colno, error) => {
+        const errorMessage = error ? error.toString() : String(message);
+        const stack = error ? error.stack : `at ${source}:${lineno}:${colno}`;
+        
+        addLogEntry({
+            level: 'error',
+            source: 'javascript',
+            message: `Uncaught error: ${errorMessage}`,
+            stack: stack,
+            timestamp: new Date().toLocaleTimeString()
+        });
+        
+        // Don't prevent default error handling
+        return false;
+    };
+    
+    // Catch unhandled promise rejections
+    window.onunhandledrejection = (event) => {
+        const reason = event.reason;
+        const errorMessage = reason instanceof Error ? reason.toString() : String(reason);
+        const stack = reason instanceof Error ? reason.stack : undefined;
+        
+        addLogEntry({
+            level: 'error',
+            source: 'javascript',
+            message: `Unhandled promise rejection: ${errorMessage}`,
+            stack: stack,
+            timestamp: new Date().toLocaleTimeString()
+        });
+        
+        // Prevent default browser console error
+        event.preventDefault();
+    };
+}
 
 // Initialize debug console
 function initDebugConsole() {
@@ -1383,6 +1549,14 @@ function initDebugConsole() {
         e.stopPropagation();
         clearLogs();
     });
+    
+    // Export logs button
+    if (debugElements.exportBtn) {
+        debugElements.exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportLogs();
+        });
+    }
 
     // Filter checkboxes
     debugElements.filterInfo.addEventListener('change', () => {
@@ -1445,23 +1619,66 @@ function updateLogCount() {
 function renderLogs() {
     const filteredLogs = debugState.logs.filter(log => debugState.filters[log.level]);
 
-    debugElements.log.innerHTML = filteredLogs.map(log => `
+    debugElements.log.innerHTML = filteredLogs.map(log => {
+        const stackTrace = log.stack ? `<div class="log-stack">${escapeHtml(log.stack)}</div>` : '';
+        return `
         <div class="log-entry level-${log.level}">
             <span class="log-timestamp">${log.timestamp}</span>
             <span class="log-source">[${log.source}]</span>
             <span class="log-message">${escapeHtml(log.message)}</span>
+            ${stackTrace}
         </div>
-    `).join('');
+    `;
+    }).join('');
+}
+
+// Load and display build info
+async function loadBuildInfo() {
+    try {
+        const buildInfo = await invoke('get_build_info');
+        const footer = document.querySelector('.footer p');
+        if (!footer) return;
+
+        if (buildInfo.is_release) {
+            footer.textContent = '';
+            return;
+        }
+
+        const formatted = (() => {
+            const date = new Date(buildInfo.datetime.replace('_', 'T'));
+            if (isNaN(date.getTime())) {
+                return buildInfo.datetime;
+            }
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const dd = String(date.getDate()).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            const hh = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+            const ss = String(date.getSeconds()).padStart(2, '0');
+            return `${mm}-${dd}-${yyyy} ${hh}:${min}:${ss}`;
+        })();
+
+        footer.textContent = `${buildInfo.branch}:${buildInfo.commit_short} (${formatted})`;
+    } catch (error) {
+        console.error('Failed to load build info:', error);
+        // Fallback to default if build info fails to load
+    }
 }
 
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+async function bootstrapApplication() {
+    if (appInitialized) {
+        return;
+    }
+    appInitialized = true;
+    setupGlobalErrorHandlers();
     initDebugConsole();
-    init();
-});
+    await init();
+    loadBuildInfo();
+}
 
-// Also try to init immediately if Tauri is already available
-if (window.__TAURI__) {
-    initDebugConsole();
-    init();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapApplication);
+} else {
+    bootstrapApplication();
 }

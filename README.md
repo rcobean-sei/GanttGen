@@ -285,13 +285,14 @@ node scripts/json_to_excel.js -i input/project.json -o input/project.xlsx
 | Package | Purpose |
 |---------|---------|
 | `exceljs` | Excel file parsing/generation |
-| `puppeteer` | PNG export (optional, uses system Chrome) |
+| `@playwright/test` | PNG export (uses bundled Chromium) |
 
 ```bash
 # Install all dependencies
 npm install
 
-# Puppeteer is optional - PNG export uses system Chrome/Edge if available
+# Download Playwright browsers (required once for CLI users)
+npx playwright install chromium
 ```
 
 ---
@@ -647,7 +648,7 @@ Or install all browsers:
 npx playwright install
 ```
 
-**Note**: The build script will automatically use locally installed Chrome/Edge browsers if available, falling back to Playwright's bundled Chromium if not found. This avoids unnecessary browser downloads when system browsers are already installed.
+**Note**: PNG export ships with its own Playwright-managed Chromium. After installing dependencies in the desktop app, use the **Install Internal Browser (PNG)** button (visible whenever the runtime is missing) to download the browser—no need for system Chrome/Edge. CLI users should run `npx playwright install chromium` once to prepare PNG export or test suites.
 
 ---
 
