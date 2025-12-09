@@ -138,13 +138,31 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: brew install imagemagick
 
-      - name: Create empty node-bundle directory (macOS)
+      - name: Download Node.js for bundling (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
-          # Create empty node-bundle directory so Tauri doesn't fail on missing resource
-          # macOS uses system Node.js, so this is just a placeholder
-          mkdir -p tauri-app/src-tauri/node-bundle
-          echo "Placeholder for Windows node.exe bundle" > tauri-app/src-tauri/node-bundle/README.txt
+          # Download Node.js for macOS ARM64
+          NODE_VERSION="20.18.1"
+          NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-arm64.tar.gz"
+          NODE_PATH="tauri-app/src-tauri/node-bundle"
+
+          echo "Downloading Node.js v${NODE_VERSION} for macOS ARM64..."
+          curl -L "$NODE_URL" -o node.tar.gz
+
+          echo "Extracting Node.js..."
+          tar -xzf node.tar.gz
+
+          # Create bundle directory and copy node binary
+          mkdir -p "$NODE_PATH"
+          cp "node-v${NODE_VERSION}-darwin-arm64/bin/node" "$NODE_PATH/node"
+          chmod +x "$NODE_PATH/node"
+
+          # Verify
+          "$NODE_PATH/node" --version
+          echo "Node.js bundled successfully for macOS"
+
+          # Cleanup
+          rm -rf node.tar.gz "node-v${NODE_VERSION}-darwin-arm64"
 
       - name: Add padding to macOS icon
         if: matrix.platform == 'macos-latest'
