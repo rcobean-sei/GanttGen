@@ -436,13 +436,35 @@ jobs:
           fi
           echo "Found DMG: $DMG_PATH"
 
-          # Submit for notarization
+          # Submit for notarization and capture output
           echo "Submitting for notarization..."
-          xcrun notarytool submit "$DMG_PATH" \
+          NOTARIZE_OUTPUT=$(xcrun notarytool submit "$DMG_PATH" \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
-            --wait
+            --wait 2>&1) || true
+
+          echo "$NOTARIZE_OUTPUT"
+
+          # Extract submission ID
+          SUBMISSION_ID=$(echo "$NOTARIZE_OUTPUT" | grep "id:" | head -1 | awk '{print $2}')
+          echo "Submission ID: $SUBMISSION_ID"
+
+          # Check if notarization succeeded
+          if echo "$NOTARIZE_OUTPUT" | grep -q "status: Accepted"; then
+            echo "✓ Notarization accepted!"
+          else
+            echo "::error::Notarization failed!"
+            echo ""
+            echo "=== Fetching notarization log for details ==="
+            if [ -n "$SUBMISSION_ID" ]; then
+              xcrun notarytool log "$SUBMISSION_ID" \
+                --apple-id "$APPLE_ID" \
+                --password "$APPLE_PASSWORD" \
+                --team-id "$APPLE_TEAM_ID" 2>&1 || true
+            fi
+            exit 1
+          fi
 
           # Staple the notarization ticket
           echo "Stapling notarization ticket..."
