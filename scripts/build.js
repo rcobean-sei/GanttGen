@@ -468,12 +468,12 @@ async function exportPNG(htmlPath, pngPath) {
         });
         
         // Wait for page to be fully loaded and rendered
+        // Note: milestones are optional, so we only require the timeline element
         await page.waitForFunction(() => {
             const timeline = document.querySelector('.milestone-timeline');
-            const milestones = document.querySelectorAll('.milestone-label');
-            return document.readyState === 'complete' && 
-                   timeline !== null &&
-                   milestones.length > 0;
+            const ganttContainer = document.querySelector('.gantt-container');
+            return document.readyState === 'complete' &&
+                   (timeline !== null || ganttContainer !== null);
         }, { timeout: 10000 });
         
         // Wait for initial layout to settle

@@ -133,8 +133,8 @@ async function checkAndSetupDependencies() {
     try {
         const status = await invoke('check_dependencies');
 
-        // If all dependencies are installed, skip setup
-        if (status.node_available && status.npm_available && status.dependencies_installed) {
+        // If all dependencies AND browser are installed, skip setup
+        if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
             return true;
         }
 
@@ -147,7 +147,8 @@ async function checkAndSetupDependencies() {
         showSetupScreen({
             node_available: false,
             npm_available: false,
-            dependencies_installed: false
+            dependencies_installed: false,
+            browser_installed: false
         });
         return false;
     }
@@ -197,20 +198,26 @@ function showSetupScreen(status) {
     }
 
     // Enable/disable install button based on whether Node.js and npm are available
-    const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
-    setupElements.installBtn.disabled = !canInstall;
+    const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
+    setupElements.installBtn.disabled = !canInstallDeps;
+    // Hide install deps button if dependencies are already installed
+    setupElements.installBtn.style.display = status.dependencies_installed ? 'none' : 'inline-flex';
 
     if (setupElements.installBrowserBtn) {
-        const needsBrowser = status.dependencies_installed && !browserInstalled;
-        setupElements.installBrowserBtn.style.display = needsBrowser ? 'inline-flex' : 'none';
-        setupElements.installBrowserBtn.disabled = !needsBrowser;
+        // Show browser install button when:
+        // - Node/npm are available
+        // - Dependencies are installed (or being installed)
+        // - Browser is NOT installed
+        const canInstallBrowser = status.node_available && status.npm_available && status.dependencies_installed && !browserInstalled;
+        setupElements.installBrowserBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
+        setupElements.installBrowserBtn.disabled = !canInstallBrowser;
     }
 
     // Show error if Node.js or npm is not available
     if (!status.node_available || !status.npm_available) {
         showSetupError('Node.js and npm are required. Please install Node.js from https://nodejs.org');
-    } else if (status.dependencies_installed) {
-        // Dependencies are already installed, close setup and initialize
+    } else if (status.dependencies_installed && browserInstalled) {
+        // All dependencies AND browser are installed, close setup and initialize
         hideSetupScreen();
         initializeMainApp();
     } else {
@@ -253,8 +260,8 @@ async function recheckDependencies() {
     try {
         const status = await invoke('check_dependencies');
 
-        // If all dependencies are now installed, close setup and start app
-        if (status.node_available && status.npm_available && status.dependencies_installed) {
+        // If all dependencies AND browser are now installed, close setup and start app
+        if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
             hideSetupScreen();
             await initializeMainApp();
             return;
@@ -267,9 +274,6 @@ async function recheckDependencies() {
         showSetupError(`Failed to check dependencies: ${error}`);
     } finally {
         setupElements.recheckBtn.disabled = false;
-        if (setupElements.installBrowserBtn) {
-            setupElements.installBrowserBtn.disabled = false;
-        }
     }
 }
 
@@ -344,9 +348,16 @@ async function installDependencies() {
 
     try {
         await invoke('install_dependencies');
-        // Success - show complete view
-        setupElements.installingView.style.display = 'none';
-        setupElements.completeView.style.display = 'block';
+        // Success - re-check status to see if browser also needs installing
+        const status = await invoke('check_dependencies');
+        if (status.browser_installed) {
+            // All done - show complete view
+            setupElements.installingView.style.display = 'none';
+            setupElements.completeView.style.display = 'block';
+        } else {
+            // Dependencies installed but browser still needed - show status view with browser button
+            showSetupScreen(status);
+        }
     } catch (error) {
         // Error - go back to status view with error
         setupElements.installingView.style.display = 'none';
@@ -403,12 +414,23 @@ async function setupInstallProgressListener() {
         // Update stage text
         setupElements.installStage.textContent = message;
 
-        // Add to log
+        // Add to install log panel
         if (message && message.trim()) {
             const logLine = document.createElement('div');
             logLine.textContent = message;
             setupElements.installLog.appendChild(logLine);
             setupElements.installLog.scrollTop = setupElements.installLog.scrollHeight;
+        }
+
+        // Also log to debug console
+        if (message && message.trim()) {
+            const level = error ? 'error' : (stage === 'Error' ? 'error' : 'info');
+            addLogEntry({
+                level: level,
+                source: 'install',
+                message: `[${stage}] ${message}`,
+                timestamp: new Date().toLocaleTimeString()
+            });
         }
     });
 }
