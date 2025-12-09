@@ -45,6 +45,7 @@ jobs:
 
       - name: Check if release build
         id: check-release
+        shell: bash
         run: |
           if git describe --tags --exact-match HEAD 2>/dev/null; then
             echo "is_release=true" >> $GITHUB_OUTPUT
