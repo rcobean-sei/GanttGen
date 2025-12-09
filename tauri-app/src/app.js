@@ -8,6 +8,30 @@ const { open: shellOpen } = window.__TAURI__.shell;
 const { dirname, join: pathJoin, tempDir, desktopDir } = window.__TAURI__.path;
 const { writeTextFile } = window.__TAURI__.fs;
 
+// Setup screen elements
+const setupElements = {
+    overlay: document.getElementById('setupOverlay'),
+    statusView: document.getElementById('setupStatusView'),
+    installingView: document.getElementById('setupInstallingView'),
+    completeView: document.getElementById('setupCompleteView'),
+    reqNode: document.getElementById('reqNode'),
+    reqNodeStatus: document.getElementById('reqNodeStatus'),
+    reqNpm: document.getElementById('reqNpm'),
+    reqNpmStatus: document.getElementById('reqNpmStatus'),
+    reqDeps: document.getElementById('reqDeps'),
+    reqDepsStatus: document.getElementById('reqDepsStatus'),
+    reqBrowser: document.getElementById('reqBrowser'),
+    reqBrowserStatus: document.getElementById('reqBrowserStatus'),
+    recheckBtn: document.getElementById('recheckDepsBtn'),
+    installBtn: document.getElementById('installDepsBtn'),
+    setupError: document.getElementById('setupError'),
+    setupErrorText: document.getElementById('setupErrorText'),
+    installStage: document.getElementById('installStage'),
+    setupProgressBar: document.getElementById('setupProgressBar'),
+    installLog: document.getElementById('installLog'),
+    startAppBtn: document.getElementById('startAppBtn')
+};
+
 // State
 let state = {
     inputFile: null,
@@ -70,11 +94,26 @@ const elements = {
     errorMessage: document.getElementById('errorMessage'),
     openOutputBtn: document.getElementById('openOutputBtn'),
     viewHtmlBtn: document.getElementById('viewHtmlBtn'),
+    viewPngBtn: document.getElementById('viewPngBtn'),
     tryAgainBtn: document.getElementById('tryAgainBtn')
 };
 
 // Initialize the app
 async function init() {
+    // First check dependencies
+    const depsReady = await checkAndSetupDependencies();
+
+    if (!depsReady) {
+        // Show setup screen and wait for user to install
+        return;
+    }
+
+    // Dependencies are ready, initialize the main app
+    await initializeMainApp();
+}
+
+// Initialize the main application UI
+async function initializeMainApp() {
     await loadPalettes();
     setupEventListeners();
     setupDragAndDrop();
@@ -83,6 +122,232 @@ async function init() {
     initializeDefaultDates();
     await initializeDefaultOutputFolder();
     updateGenerateButton();
+}
+
+// Check dependencies and show setup screen if needed
+async function checkAndSetupDependencies() {
+    try {
+        const status = await invoke('check_dependencies');
+
+        // If all dependencies are installed, skip setup
+        if (status.node_available && status.npm_available && status.dependencies_installed) {
+            return true;
+        }
+
+        // Show setup screen
+        showSetupScreen(status);
+        return false;
+    } catch (error) {
+        console.error('Failed to check dependencies:', error);
+        // If we can't check, assume deps are needed
+        showSetupScreen({
+            node_available: false,
+            npm_available: false,
+            dependencies_installed: false
+        });
+        return false;
+    }
+}
+
+// Show the setup screen with current status
+function showSetupScreen(status) {
+    setupElements.overlay.style.display = 'flex';
+    setupElements.statusView.style.display = 'block';
+    setupElements.installingView.style.display = 'none';
+    setupElements.completeView.style.display = 'none';
+
+    // Update Node.js status
+    updateRequirementStatus(
+        setupElements.reqNode,
+        setupElements.reqNodeStatus,
+        status.node_available,
+        status.node_version || 'Not found'
+    );
+
+    // Update npm status
+    updateRequirementStatus(
+        setupElements.reqNpm,
+        setupElements.reqNpmStatus,
+        status.npm_available,
+        status.npm_version || 'Not found'
+    );
+
+    // Update dependencies status
+    updateRequirementStatus(
+        setupElements.reqDeps,
+        setupElements.reqDepsStatus,
+        status.dependencies_installed,
+        status.dependencies_installed ? 'Installed' : 'Not installed'
+    );
+
+    // Update browser status (optional but needed for PNG export)
+    updateRequirementStatus(
+        setupElements.reqBrowser,
+        setupElements.reqBrowserStatus,
+        status.browser_available,
+        status.browser_name || 'Not found (PNG export will be unavailable)'
+    );
+
+    // Enable/disable install button based on whether Node.js and npm are available
+    const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
+    setupElements.installBtn.disabled = !canInstall;
+
+    // Show error if Node.js or npm is not available
+    if (!status.node_available || !status.npm_available) {
+        showSetupError('Node.js and npm are required. Please install Node.js from https://nodejs.org');
+    } else if (status.dependencies_installed) {
+        // Dependencies are already installed, close setup and initialize
+        hideSetupScreen();
+        initializeMainApp();
+    } else {
+        hideSetupError();
+    }
+
+    // Set up button handlers
+    setupElements.recheckBtn.onclick = recheckDependencies;
+    setupElements.installBtn.onclick = installDependencies;
+    setupElements.startAppBtn.onclick = () => {
+        hideSetupScreen();
+        initializeMainApp();
+    };
+
+    // Set up install progress listener
+    setupInstallProgressListener();
+}
+
+// Re-check dependencies (called when user clicks Re-check button)
+async function recheckDependencies() {
+    // Reset status icons to loading state
+    resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
+    resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
+    resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
+    resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
+
+    // Disable buttons during check
+    setupElements.recheckBtn.disabled = true;
+    setupElements.installBtn.disabled = true;
+    hideSetupError();
+
+    try {
+        const status = await invoke('check_dependencies');
+
+        // If all dependencies are now installed, close setup and start app
+        if (status.node_available && status.npm_available && status.dependencies_installed) {
+            hideSetupScreen();
+            await initializeMainApp();
+            return;
+        }
+
+        // Update the display with new status
+        showSetupScreen(status);
+    } catch (error) {
+        console.error('Failed to re-check dependencies:', error);
+        showSetupError(`Failed to check dependencies: ${error}`);
+    } finally {
+        setupElements.recheckBtn.disabled = false;
+    }
+}
+
+function resetRequirementToLoading(element, statusElement) {
+    const iconElement = element.querySelector('.requirement-icon');
+    iconElement.classList.remove('success', 'error');
+    iconElement.classList.add('loading');
+    iconElement.innerHTML = `
+        <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+        </svg>
+    `;
+    statusElement.textContent = 'Checking...';
+}
+
+function updateRequirementStatus(element, statusElement, isSuccess, statusText) {
+    const iconElement = element.querySelector('.requirement-icon');
+
+    // Remove loading state
+    iconElement.classList.remove('loading');
+
+    if (isSuccess) {
+        iconElement.classList.add('success');
+        iconElement.classList.remove('error');
+        iconElement.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        `;
+    } else {
+        iconElement.classList.add('error');
+        iconElement.classList.remove('success');
+        iconElement.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+        `;
+    }
+
+    statusElement.textContent = statusText;
+}
+
+function showSetupError(message) {
+    setupElements.setupError.style.display = 'flex';
+    setupElements.setupErrorText.textContent = message;
+}
+
+function hideSetupError() {
+    setupElements.setupError.style.display = 'none';
+}
+
+function hideSetupScreen() {
+    setupElements.overlay.style.display = 'none';
+}
+
+async function installDependencies() {
+    // Switch to installing view
+    setupElements.statusView.style.display = 'none';
+    setupElements.installingView.style.display = 'block';
+    setupElements.installLog.innerHTML = '';
+
+    try {
+        await invoke('install_dependencies');
+        // Success - show complete view
+        setupElements.installingView.style.display = 'none';
+        setupElements.completeView.style.display = 'block';
+    } catch (error) {
+        // Error - go back to status view with error
+        setupElements.installingView.style.display = 'none';
+        setupElements.statusView.style.display = 'block';
+        showSetupError(`Installation failed: ${error}`);
+
+        // Re-check status
+        try {
+            const status = await invoke('check_dependencies');
+            showSetupScreen(status);
+        } catch (e) {
+            console.error('Failed to re-check dependencies:', e);
+        }
+    }
+}
+
+async function setupInstallProgressListener() {
+    await listen('install-progress', (event) => {
+        const { stage, message, progress, complete, error } = event.payload;
+
+        // Update progress bar
+        setupElements.setupProgressBar.style.width = `${progress}%`;
+
+        // Update stage text
+        setupElements.installStage.textContent = message;
+
+        // Add to log
+        if (message && message.trim()) {
+            const logLine = document.createElement('div');
+            logLine.textContent = message;
+            setupElements.installLog.appendChild(logLine);
+            setupElements.installLog.scrollTop = setupElements.installLog.scrollHeight;
+        }
+    });
 }
 
 // Generate a date-time stamp for folder naming
@@ -271,6 +536,7 @@ function setupEventListeners() {
     // Result actions
     elements.openOutputBtn.addEventListener('click', openOutputFolder);
     elements.viewHtmlBtn.addEventListener('click', viewHtmlFile);
+    elements.viewPngBtn.addEventListener('click', viewPngFile);
     elements.tryAgainBtn.addEventListener('click', resetResults);
 }
 
@@ -552,7 +818,70 @@ function updateMilestone(index, field, value) {
     } else {
         state.manualData.milestones[index][field] = value;
     }
+
+    // Validate milestone date is within task span
+    validateMilestoneDate(index);
     updateJsonPreview();
+}
+
+function validateMilestoneDate(milestoneIndex) {
+    const milestone = state.manualData.milestones[milestoneIndex];
+    if (!milestone) return;
+
+    const taskIndex = milestone.taskIndex;
+    const task = state.manualData.tasks[taskIndex];
+
+    // Get the milestone card element for showing validation state
+    const milestoneCard = elements.milestonesList?.querySelector(`.milestone-card[data-index="${milestoneIndex}"]`);
+    const dateInput = milestoneCard?.querySelector('.milestone-date-input');
+    const existingWarning = milestoneCard?.querySelector('.milestone-date-warning');
+
+    // Remove existing warning if any
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+
+    // If no task or no milestone date, skip validation
+    if (!task || !milestone.date) {
+        if (dateInput) dateInput.classList.remove('input-error');
+        return;
+    }
+
+    const milestoneDate = new Date(milestone.date);
+    const taskStart = new Date(task.start);
+    const taskEnd = new Date(task.end);
+
+    // Check if milestone date is within task span
+    if (milestoneDate < taskStart || milestoneDate > taskEnd) {
+        if (dateInput) {
+            dateInput.classList.add('input-error');
+
+            // Add warning message with US date format
+            const warning = document.createElement('div');
+            warning.className = 'milestone-date-warning';
+            warning.innerHTML = `
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>Date should be between ${formatDateUS(task.start)} and ${formatDateUS(task.end)}</span>
+            `;
+            dateInput.parentNode.appendChild(warning);
+        }
+    } else {
+        if (dateInput) dateInput.classList.remove('input-error');
+    }
+}
+
+// Format date as MM/DD/YYYY for US locale
+function formatDateUS(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
 }
 
 function renderMilestones() {
@@ -946,8 +1275,9 @@ function showSuccess(result) {
 
     elements.resultFiles.innerHTML = filesHtml || '<p>Files generated successfully!</p>';
 
-    // Show/hide view HTML button based on whether HTML was generated
+    // Show/hide view buttons based on what was generated
     elements.viewHtmlBtn.style.display = result.html_path ? 'inline-flex' : 'none';
+    elements.viewPngBtn.style.display = result.png_path ? 'inline-flex' : 'none';
 }
 
 function showError(error) {
@@ -965,7 +1295,7 @@ function resetResults() {
 
 async function openOutputFolder() {
     let folderPath = null;
-    
+
     if (state.lastResult?.html_path) {
         try {
             folderPath = await dirname(state.lastResult.html_path);
@@ -973,25 +1303,17 @@ async function openOutputFolder() {
             console.error('Failed to get directory from html_path:', error);
         }
     }
-    
+
     if (!folderPath && state.outputDir) {
         folderPath = state.outputDir;
     }
-    
+
     if (folderPath) {
         try {
-            // Use file:// URL format for folders on macOS
-            const folderUrl = folderPath.startsWith('file://') ? folderPath : `file://${folderPath}`;
-            await shellOpen(folderUrl);
+            await invoke('open_folder', { path: folderPath });
         } catch (error) {
             console.error('Failed to open folder:', error);
-            // Fallback: try without file:// prefix
-            try {
-                await shellOpen(folderPath);
-            } catch (fallbackError) {
-                console.error('Fallback also failed:', fallbackError);
-                alert(`Unable to open folder: ${folderPath}\nError: ${error.message || error}`);
-            }
+            alert(`Unable to open folder: ${folderPath}\nError: ${error}`);
         }
     } else {
         alert('No output folder available. Generate a chart first.');
@@ -1001,30 +1323,145 @@ async function openOutputFolder() {
 async function viewHtmlFile() {
     if (state.lastResult?.html_path) {
         try {
-            // Use file:// URL format for local files
-            const fileUrl = state.lastResult.html_path.startsWith('file://') 
-                ? state.lastResult.html_path 
-                : `file://${state.lastResult.html_path}`;
-            await shellOpen(fileUrl);
+            await invoke('open_file', { path: state.lastResult.html_path });
         } catch (error) {
             console.error('Failed to open HTML file:', error);
-            // Fallback: try without file:// prefix
-            try {
-                await shellOpen(state.lastResult.html_path);
-            } catch (fallbackError) {
-                console.error('Fallback also failed:', fallbackError);
-                alert(`Unable to open file: ${state.lastResult.html_path}\nError: ${error.message || error}`);
-            }
+            alert(`Unable to open file: ${state.lastResult.html_path}\nError: ${error}`);
         }
     } else {
         alert('No HTML file available. Generate a chart first.');
     }
 }
 
+async function viewPngFile() {
+    if (state.lastResult?.png_path) {
+        try {
+            await invoke('open_file', { path: state.lastResult.png_path });
+        } catch (error) {
+            console.error('Failed to open PNG file:', error);
+            alert(`Unable to open file: ${state.lastResult.png_path}\nError: ${error}`);
+        }
+    } else {
+        alert('No PNG file available. Generate a chart with PNG export enabled first.');
+    }
+}
+
+// Debug console state
+const debugState = {
+    logs: [],
+    expanded: false,
+    filters: {
+        info: true,
+        debug: true,
+        warn: true,
+        error: true
+    }
+};
+
+// Debug console elements
+const debugElements = {
+    console: document.getElementById('debugConsole'),
+    header: document.getElementById('debugHeader'),
+    content: document.getElementById('debugContent'),
+    log: document.getElementById('debugLog'),
+    count: document.getElementById('debugCount'),
+    toggleBtn: document.getElementById('toggleDebugBtn'),
+    clearBtn: document.getElementById('clearLogsBtn'),
+    filterInfo: document.getElementById('filterInfo'),
+    filterDebug: document.getElementById('filterDebug'),
+    filterWarn: document.getElementById('filterWarn'),
+    filterError: document.getElementById('filterError')
+};
+
+// Initialize debug console
+function initDebugConsole() {
+    // Toggle console
+    debugElements.header.addEventListener('click', toggleDebugConsole);
+
+    // Clear logs
+    debugElements.clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearLogs();
+    });
+
+    // Filter checkboxes
+    debugElements.filterInfo.addEventListener('change', () => {
+        debugState.filters.info = debugElements.filterInfo.checked;
+        renderLogs();
+    });
+    debugElements.filterDebug.addEventListener('change', () => {
+        debugState.filters.debug = debugElements.filterDebug.checked;
+        renderLogs();
+    });
+    debugElements.filterWarn.addEventListener('change', () => {
+        debugState.filters.warn = debugElements.filterWarn.checked;
+        renderLogs();
+    });
+    debugElements.filterError.addEventListener('change', () => {
+        debugState.filters.error = debugElements.filterError.checked;
+        renderLogs();
+    });
+
+    // Listen for app-log events from Rust
+    listen('app-log', (event) => {
+        addLogEntry(event.payload);
+    });
+
+    // Add initial log entry
+    addLogEntry({
+        level: 'info',
+        source: 'system',
+        message: 'GanttGen started',
+        timestamp: new Date().toLocaleTimeString()
+    });
+}
+
+function toggleDebugConsole() {
+    debugState.expanded = !debugState.expanded;
+    debugElements.console.classList.toggle('expanded', debugState.expanded);
+    debugElements.content.style.display = debugState.expanded ? 'block' : 'none';
+}
+
+function addLogEntry(entry) {
+    debugState.logs.push(entry);
+    updateLogCount();
+    renderLogs();
+
+    // Auto-scroll to bottom
+    debugElements.log.scrollTop = debugElements.log.scrollHeight;
+}
+
+function clearLogs() {
+    debugState.logs = [];
+    updateLogCount();
+    renderLogs();
+}
+
+function updateLogCount() {
+    const count = debugState.logs.length;
+    debugElements.count.textContent = `${count} ${count === 1 ? 'entry' : 'entries'}`;
+}
+
+function renderLogs() {
+    const filteredLogs = debugState.logs.filter(log => debugState.filters[log.level]);
+
+    debugElements.log.innerHTML = filteredLogs.map(log => `
+        <div class="log-entry level-${log.level}">
+            <span class="log-timestamp">${log.timestamp}</span>
+            <span class="log-source">[${log.source}]</span>
+            <span class="log-message">${escapeHtml(log.message)}</span>
+        </div>
+    `).join('');
+}
+
 // Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    initDebugConsole();
+    init();
+});
 
 // Also try to init immediately if Tauri is already available
 if (window.__TAURI__) {
+    initDebugConsole();
     init();
 }

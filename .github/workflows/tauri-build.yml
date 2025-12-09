@@ -224,46 +224,6 @@ jobs:
         if: matrix.platform == 'macos-latest'
         run: brew install imagemagick
 
-      - name: Download Node.js for bundling (macOS)
-        if: matrix.platform == 'macos-latest'
-        env:
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-        run: |
-          # Download Node.js for macOS ARM64
-          NODE_VERSION="20.18.1"
-          NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-darwin-arm64.tar.gz"
-          NODE_PATH="tauri-app/src-tauri/node-bundle"
-
-          echo "Downloading Node.js v${NODE_VERSION} for macOS ARM64..."
-          curl -L "$NODE_URL" -o node.tar.gz
-
-          echo "Extracting Node.js..."
-          tar -xzf node.tar.gz
-
-          # Create bundle directory and copy node binary
-          mkdir -p "$NODE_PATH"
-          cp "node-v${NODE_VERSION}-darwin-arm64/bin/node" "$NODE_PATH/node"
-          chmod +x "$NODE_PATH/node"
-
-          # Sign the bundled Node.js binary (required for notarization)
-          # All binaries in the app bundle must be signed
-          if [ -n "$APPLE_SIGNING_IDENTITY" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
-            echo "Signing bundled Node.js binary..."
-            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-            codesign --force --options runtime --sign "$APPLE_SIGNING_IDENTITY" "$NODE_PATH/node"
-            echo "✓ Node.js binary signed"
-            codesign -dv "$NODE_PATH/node" 2>&1 | head -5
-          else
-            echo "Skipping Node.js signing (PR build or no signing identity)"
-          fi
-
-          # Verify
-          "$NODE_PATH/node" --version
-          echo "Node.js bundled successfully for macOS"
-
-          # Cleanup
-          rm -rf node.tar.gz "node-v${NODE_VERSION}-darwin-arm64"
-
       - name: Add padding to macOS icon
         if: matrix.platform == 'macos-latest'
         run: |
@@ -309,33 +269,6 @@ jobs:
           echo "Building unsigned app for PR..."
           npm run tauri build -- --target aarch64-apple-darwin
 
-      - name: Download Node.js for bundling (Windows)
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Download Node.js portable for Windows
-          $nodeVersion = "20.18.1"
-          $nodeUrl = "https://nodejs.org/dist/v$nodeVersion/node-v$nodeVersion-win-x64.zip"
-          $nodePath = "tauri-app/src-tauri/node-bundle"
-
-          Write-Host "Downloading Node.js v$nodeVersion..."
-          Invoke-WebRequest -Uri $nodeUrl -OutFile "node.zip"
-
-          Write-Host "Extracting Node.js..."
-          Expand-Archive -Path "node.zip" -DestinationPath "node-temp" -Force
-
-          # Create bundle directory and copy only node.exe
-          New-Item -ItemType Directory -Force -Path $nodePath
-          Copy-Item "node-temp/node-v$nodeVersion-win-x64/node.exe" "$nodePath/node.exe"
-
-          # Verify
-          & "$nodePath/node.exe" --version
-          Write-Host "Node.js bundled successfully"
-
-          # Cleanup
-          Remove-Item "node.zip" -Force
-          Remove-Item "node-temp" -Recurse -Force
-
       - name: Build Tauri app (Windows)
         if: matrix.platform == 'windows-latest'
         uses: tauri-apps/tauri-action@v0
@@ -344,21 +277,6 @@ jobs:
         with:
           projectPath: tauri-app
           args: ${{ matrix.args }}
-
-      - name: Verify bundled Node.js in Windows build
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          # Check if node.exe exists in the bundle
-          $bundlePath = "tauri-app/src-tauri/target/release/node-bundle/node.exe"
-          if (Test-Path $bundlePath) {
-            Write-Host "Node.js successfully bundled at: $bundlePath"
-            & $bundlePath --version
-          } else {
-            Write-Host "::warning::Node.js bundle not found at expected location"
-            # List what's in the target directory
-            Get-ChildItem -Path "tauri-app/src-tauri/target/release" -Recurse -Name | Select-Object -First 50
-          }
 
       - name: Verify code signature
         if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'

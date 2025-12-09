@@ -1,0 +1,242 @@
+# Implementation Plan: macOS Code Signing for Tauri Build
+
+## Context
+
+- **Branch:** `fix/macos-code-signing` (already created and checked out)
+- **Issue:** #29 (already updated)
+- **Secrets:** All three secrets are already configured in GitHub:
+  - `APPLE_SIGNING_IDENTITY`
+  - `MAC_CERT_P12_BASE64`
+  - `MAC_CERT_PASSWORD`
+
+## Tasks
+
+### 1. Update `.github/workflows/tauri-build.yml`
+
+Replace the entire file with this content:
+
+```yaml
+name: Tauri Build with Caching
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            name: 'macOS-arm64'
+          - platform: 'windows-latest'
+            args: ''
+            name: 'Windows-x64'
+
+    runs-on: ${{ matrix.platform }}
+    name: Build (${{ matrix.name }})
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+          cache: false
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'tauri-app/src-tauri'
+          cache-on-failure: true
+
+      - name: Import Apple Code Signing Certificate
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          APPLE_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          # Check if required secrets are available
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERT_PASSWORD" ]; then
+            echo "::error::Code signing secrets not found. Add MAC_CERT_P12_BASE64 and MAC_CERT_PASSWORD secrets."
+            exit 1
+          fi
+          
+          # Create a temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          
+          # Create and configure the temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          
+          # Import certificate to keychain
+          CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERTIFICATE_PATH"
+          
+          # Import certificate
+          security import "$CERTIFICATE_PATH" -k "$KEYCHAIN_PATH" -f pkcs12 -P "$APPLE_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/productsign
+          
+          # Set the keychain as default
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -s "$KEYCHAIN_PATH"
+          
+          # Allow codesign to access the keychain
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          
+          # Clean up certificate file
+          rm -f "$CERTIFICATE_PATH"
+          
+          echo "Code signing certificate imported successfully"
+
+      - name: Install root project dependencies
+        run: npm ci
+
+      - name: Install scripts dependencies
+        run: npm ci
+        working-directory: scripts
+
+      - name: Install Tauri app dependencies
+        run: npm ci
+        working-directory: tauri-app
+
+      - name: Generate Icons
+        run: npm run tauri:icon src-tauri/icons/icon.png
+        working-directory: tauri-app
+
+      - name: Ensure Node.js available for Tauri action
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Verify node and npm on runner
+        run: |
+          node --version
+          npm --version
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        with:
+          projectPath: tauri-app
+          args: ${{ matrix.args }}
+
+      - name: Verify code signature
+        if: matrix.platform == 'macos-latest'
+        run: |
+          echo "=== Verifying code signature ==="
+          APP_PATH=$(find tauri-app/src-tauri/target -name "GanttGen.app" -type d 2>/dev/null | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::GanttGen.app not found!"
+            exit 1
+          fi
+          echo "Found app: $APP_PATH"
+          
+          # Verify signature
+          if codesign -v --verbose=4 "$APP_PATH" 2>&1; then
+            echo "App is properly code-signed"
+            codesign -dv "$APP_PATH" 2>&1 | grep -E "Authority|Identifier" || true
+          else
+            echo "::error::App is NOT properly signed!"
+            exit 1
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: GanttGen-Cached-${{ matrix.name }}
+          path: |
+            tauri-app/src-tauri/target/release/bundle/
+            tauri-app/src-tauri/target/*/release/bundle/
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Cleanup Keychain
+        if: always() && matrix.platform == 'macos-latest'
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+```
+
+### 2. Delete `.github/workflows/build-tauri-app.yml`
+
+This is the old uncached Tauri build workflow. Delete it entirely.
+
+### 3. Delete `.github/workflows/build-electron-app.yml`
+
+This is the Electron build workflow. Delete it entirely since we're going full Tauri.
+
+### 4. Commit and Push
+
+```bash
+git add .github/workflows/tauri-build.yml
+git rm .github/workflows/build-tauri-app.yml
+git rm .github/workflows/build-electron-app.yml
+git commit -m "Enable macOS code signing for Tauri builds
+
+- Add certificate import step to tauri-build.yml
+- Pass APPLE_SIGNING_IDENTITY to tauri-action
+- Add signature verification step after build
+- Add keychain cleanup step
+- Remove unused build-tauri-app.yml (uncached Tauri build)
+- Remove unused build-electron-app.yml (Electron build)
+
+Fixes #29"
+
+git push -u origin fix/macos-code-signing
+```
+
+### 5. Create PR (optional)
+
+```bash
+gh pr create --title "Enable macOS code signing for all Tauri builds" --body "Fixes #29
+
+## Changes
+- Added certificate import step to import signing cert to temporary keychain
+- Added APPLE_SIGNING_IDENTITY env var to tauri-action build step
+- Added signature verification step that fails build if signing didn't work
+- Added keychain cleanup step
+- Removed unused workflow files (build-tauri-app.yml, build-electron-app.yml)
+
+## Testing
+Push to this branch triggers the workflow - check that:
+1. Certificate import step succeeds
+2. Build completes
+3. Signature verification step shows the app is signed"
+```
+
+## Summary of Changes
+
+| File | Action |
+|------|--------|
+| `.github/workflows/tauri-build.yml` | Update with signing |
+| `.github/workflows/build-tauri-app.yml` | Delete |
+| `.github/workflows/build-electron-app.yml` | Delete |

@@ -24,10 +24,10 @@
   "private": true,
   "dependencies": {
     "exceljs": "^4.4.0",
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.49.0"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^30.2.0"
   },
   "optionalDependencies": {
     "sharp": "^0.34.5"
