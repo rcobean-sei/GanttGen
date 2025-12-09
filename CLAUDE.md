@@ -126,6 +126,6 @@ GitHub Actions workflow (`.github/workflows/test.yml`):
 
 ## Important Notes
 
-- PNG export requires a locally installed Chrome/Edge browser (Chromium is no longer bundled). If none is installed, PNG export fails with an explicit error.
+- PNG export bundles Playwright’s Chromium during dependency installation (or via `npx playwright install chromium` in CLI). If the browser binaries are missing, PNG export fails with a clear error telling the user to reinstall dependencies.
 - Visual regression snapshots are platform-specific (macOS vs Linux)
 - The `input/` and `output/` directories are gitignored for user data

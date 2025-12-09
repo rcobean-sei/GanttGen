@@ -380,6 +380,10 @@ async fn generate_gantt(
         cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
     }
 
+    if let Some(browser_dir) = get_browser_install_dir(&app_handle) {
+        cmd.env("PLAYWRIGHT_BROWSERS_PATH", browser_dir);
+    }
+
     emit_log(&window, "debug", "rust", &format!("Running: {} {}", node, args.join(" ")));
 
     let mut child = cmd
@@ -948,23 +952,117 @@ async fn install_dependencies(
     }
 
     if status.success() {
-        // Now install Playwright browsers for PNG export
+        // Install Playwright-managed Chromium runtime for PNG export
+        let browser_dir = deps_dir.join("playwright-browsers");
         let _ = window.emit(
             "install-progress",
             InstallProgress {
                 stage: "Installing".to_string(),
-                message: "Installing browser for PNG export...".to_string(),
+                message: "Installing Chromium runtime for PNG export...".to_string(),
                 progress: 92,
                 complete: false,
                 error: None,
             },
         );
 
+        let mut browser_cmd = Command::new(&npm_cmd);
+        browser_cmd
+            .args(["exec", "playwright", "install", "chromium"])
+            .current_dir(&deps_dir)
+            .env("PLAYWRIGHT_BROWSERS_PATH", &browser_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        if cfg!(target_os = "linux") {
+            browser_cmd.arg("--with-deps");
+        }
+
+        if let Some(node_dir) = std::path::Path::new(&node_path).parent() {
+            let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
+            let existing_path = std::env::var("PATH").unwrap_or_default();
+            let node_dir_str = node_dir.to_string_lossy();
+            let path_value = if existing_path.is_empty() {
+                node_dir_str.to_string()
+            } else if existing_path
+                .split(separator)
+                .any(|segment| segment == node_dir_str)
+            {
+                existing_path
+            } else {
+                format!("{}{}{}", node_dir_str, separator, existing_path)
+            };
+            browser_cmd.env("PATH", path_value);
+        }
+
+        let mut browser_child = browser_cmd
+            .spawn()
+            .map_err(|e| format!("Failed to start Playwright install: {}", e))?;
+
+        let browser_stdout = browser_child
+            .stdout
+            .take()
+            .ok_or("Failed to capture browser install stdout")?;
+        let browser_stderr = browser_child
+            .stderr
+            .take()
+            .ok_or("Failed to capture browser install stderr")?;
+
+        let mut browser_stdout_reader = BufReader::new(browser_stdout).lines();
+        while let Ok(Some(line)) = browser_stdout_reader.next_line().await {
+            if !line.trim().is_empty() {
+                let _ = window.emit(
+                    "install-progress",
+                    InstallProgress {
+                        stage: "Installing".to_string(),
+                        message: line,
+                        progress: 95,
+                        complete: false,
+                        error: None,
+                    },
+                );
+            }
+        }
+
+        let browser_status = browser_child
+            .wait()
+            .await
+            .map_err(|e| format!("Playwright install failed: {}", e))?;
+
+        if !browser_status.success() {
+            let mut err_lines = Vec::new();
+            let mut browser_stderr_reader = BufReader::new(browser_stderr).lines();
+            while let Ok(Some(line)) = browser_stderr_reader.next_line().await {
+                if !line.trim().is_empty() {
+                    err_lines.push(line);
+                }
+            }
+            let err_msg = if err_lines.is_empty() {
+                "Failed to install Chromium runtime for PNG export".to_string()
+            } else {
+                err_lines.join("\n")
+            };
+            let _ = window.emit(
+                "install-progress",
+                InstallProgress {
+                    stage: "Error".to_string(),
+                    message: "Installation failed".to_string(),
+                    progress: 100,
+                    complete: true,
+                    error: Some(err_msg.clone()),
+                },
+            );
+            return Err(err_msg);
+        }
+
+        if !browser_dir.exists() {
+            let _ = std::fs::create_dir_all(&browser_dir);
+        }
+
         let _ = window.emit(
             "install-progress",
             InstallProgress {
                 stage: "Complete".to_string(),
-                message: "Dependencies installed successfully! PNG export will use your system browser (Chrome/Edge).".to_string(),
+                message: "Dependencies installed successfully. PNG export is ready.".to_string(),
                 progress: 100,
                 complete: true,
                 error: None,

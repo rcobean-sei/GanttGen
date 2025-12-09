@@ -18,16 +18,6 @@ try {
     playwright = null;
 }
 
-
-// Determine which browser channel Playwright should attempt
-function getBrowserChannel() {
-    if (process.env.PLAYWRIGHT_BROWSER_CHANNEL) {
-        return process.env.PLAYWRIGHT_BROWSER_CHANNEL;
-    }
-    // Default to Chrome on macOS/Linux and Edge on Windows
-    return process.platform === 'win32' ? 'msedge' : 'chrome';
-}
-
 // ============================================================
 // BRAND COLOR PALETTES
 // ============================================================
@@ -448,14 +438,13 @@ async function exportPNG(htmlPath, pngPath) {
     if (!playwright) {
         throw new Error('Playwright is not installed');
     }
-    
+
     const launchOptions = {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-        channel: getBrowserChannel()
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     };
 
-    console.log(`   Using browser channel: ${launchOptions.channel}`);
+    console.log('   Using Playwright-managed Chromium runtime');
 
     let browser;
     try {
@@ -527,7 +516,7 @@ async function exportPNG(htmlPath, pngPath) {
     } catch (error) {
         const message = (error && error.message) || String(error);
         if (/executable doesn't exist/i.test(message) || /Failed to launch/i.test(message)) {
-            throw new Error('Failed to export PNG: Install Google Chrome or Microsoft Edge and try again.');
+            throw new Error('Failed to export PNG: Playwright browser binaries are missing. Run "npx playwright install chromium" (or reinstall dependencies) to download them.');
         }
         throw new Error(`Failed to export PNG: ${message}`);
     } finally {
