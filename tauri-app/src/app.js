@@ -20,8 +20,11 @@ const setupElements = {
     reqNpmStatus: document.getElementById('reqNpmStatus'),
     reqDeps: document.getElementById('reqDeps'),
     reqDepsStatus: document.getElementById('reqDepsStatus'),
+    reqBrowser: document.getElementById('reqBrowser'),
+    reqBrowserStatus: document.getElementById('reqBrowserStatus'),
     recheckBtn: document.getElementById('recheckDepsBtn'),
     installBtn: document.getElementById('installDepsBtn'),
+    installBrowserBtn: document.getElementById('installBrowserBtn'),
     setupError: document.getElementById('setupError'),
     setupErrorText: document.getElementById('setupErrorText'),
     installStage: document.getElementById('installStage'),
@@ -181,9 +184,27 @@ function showSetupScreen(status) {
         status.dependencies_installed ? 'Installed' : 'Not installed'
     );
 
+    // Update browser runtime status
+    const browserInstalled = Boolean(status.browser_installed);
+
+    if (setupElements.reqBrowser) {
+        updateRequirementStatus(
+            setupElements.reqBrowser,
+            setupElements.reqBrowserStatus,
+            browserInstalled,
+            browserInstalled ? 'Installed' : 'Not installed'
+        );
+    }
+
     // Enable/disable install button based on whether Node.js and npm are available
     const canInstall = status.node_available && status.npm_available && !status.dependencies_installed;
     setupElements.installBtn.disabled = !canInstall;
+
+    if (setupElements.installBrowserBtn) {
+        const needsBrowser = status.dependencies_installed && !browserInstalled;
+        setupElements.installBrowserBtn.style.display = needsBrowser ? 'inline-flex' : 'none';
+        setupElements.installBrowserBtn.disabled = !needsBrowser;
+    }
 
     // Show error if Node.js or npm is not available
     if (!status.node_available || !status.npm_available) {
@@ -199,6 +220,9 @@ function showSetupScreen(status) {
     // Set up button handlers
     setupElements.recheckBtn.onclick = recheckDependencies;
     setupElements.installBtn.onclick = installDependencies;
+    if (setupElements.installBrowserBtn) {
+        setupElements.installBrowserBtn.onclick = installBrowserRuntime;
+    }
     setupElements.startAppBtn.onclick = () => {
         hideSetupScreen();
         initializeMainApp();
@@ -214,10 +238,16 @@ async function recheckDependencies() {
     resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
     resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
     resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
+    if (setupElements.reqBrowser) {
+        resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
+    }
 
     // Disable buttons during check
     setupElements.recheckBtn.disabled = true;
     setupElements.installBtn.disabled = true;
+    if (setupElements.installBrowserBtn) {
+        setupElements.installBrowserBtn.disabled = true;
+    }
     hideSetupError();
 
     try {
@@ -237,6 +267,9 @@ async function recheckDependencies() {
         showSetupError(`Failed to check dependencies: ${error}`);
     } finally {
         setupElements.recheckBtn.disabled = false;
+        if (setupElements.installBrowserBtn) {
+            setupElements.installBrowserBtn.disabled = false;
+        }
     }
 }
 
@@ -295,11 +328,19 @@ function hideSetupScreen() {
     setupElements.overlay.style.display = 'none';
 }
 
-async function installDependencies() {
-    // Switch to installing view
+function beginInstallView(message) {
+    setupElements.overlay.style.display = 'flex';
     setupElements.statusView.style.display = 'none';
     setupElements.installingView.style.display = 'block';
+    setupElements.completeView.style.display = 'none';
+    setupElements.installStage.textContent = message;
+    setupElements.setupProgressBar.style.width = '5%';
     setupElements.installLog.innerHTML = '';
+    hideSetupError();
+}
+
+async function installDependencies() {
+    beginInstallView('Installing dependencies...');
 
     try {
         await invoke('install_dependencies');
@@ -319,6 +360,32 @@ async function installDependencies() {
         } catch (e) {
             console.error('Failed to re-check dependencies:', e);
         }
+    }
+}
+
+async function installBrowserRuntime() {
+    if (!setupElements.installBrowserBtn || setupElements.installBrowserBtn.disabled) {
+        return;
+    }
+
+    setupElements.installBrowserBtn.disabled = true;
+    beginInstallView('Installing internal browser for PNG export...');
+
+    try {
+        await invoke('install_browser_runtime');
+        const status = await invoke('check_dependencies');
+        if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
+            hideSetupScreen();
+            await initializeMainApp();
+        } else {
+            showSetupScreen(status);
+        }
+    } catch (error) {
+        setupElements.statusView.style.display = 'block';
+        setupElements.installingView.style.display = 'none';
+        showSetupError(`Browser install failed: ${error}`);
+    } finally {
+        setupElements.installBrowserBtn.disabled = false;
     }
 }
 

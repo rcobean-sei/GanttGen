@@ -62,6 +62,16 @@
                             <span class="requirement-text">Dependencies</span>
                             <span class="requirement-status" id="reqDepsStatus">Checking...</span>
                         </div>
+                        <div class="requirement-item" id="reqBrowser">
+                            <span class="requirement-icon loading">
+                                <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+                                </svg>
+                            </span>
+                            <span class="requirement-text">Internal Browser (PNG)</span>
+                            <span class="requirement-status" id="reqBrowserStatus">Checking...</span>
+                        </div>
                     </div>
 
                     <div class="setup-actions">
@@ -79,6 +89,14 @@
                                 <line x1="12" y1="15" x2="12" y2="3"></line>
                             </svg>
                             Install Dependencies
+                        </button>
+                        <button class="btn btn-tertiary btn-large" id="installBrowserBtn" style="display: none;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            Install Internal Browser (PNG)
                         </button>
                     </div>
 

@@ -18,6 +18,7 @@ pub struct DependencyStatus {
     pub dependencies_installed: bool,
     pub dependencies_path: Option<String>,
     pub scripts_path: Option<String>,
+    pub browser_installed: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -693,6 +694,7 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
         dependencies_installed: false,
         dependencies_path: None,
         scripts_path: None,
+        browser_installed: false,
     };
 
     // Check Node.js
@@ -819,7 +821,8 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
         status.scripts_path = Some(scripts_dir.to_string_lossy().to_string());
     }
 
-    // Check for Chrome-based browser (for PNG export)
+    status.browser_installed = get_browser_install_dir(&app_handle).is_some();
+
     Ok(status)
 }
 
@@ -974,111 +977,7 @@ async fn install_dependencies(
     }
 
     if status.success() {
-        // Install Playwright-managed Chromium runtime for PNG export
-        let browser_dir = deps_dir.join("playwright-browsers");
-        let _ = window.emit(
-            "install-progress",
-            InstallProgress {
-                stage: "Installing".to_string(),
-                message: "Installing Chromium runtime for PNG export...".to_string(),
-                progress: 92,
-                complete: false,
-                error: None,
-            },
-        );
-
-        let mut browser_cmd = Command::new(&npm_cmd);
-        browser_cmd
-            .args(["exec", "playwright", "install", "chromium"])
-            .current_dir(&deps_dir)
-            .env("PLAYWRIGHT_BROWSERS_PATH", &browser_dir)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-
-        if cfg!(target_os = "linux") {
-            browser_cmd.arg("--with-deps");
-        }
-
-        if let Some(node_dir) = std::path::Path::new(&node_path).parent() {
-            let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
-            let existing_path = std::env::var("PATH").unwrap_or_default();
-            let node_dir_str = node_dir.to_string_lossy();
-            let path_value = if existing_path.is_empty() {
-                node_dir_str.to_string()
-            } else if existing_path
-                .split(separator)
-                .any(|segment| segment == node_dir_str)
-            {
-                existing_path
-            } else {
-                format!("{}{}{}", node_dir_str, separator, existing_path)
-            };
-            browser_cmd.env("PATH", path_value);
-        }
-
-        let mut browser_child = browser_cmd
-            .spawn()
-            .map_err(|e| format!("Failed to start Playwright install: {}", e))?;
-
-        let browser_stdout = browser_child
-            .stdout
-            .take()
-            .ok_or("Failed to capture browser install stdout")?;
-        let browser_stderr = browser_child
-            .stderr
-            .take()
-            .ok_or("Failed to capture browser install stderr")?;
-
-        let mut browser_stdout_reader = BufReader::new(browser_stdout).lines();
-        while let Ok(Some(line)) = browser_stdout_reader.next_line().await {
-            if !line.trim().is_empty() {
-                let _ = window.emit(
-                    "install-progress",
-                    InstallProgress {
-                        stage: "Installing".to_string(),
-                        message: line,
-                        progress: 95,
-                        complete: false,
-                        error: None,
-                    },
-                );
-            }
-        }
-
-        let browser_status = browser_child
-            .wait()
-            .await
-            .map_err(|e| format!("Playwright install failed: {}", e))?;
-
-        if !browser_status.success() {
-            let mut err_lines = Vec::new();
-            let mut browser_stderr_reader = BufReader::new(browser_stderr).lines();
-            while let Ok(Some(line)) = browser_stderr_reader.next_line().await {
-                if !line.trim().is_empty() {
-                    err_lines.push(line);
-                }
-            }
-            let err_msg = if err_lines.is_empty() {
-                "Failed to install Chromium runtime for PNG export".to_string()
-            } else {
-                err_lines.join("\n")
-            };
-            let _ = window.emit(
-                "install-progress",
-                InstallProgress {
-                    stage: "Error".to_string(),
-                    message: "Installation failed".to_string(),
-                    progress: 100,
-                    complete: true,
-                    error: Some(err_msg.clone()),
-                },
-            );
-            return Err(err_msg);
-        }
-
-        if !browser_dir.exists() {
-            let _ = std::fs::create_dir_all(&browser_dir);
-        }
+        install_playwright_runtime(&app_handle, &window, &npm_cmd, &node_path, &deps_dir).await?;
 
         let _ = window.emit(
             "install-progress",
@@ -1111,6 +1010,153 @@ async fn install_dependencies(
     }
 }
 
+async fn install_playwright_runtime(
+    app_handle: &tauri::AppHandle,
+    window: &tauri::Window,
+    npm_cmd: &str,
+    node_path: &str,
+    deps_dir: &Path,
+) -> Result<(), String> {
+    if get_browser_install_dir(app_handle).is_some() {
+        return Ok(());
+    }
+
+    let browser_dir = deps_dir.join("playwright-browsers");
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Installing".to_string(),
+            message: "Installing Chromium runtime for PNG export...".to_string(),
+            progress: 92,
+            complete: false,
+            error: None,
+        },
+    );
+
+    let mut browser_cmd = Command::new(npm_cmd);
+    browser_cmd
+        .args(["exec", "playwright", "install", "chromium"])
+        .current_dir(deps_dir)
+        .env("PLAYWRIGHT_BROWSERS_PATH", &browser_dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if cfg!(target_os = "linux") {
+        browser_cmd.arg("--with-deps");
+    }
+
+    if let Some(node_dir) = Path::new(node_path).parent() {
+        let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
+        let existing_path = std::env::var("PATH").unwrap_or_default();
+        let node_dir_str = node_dir.to_string_lossy();
+        let path_value = if existing_path.is_empty() {
+            node_dir_str.to_string()
+        } else if existing_path
+            .split(separator)
+            .any(|segment| segment == node_dir_str)
+        {
+            existing_path
+        } else {
+            format!("{}{}{}", node_dir_str, separator, existing_path)
+        };
+        browser_cmd.env("PATH", path_value);
+    }
+
+    let mut browser_child = browser_cmd
+        .spawn()
+        .map_err(|e| format!("Failed to start Playwright install: {}", e))?;
+
+    let browser_stdout = browser_child
+        .stdout
+        .take()
+        .ok_or("Failed to capture browser install stdout")?;
+    let browser_stderr = browser_child
+        .stderr
+        .take()
+        .ok_or("Failed to capture browser install stderr")?;
+
+    let mut browser_stdout_reader = BufReader::new(browser_stdout).lines();
+    while let Ok(Some(line)) = browser_stdout_reader.next_line().await {
+        if !line.trim().is_empty() {
+            let _ = window.emit(
+                "install-progress",
+                InstallProgress {
+                    stage: "Installing".to_string(),
+                    message: line,
+                    progress: 95,
+                    complete: false,
+                    error: None,
+                },
+            );
+        }
+    }
+
+    let browser_status = browser_child
+        .wait()
+        .await
+        .map_err(|e| format!("Playwright install failed: {}", e))?;
+
+    if !browser_status.success() {
+        let mut err_lines = Vec::new();
+        let mut browser_stderr_reader = BufReader::new(browser_stderr).lines();
+        while let Ok(Some(line)) = browser_stderr_reader.next_line().await {
+            if !line.trim().is_empty() {
+                err_lines.push(line);
+            }
+        }
+        let err_msg = if err_lines.is_empty() {
+            "Failed to install Chromium runtime for PNG export".to_string()
+        } else {
+            err_lines.join("\n")
+        };
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Error".to_string(),
+                message: "Installation failed".to_string(),
+                progress: 100,
+                complete: true,
+                error: Some(err_msg.clone()),
+            },
+        );
+        return Err(err_msg);
+    }
+
+    if !browser_dir.exists() {
+        let _ = std::fs::create_dir_all(&browser_dir);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn install_browser_runtime(
+    app_handle: tauri::AppHandle,
+    window: tauri::Window,
+) -> Result<bool, String> {
+    if !check_dependencies_installed(&app_handle) {
+        return Err("Install dependencies first before installing the PNG browser runtime.".to_string());
+    }
+
+    let deps_dir = get_dependencies_dir(&app_handle)?;
+    let npm_cmd = find_npm_path()?;
+    let node_path = get_node_path(&app_handle)?;
+
+    install_playwright_runtime(&app_handle, &window, &npm_cmd, &node_path, &deps_dir).await?;
+
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Complete".to_string(),
+            message: "PNG browser runtime installed successfully.".to_string(),
+            progress: 100,
+            complete: true,
+            error: None,
+        },
+    );
+
+    Ok(true)
+}
 /// Find npm executable path
 fn find_npm_path() -> Result<String, String> {
     let home = std::env::var("HOME").unwrap_or_default();
@@ -1304,6 +1350,7 @@ pub fn run() {
             get_palette_info,
             check_dependencies,
             install_dependencies,
+            install_browser_runtime,
             get_dependencies_path,
             open_file,
             open_folder,

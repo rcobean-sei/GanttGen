@@ -518,6 +518,17 @@ body {
     border-color: var(--purple-3);
 }
 
+.btn-tertiary {
+    background: var(--bg-secondary);
+    color: var(--purple-4);
+    border: 1px dashed var(--border-color);
+}
+
+.btn-tertiary:hover:not(:disabled) {
+    border-color: var(--purple-4);
+    background: rgba(112, 94, 116, 0.1);
+}
+
 .btn-large {
     padding: var(--spacing-md) var(--spacing-xl);
     font-size: 1rem;
