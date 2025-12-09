@@ -73,20 +73,7 @@ fn get_scripts_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Get Node.js executable path
-fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    // First check for bundled Node.js in the resource directory
-    if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        let bundled_node = if cfg!(target_os = "windows") {
-            resource_dir.join("node-bundle").join("node.exe")
-        } else {
-            resource_dir.join("node-bundle").join("node")
-        };
-
-        if bundled_node.exists() {
-            return Ok(bundled_node.to_string_lossy().to_string());
-        }
-    }
-
+fn get_node_path(_app_handle: &tauri::AppHandle) -> Result<String, String> {
     // Check if NODE_PATH environment variable is set
     if let Ok(path) = std::env::var("NODE_PATH") {
         if std::path::Path::new(&path).exists() {
