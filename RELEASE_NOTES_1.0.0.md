@@ -2,38 +2,33 @@
 
 ## Overview
 
-GanttGen 1.0.0 is a powerful, data-driven Gantt chart generator that produces presentation-ready HTML and PNG outputs. Built for efficiency and flexibility, GanttGen transforms your project data into professional timeline visualizations with support for custom branding and styling.
+GanttGen 1.0.0 is a simple, data-driven Gantt chart generator that produces presentation-ready HTML and PNG outputs. Just provide your project data in JSON or Excel format, and GanttGen handles the rest - transforming it into clean, professional timeline visualizations with minimal effort.
 
 ## Key Features
 
 ### Core Functionality
-- **Multiple Input Formats**: Support for both JSON and Excel (`.xlsx`) project files
-- **Dual Output Formats**: Generate both interactive HTML and high-quality PNG exports
-- **Template System**: Pre-built templates to get started quickly
-- **Desktop Application**: Full-featured Tauri-based desktop app for GUI workflow
+- **Use What You Know**: Works with familiar JSON or Excel (`.xlsx`) files
+- **Two Output Options**: Get both interactive HTML and shareable PNG files
+- **Ready-to-Use Templates**: Start immediately with included template files
+- **Desktop Application**: Optional GUI app if you prefer not to use the command line
 
 ### Visualization Features
-- **Custom Color Palettes**: 8 built-in color schemes including:
+- **8 Ready-Made Color Schemes**: Just pick one - no design skills needed:
   - `reds`, `reds_a`, `reds_b`
   - `purples_a`, `purples_b`, `purples_c`
   - `alternating`, `alternating_b`
-- **Drop Shadow Effects**: Optional drop shadows for enhanced visual depth
-- **Project Title Display**: Prominent project title rendering in chart headers
-- **Task Hierarchy**: Support for tasks with subtasks
-- **Milestones**: Visual milestone markers with optional task associations
-- **Pause Periods**: Diagonal stripe effects to indicate project pauses or breaks
-- **Flexible Time Tracking**: Optional hour tracking per task
+- **Drop Shadow Effects**: One-click option for visual depth
+- **Automatic Title Display**: Your project title appears automatically in the chart
+- **Task Hierarchy**: Simple nested task support
+- **Milestones**: Easy milestone markers
+- **Pause Periods**: Visual breaks for project pauses or holidays
+- **Optional Hour Tracking**: Add hours if you need them, skip if you don't
 
 ### Developer Features
-- **Comprehensive Testing**: Full test suite including:
-  - Unit tests (Jest)
-  - Integration tests (Jest)
-  - End-to-end tests (Playwright)
-  - Visual regression tests (Playwright)
-- **CI/CD Integration**: GitHub Actions workflow with automated testing on Node.js 18.x and 20.x
-- **Code Coverage**: Coverage reporting with Codecov integration
-- **Template Generation**: Automated Excel template generation
-- **Conversion Tools**: JSON to Excel conversion utilities
+- **Well-Tested**: Full test suite ensures reliability
+- **Automated Testing**: GitHub Actions runs tests automatically
+- **Template Generator**: Create Excel templates automatically
+- **Easy Conversion**: Switch between JSON and Excel formats
 
 ## Installation
 

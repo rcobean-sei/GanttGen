@@ -1,15 +1,15 @@
 # 🎉 GanttGen 1.0.0 - Initial Release
 
-We're excited to announce the first official release of **GanttGen** - a powerful, data-driven Gantt chart generator that creates presentation-ready HTML and PNG visualizations!
+We're excited to announce the first official release of **GanttGen** - a simple, data-driven Gantt chart generator that creates presentation-ready HTML and PNG visualizations with minimal effort!
 
 ## ✨ Highlights
 
-- **Multiple Input Formats**: JSON and Excel (`.xlsx`) support
-- **Dual Output**: Interactive HTML and high-quality PNG exports
-- **8 Built-in Color Palettes**: Professional color schemes including reds, purples, and alternating styles
-- **Desktop Application**: Full-featured Tauri-based GUI
-- **Template System**: Get started instantly with pre-built templates
-- **Advanced Features**: Drop shadows, project titles, milestones, pause periods, and task hierarchies
+- **Works With What You Know**: Use familiar JSON or Excel (`.xlsx`) files
+- **Two Formats, No Extra Work**: Get both interactive HTML and shareable PNG automatically
+- **8 Ready-Made Color Schemes**: Just pick one - reds, purples, or alternating styles
+- **Desktop App Available**: GUI option if you prefer not to use the command line
+- **Start in Seconds**: Pre-built templates get you going immediately
+- **Simple Yet Complete**: Drop shadows, project titles, milestones, pause periods, and task hierarchies - all easy to use
 
 ## 🚀 Quick Start
 
@@ -26,32 +26,32 @@ npm run tauri:dev
 
 ## 📦 What's New in 1.0.0
 
-- ✅ Complete build pipeline (JSON/Excel → HTML/PNG)
-- ✅ 8 professional color palette presets
-- ✅ Drop shadow effects for visual depth
-- ✅ Project title rendering in chart headers
-- ✅ Comprehensive test suite (unit, integration, E2E, visual regression)
-- ✅ Tauri desktop application
-- ✅ Template generation and conversion tools
-- ✅ CI/CD with GitHub Actions
-- ✅ Full documentation and examples
+- ✅ Simple build process (JSON/Excel → HTML/PNG in one command)
+- ✅ 8 ready-to-use color palettes - just choose one
+- ✅ Easy drop shadow toggle for visual depth
+- ✅ Project titles display automatically
+- ✅ Well-tested and reliable
+- ✅ User-friendly desktop application
+- ✅ Ready-made templates to start immediately
+- ✅ Easy file conversion between JSON and Excel
+- ✅ Clear documentation with examples
 
 ## 📋 Requirements
 
-- Node.js 18.x or 20.x
-- Chromium (auto-installed via Playwright)
-- Rust (for desktop app builds)
+- Node.js 18.x or 20.x (if you have Node installed, you're good to go!)
+- Chromium browser (installs automatically with `npm install`)
+- Rust (only needed if building the desktop app yourself)
 
 ## 🐛 Known Issues
 
 - Visual regression snapshots are platform-specific
 - Excel files must follow the template schema
 
-## 📚 Documentation
+## 📚 Getting Started
 
-- See `CLAUDE.md` for comprehensive usage guide
-- Check `templates/` directory for example files
-- Run `npm test` to verify your installation
+- See `CLAUDE.md` for easy-to-follow instructions
+- Copy and customize template files in the `templates/` directory
+- Run `npm test` to verify everything works
 
 ## 🙏 Feedback
 
