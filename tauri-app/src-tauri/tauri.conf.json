@@ -4,8 +4,6 @@
   "version": "1.0.0",
   "identifier": "com.sei.ganttgen",
   "build": {
-    "beforeBuildCommand": "node ../../scripts/manage-version.js set",
-    "afterBuildCommand": "node ../../scripts/manage-version.js reset",
     "frontendDist": "../src",
     "devUrl": "http://localhost:1420"
   },
