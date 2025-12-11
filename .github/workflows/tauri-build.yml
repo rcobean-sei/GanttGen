@@ -12,7 +12,7 @@ on:
       force_rebuild:
         description: 'Force full rebuild (clear cache)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
