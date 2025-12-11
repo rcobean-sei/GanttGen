@@ -401,8 +401,10 @@ function validateConfig(config) {
 }
 
 // Generate HTML from config
-function generateHTML(config, templatePath, outputPath) {
+function generateHTML(config, templatePath, outputPath, dropShadow = true) {
     const template = fs.readFileSync(templatePath, 'utf8');
+    // Add dropShadow to config
+    config.dropShadow = dropShadow;
     const configJson = JSON.stringify(config, null, 4);
     const output = template.replace('{{CONFIG}}', configJson);
     
@@ -434,7 +436,7 @@ async function cropPNGToVisible(pngPath) {
 }
 
 // Export HTML to PNG with transparent background
-async function exportPNG(htmlPath, pngPath) {
+async function exportPNG(htmlPath, pngPath, options = {}) {
     if (!playwright) {
         throw new Error('Playwright is not installed');
     }
@@ -500,6 +502,9 @@ async function exportPNG(htmlPath, pngPath) {
         // Final delay to ensure rendering is complete
         await page.waitForTimeout(300);
         
+        // Drop shadow is always applied to task bars and milestones in the HTML template
+        // No additional styling needed for PNG export
+        
         // Take screenshot with transparent background
         await page.screenshot({
             path: pngPath,
@@ -527,7 +532,7 @@ async function exportPNG(htmlPath, pngPath) {
 }
 
 // Main function
-// Options: { palette: 'reds' | 'purples' | 'alternating' | null, exportPng: boolean }
+// Options: { palette: 'reds' | 'purples' | 'alternating' | null, exportPng: boolean, dropShadow: boolean }
 async function build(inputPath, outputPath, options = {}) {
     const inputExt = path.extname(inputPath).toLowerCase();
     const isExcel = inputExt === '.xlsx' || inputExt === '.xls';
@@ -604,6 +609,7 @@ async function build(inputPath, outputPath, options = {}) {
     
     // Generate HTML
     const templatePath = path.join(__dirname, '..', 'templates', 'gantt_template.html');
+    const resolvedTemplatePath = path.resolve(templatePath);
     const paletteSuffix = options.palette ? `_${options.palette.toLowerCase()}` : '';
     const htmlOutputPath = outputPath || (() => {
         const inputBasename = path.basename(inputPath, path.extname(inputPath));
@@ -611,7 +617,8 @@ async function build(inputPath, outputPath, options = {}) {
     })();
     
     console.log('✓ Generating HTML...');
-    generateHTML(config, templatePath, htmlOutputPath);
+    const dropShadow = options.dropShadow !== false; // Default to true if not specified
+    generateHTML(config, resolvedTemplatePath, htmlOutputPath, dropShadow);
     console.log(`✓ Generated HTML at ${htmlOutputPath}`);
     
     // Generate PNG export with transparent background (if requested and Playwright is available)
@@ -620,7 +627,7 @@ async function build(inputPath, outputPath, options = {}) {
         const pngOutputPath = htmlOutputPath.replace(/\.html$/, '.png');
         console.log('✓ Exporting PNG...');
         try {
-            await exportPNG(htmlOutputPath, pngOutputPath);
+            await exportPNG(htmlOutputPath, pngOutputPath, { dropShadow });
             console.log(`✓ Generated PNG at ${pngOutputPath}`);
         } catch (error) {
             console.warn(`⚠️  PNG export failed: ${error.message}`);
@@ -660,6 +667,7 @@ if (require.main === module) {
     const paletteIndex = args.indexOf('--palette') !== -1 ? args.indexOf('--palette') : args.indexOf('-p');
     const pngFlag = args.includes('--png');
     const noPngFlag = args.includes('--no-png');
+    const dropShadowFlag = args.includes('--drop-shadow');
     
     if (inputIndex === -1 || !args[inputIndex + 1]) {
         console.error('Usage: node scripts/build.js --input <file.json|file.xlsx> [options]');
@@ -690,8 +698,10 @@ if (require.main === module) {
         : null;
     // Default to true for CLI (backwards compatible), but respect --no-png flag
     const exportPng = noPngFlag ? false : true;
+    // Default drop shadow to true (backwards compatible - shadows were always on before)
+    const dropShadow = dropShadowFlag !== false; // If flag present, it's true; if not present, default to true
     
-    build(inputPath, outputPath, { palette, exportPng }).catch(error => {
+    build(inputPath, outputPath, { palette, exportPng, dropShadow }).catch(error => {
         console.error('✗ Error:', error.message);
         process.exit(1);
     });

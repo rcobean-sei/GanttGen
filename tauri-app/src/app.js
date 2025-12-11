@@ -36,7 +36,6 @@ const setupElements = {
 // State
 let state = {
     inputFile: null,
-    inputMode: 'file', // 'file' or 'manual'
     selectedPalette: 'alternating',
     outputDir: null,
     isGenerating: false,
@@ -54,16 +53,15 @@ let state = {
 
 // DOM Elements
 const elements = {
-    // Tab navigation
-    tabBtns: document.querySelectorAll('.tab-btn'),
-    fileTab: document.getElementById('fileTab'),
-    manualTab: document.getElementById('manualTab'),
     // File import
+    importFileBtn: document.getElementById('importFileBtn'),
+    fileImportArea: document.getElementById('fileImportArea'),
     dropZone: document.getElementById('dropZone'),
     browseBtn: document.getElementById('browseBtn'),
     selectedFile: document.getElementById('selectedFile'),
     fileName: document.getElementById('fileName'),
     clearFileBtn: document.getElementById('clearFileBtn'),
+    manualTab: document.getElementById('manualTab'),
     // Manual entry
     projectTitle: document.getElementById('projectTitle'),
     timelineStart: document.getElementById('timelineStart'),
@@ -83,6 +81,7 @@ const elements = {
     paletteGrid: document.getElementById('paletteGrid'),
     exportHtml: document.getElementById('exportHtml'),
     exportPng: document.getElementById('exportPng'),
+    pngDropShadow: document.getElementById('pngDropShadow'),
     outputDir: document.getElementById('outputDir'),
     selectOutputBtn: document.getElementById('selectOutputBtn'),
     generateBtn: document.getElementById('generateBtn'),
@@ -603,28 +602,47 @@ function selectPalette(paletteId) {
 }
 
 function setupEventListeners() {
-    // Tab navigation
-    elements.tabBtns.forEach(btn => {
-        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
+    // Import file button - toggle file import area
+    if (elements.importFileBtn && elements.fileImportArea) {
+        elements.importFileBtn.addEventListener('click', () => {
+            const isVisible = elements.fileImportArea.style.display !== 'none';
+            elements.fileImportArea.style.display = isVisible ? 'none' : 'block';
+        });
+    }
 
     // Browse button
-    elements.browseBtn.addEventListener('click', openFileDialog);
+    if (elements.browseBtn) {
+        elements.browseBtn.addEventListener('click', openFileDialog);
+    }
 
     // Clear file button
-    elements.clearFileBtn.addEventListener('click', clearFile);
+    if (elements.clearFileBtn) {
+        elements.clearFileBtn.addEventListener('click', clearFile);
+    }
 
     // Select output directory
-    elements.selectOutputBtn.addEventListener('click', selectOutputDirectory);
+    if (elements.selectOutputBtn) {
+        elements.selectOutputBtn.addEventListener('click', selectOutputDirectory);
+    }
 
     // Generate button
-    elements.generateBtn.addEventListener('click', generateGantt);
+    if (elements.generateBtn) {
+        elements.generateBtn.addEventListener('click', generateGantt);
+    }
 
     // Result actions
-    elements.openOutputBtn.addEventListener('click', openOutputFolder);
-    elements.viewHtmlBtn.addEventListener('click', viewHtmlFile);
-    elements.viewPngBtn.addEventListener('click', viewPngFile);
-    elements.tryAgainBtn.addEventListener('click', resetResults);
+    if (elements.openOutputBtn) {
+        elements.openOutputBtn.addEventListener('click', openOutputFolder);
+    }
+    if (elements.viewHtmlBtn) {
+        elements.viewHtmlBtn.addEventListener('click', viewHtmlFile);
+    }
+    if (elements.viewPngBtn) {
+        elements.viewPngBtn.addEventListener('click', viewPngFile);
+    }
+    if (elements.tryAgainBtn) {
+        elements.tryAgainBtn.addEventListener('click', resetResults);
+    }
 }
 
 function switchTab(tabId) {
@@ -639,9 +657,15 @@ function switchTab(tabId) {
     elements.fileTab.classList.toggle('active', tabId === 'file');
     elements.manualTab.classList.toggle('active', tabId === 'manual');
     
-    // Clear file selection when switching to manual
+    // When switching to manual tab, populate UI if we have data
     if (tabId === 'manual') {
-        state.inputFile = null;
+        // Don't clear the file - user might want to switch back
+        // Populate UI fields from manualData if we have populated data
+        const hasData = state.manualData.tasks.length > 0 || state.manualData.title !== 'PROJECT TIMELINE' || 
+            state.manualData.timelineStart || state.manualData.timelineEnd;
+        if (hasData) {
+            populateUIFromManualData();
+        }
     }
     
     updateGenerateButton();
@@ -649,34 +673,52 @@ function switchTab(tabId) {
 
 function setupManualEntry() {
     // Project metadata listeners
-    elements.projectTitle.addEventListener('input', (e) => {
-        state.manualData.title = e.target.value;
-        updateJsonPreview();
-    });
+    if (elements.projectTitle) {
+        elements.projectTitle.addEventListener('input', (e) => {
+            state.manualData.title = e.target.value;
+            updateJsonPreview();
+        });
+    }
     
-    elements.timelineStart.addEventListener('change', (e) => {
-        state.manualData.timelineStart = e.target.value;
-        renderPausePeriods();
-        updateJsonPreview();
-        updateGenerateButton();
-    });
+    if (elements.timelineStart) {
+        elements.timelineStart.addEventListener('change', (e) => {
+            state.manualData.timelineStart = e.target.value;
+            renderPausePeriods();
+            updateJsonPreview();
+            updateGenerateButton();
+        });
+    }
     
-    elements.timelineEnd.addEventListener('change', (e) => {
-        state.manualData.timelineEnd = e.target.value;
-        renderPausePeriods();
-        updateJsonPreview();
-        updateGenerateButton();
-    });
+    if (elements.timelineEnd) {
+        elements.timelineEnd.addEventListener('change', (e) => {
+            state.manualData.timelineEnd = e.target.value;
+            renderPausePeriods();
+            updateJsonPreview();
+            updateGenerateButton();
+        });
+    }
     
     // Add task/milestone/pause buttons
-    elements.addTaskBtn.addEventListener('click', addTask);
-    elements.addPauseBtn.addEventListener('click', addPausePeriod);
-    elements.addMilestoneBtn.addEventListener('click', addMilestone);
+    if (elements.addTaskBtn) {
+        elements.addTaskBtn.addEventListener('click', addTask);
+    }
+    if (elements.addPauseBtn) {
+        elements.addPauseBtn.addEventListener('click', addPausePeriod);
+    }
+    if (elements.addMilestoneBtn) {
+        elements.addMilestoneBtn.addEventListener('click', addMilestone);
+    }
     
     // JSON preview toggle
-    elements.toggleJsonBtn.addEventListener('click', toggleJsonPreview);
-    elements.copyJsonBtn.addEventListener('click', copyJson);
-    elements.saveJsonBtn.addEventListener('click', saveJsonFile);
+    if (elements.toggleJsonBtn) {
+        elements.toggleJsonBtn.addEventListener('click', toggleJsonPreview);
+    }
+    if (elements.copyJsonBtn) {
+        elements.copyJsonBtn.addEventListener('click', copyJson);
+    }
+    if (elements.saveJsonBtn) {
+        elements.saveJsonBtn.addEventListener('click', saveJsonFile);
+    }
     
     // Initialize with empty state message
     renderTasks();
@@ -1389,16 +1431,92 @@ async function handleFileSelection(filePath) {
             }
         }
 
+        // Parse the file and populate manual data
+        try {
+            const fileContent = await invoke('parse_file', { path: filePath });
+            const config = JSON.parse(fileContent);
+            populateManualDataFromConfig(config);
+            populateUIFromManualData();
+            
+            // Collapse file import area after successful import
+            elements.fileImportArea.style.display = 'none';
+        } catch (parseError) {
+            console.warn('Could not parse file for manual entry:', parseError);
+            // Don't show error to user - file is still valid for generation
+        }
+
         updateGenerateButton();
     } catch (error) {
         alert(`Invalid file: ${error}`);
     }
 }
 
+function populateManualDataFromConfig(config) {
+    // Populate project metadata
+    if (config.title) {
+        state.manualData.title = config.title;
+    }
+    if (config.timelineStart) {
+        state.manualData.timelineStart = config.timelineStart;
+    }
+    if (config.timelineEnd) {
+        state.manualData.timelineEnd = config.timelineEnd;
+    }
+
+    // Populate tasks
+    if (config.tasks && Array.isArray(config.tasks)) {
+        state.manualData.tasks = config.tasks.map(task => ({
+            name: task.name || '',
+            start: task.start || '',
+            end: task.end || '',
+            hours: task.hours || 0,
+            subtasks: task.subtasks || []
+        }));
+    }
+
+    // Populate milestones
+    if (config.milestones && Array.isArray(config.milestones)) {
+        state.manualData.milestones = config.milestones.map(milestone => ({
+            name: milestone.name || '',
+            date: milestone.date || '',
+            taskIndex: milestone.taskIndex !== undefined ? milestone.taskIndex : null
+        }));
+    }
+
+    // Populate pause periods
+    if (config.pausePeriods && Array.isArray(config.pausePeriods)) {
+        state.manualData.pausePeriods = config.pausePeriods.map(pause => ({
+            start: pause.start || '',
+            end: pause.end || '',
+            label: pause.label || ''
+        }));
+    }
+}
+
+function populateUIFromManualData() {
+    // Populate project metadata fields
+    if (elements.projectTitle) {
+        elements.projectTitle.value = state.manualData.title || '';
+    }
+    if (elements.timelineStart) {
+        elements.timelineStart.value = state.manualData.timelineStart || '';
+    }
+    if (elements.timelineEnd) {
+        elements.timelineEnd.value = state.manualData.timelineEnd || '';
+    }
+
+    // Render tasks, milestones, and pause periods
+    renderTasks();
+    renderMilestones();
+    renderPausePeriods();
+    updateJsonPreview();
+}
+
 function clearFile() {
     state.inputFile = null;
     elements.selectedFile.style.display = 'none';
     elements.dropZone.style.display = 'block';
+    elements.fileImportArea.style.display = 'none';
     updateGenerateButton();
 }
 
@@ -1419,17 +1537,11 @@ async function selectOutputDirectory() {
 }
 
 function updateGenerateButton() {
-    let canGenerate = false;
-    
-    if (state.inputMode === 'file') {
-        canGenerate = state.inputFile && !state.isGenerating;
-    } else if (state.inputMode === 'manual') {
-        // Manual mode: need at least one task and valid dates
-        canGenerate = !state.isGenerating && 
-            state.manualData.tasks.length > 0 &&
-            state.manualData.timelineStart &&
-            state.manualData.timelineEnd;
-    }
+    // Manual mode: need at least one task and valid dates
+    const canGenerate = !state.isGenerating && 
+        state.manualData.tasks.length > 0 &&
+        state.manualData.timelineStart &&
+        state.manualData.timelineEnd;
     
     elements.generateBtn.disabled = !canGenerate;
 }
@@ -1459,28 +1571,25 @@ async function generateGantt() {
     updateProgress(0, 'Initializing...');
 
     try {
-        let inputPath = state.inputFile;
+        // Always create a temp JSON file from manual entry data
+        updateProgress(5, 'Creating project file...');
+        const jsonData = getManualDataAsJson();
+        const jsonString = JSON.stringify(jsonData, null, 2);
         
-        // For manual mode, create a temp JSON file
-        if (state.inputMode === 'manual') {
-            updateProgress(5, 'Creating project file...');
-            const jsonData = getManualDataAsJson();
-            const jsonString = JSON.stringify(jsonData, null, 2);
-            
-            // Create temp file path
-            const tempDirPath = await tempDir();
-            const timestamp = Date.now();
-            inputPath = await pathJoin(tempDirPath, `ganttgen_temp_${timestamp}.json`);
-            
-            // Write temp file
-            await writeTextFile(inputPath, jsonString);
-        }
+        // Create temp file path
+        const tempDirPath = await tempDir();
+        const timestamp = Date.now();
+        const inputPath = await pathJoin(tempDirPath, `ganttgen_temp_${timestamp}.json`);
+        
+        // Write temp file
+        await writeTextFile(inputPath, jsonString);
         
         const options = {
             input_path: inputPath,
             output_path: state.outputDir ? `${state.outputDir}/output_gantt_chart.html` : null,
             palette: state.selectedPalette,
-            export_png: elements.exportPng.checked
+            export_png: elements.exportPng ? elements.exportPng.checked : false,
+            png_drop_shadow: elements.pngDropShadow ? elements.pngDropShadow.checked : false,
         };
 
         const result = await invoke('generate_gantt', { options });
@@ -1528,7 +1637,15 @@ function showSuccess(result) {
 
     // Show/hide view buttons based on what was generated
     elements.viewHtmlBtn.disabled = !result.html_path;
-    elements.viewPngBtn.disabled = !result.png_path;
+    
+    // For PNG button: enable if png_path exists, or if HTML was generated and PNG export was checked
+    // (PNG should be in same directory as HTML with .png extension)
+    let pngPath = result.png_path;
+    if (!pngPath && result.html_path && elements.exportPng && elements.exportPng.checked) {
+        // Fallback: construct PNG path from HTML path if PNG export was requested
+        pngPath = result.html_path.replace(/\.html$/, '.png');
+    }
+    elements.viewPngBtn.disabled = !pngPath;
 }
 
 function showError(error) {
