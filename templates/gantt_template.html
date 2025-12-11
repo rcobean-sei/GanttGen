@@ -272,7 +272,7 @@
             justify-content: center;
             color: var(--cream);
             font-weight: 600;
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.15);
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2);
             margin: 0 1px;
             padding: 4px 12px;
             position: relative;
@@ -281,13 +281,23 @@
             box-sizing: border-box; /* Include padding in height calculation */
         }
         
+        .drop-shadow-enabled .task-bar {
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
         /* Interrupted task bar segments - sharp edges on interrupted side */
         .task-bar-segment-left {
             border-radius: 4px 0 0 4px; /* Rounded only on left side */
             box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border only */
                         inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2); /* Bottom border */
+        }
+        
+        .drop-shadow-enabled .task-bar-segment-left {
+            box-shadow: inset 1px 0 0 0 rgba(255,255,255,0.2), /* Left border only */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
                         inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
-                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+                        0 4px 12px rgba(0, 0, 0, 0.15); /* Drop shadow */
         }
         
         .task-bar-segment-left::after {
@@ -305,8 +315,14 @@
             border-radius: 0 4px 4px 0; /* Rounded only on right side */
             box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border only */
                         inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
+                        inset 0 -1px 0 0 rgba(255,255,255,0.2); /* Bottom border */
+        }
+        
+        .drop-shadow-enabled .task-bar-segment-right {
+            box-shadow: inset -1px 0 0 0 rgba(255,255,255,0.2), /* Right border only */
+                        inset 0 1px 0 0 rgba(255,255,255,0.2), /* Top border */
                         inset 0 -1px 0 0 rgba(255,255,255,0.2), /* Bottom border */
-                        0 2px 4px rgba(0,0,0,0.15); /* Drop shadow */
+                        0 4px 12px rgba(0, 0, 0, 0.15); /* Drop shadow */
         }
         
         .task-bar-segment-right::before {
@@ -467,6 +483,10 @@
             --connector-height: 0px;
         }
         
+        .drop-shadow-enabled .milestone-label {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
         /* Connector from top of milestone label up to task section */
         .milestone-label::before {
             content: '';
@@ -524,6 +544,11 @@
     if (CONFIG.accentBorder) {
         document.documentElement.style.setProperty('--accent-border', CONFIG.accentBorder);
         document.documentElement.style.setProperty('--accent-border-width', '4px');
+    }
+    
+    // Apply drop shadow class if enabled
+    if (CONFIG.dropShadow !== false) {
+        document.querySelector('.gantt-container').classList.add('drop-shadow-enabled');
     }
     
     let CURRENT_TOTAL_DAYS = 0;
@@ -740,16 +765,17 @@
         CURRENT_TOTAL_DAYS = totalDays;
         
         // Set title
-        document.getElementById('chart-title').textContent = CONFIG.title;
+        const projectTitle = CONFIG.title || 'PROJECT TIMELINE';
+        document.getElementById('chart-title').textContent = projectTitle;
         
         // Build month header grid template
         const monthGridTemplate = months.map(m => `${m.days}fr`).join(' ');
         const dayGridTemplate = `repeat(${totalDays}, 1fr)`;
         
-        // Create header row
+        // Create header row - use project title in the left column header
         let headerHTML = `
             <div class="gantt-row header-row">
-                <div class="col-task">Tasks</div>
+                <div class="col-task">${projectTitle}</div>
                 <div class="col-timeline" style="position: relative;">
                     <div class="month-header" style="grid-template-columns: ${monthGridTemplate}">
                         ${months.map(m => `<div class="month-label">${m.name}</div>`).join('')}

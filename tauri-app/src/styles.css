@@ -148,6 +148,17 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.section-header-with-action {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-lg);
+}
+
+.section-header-with-action .section-title {
+    margin-bottom: 0;
+}
+
 .section-title {
     font-size: 1.125rem;
     font-weight: 600;
@@ -367,8 +378,10 @@ body {
 }
 
 .option-group {
-    flex: 1;
+    flex: 1; /* Equal distribution for all three groups */
 }
+
+/* When PNG options are visible, all three groups are equal siblings with equal spacing */
 
 .checkbox-label {
     display: flex;
@@ -422,6 +435,15 @@ body {
     transform: rotate(45deg) scale(1);
 }
 
+/* Apply drop shadow effect to the drop shadow checkbox when checked */
+#dropShadowOptionGroup .checkbox-label {
+    transition: box-shadow var(--transition-fast);
+}
+
+#dropShadowOptionGroup .checkbox-label:has(input:checked) {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .option-text {
     display: flex;
     flex-direction: column;
@@ -438,11 +460,25 @@ body {
     color: var(--text-secondary);
 }
 
+/* PNG Options */
+.png-options {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: flex-start;
+}
+
+.png-options .checkbox-label {
+    flex: 0 0 auto;
+    min-width: 160px;
+    white-space: nowrap;
+}
+
 /* Output Path */
 .output-path {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
+    margin-top: var(--spacing-lg);
 }
 
 .output-path label {
@@ -713,9 +749,16 @@ body {
     background: var(--purple-3);
 }
 
-/* Input Tabs */
+/* File Import Area */
+.file-import-area {
+    margin-bottom: var(--spacing-lg);
+    animation: fadeIn 0.2s ease-out;
+}
+
+/* Input Tabs (deprecated - kept for backwards compatibility) */
 .input-tabs {
-    display: flex;
+    display: none; /* Hidden - tabs removed */
+    flex: none;
     gap: var(--spacing-xs);
     margin-bottom: var(--spacing-md);
     padding: var(--spacing-xs);

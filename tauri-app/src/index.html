@@ -164,31 +164,23 @@
     <main class="main-content">
         <!-- Input Source Section -->
         <section class="section input-section">
-            <h2 class="section-title">
-                <span class="step-number">1</span>
-                Project Data
-            </h2>
-            
-            <!-- Input Mode Tabs -->
-            <div class="input-tabs">
-                <button class="tab-btn active" data-tab="file">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
+            <div class="section-header-with-action">
+                <h2 class="section-title">
+                    <span class="step-number">1</span>
+                    Project Data
+                </h2>
+                <button class="btn btn-secondary btn-sm" id="importFileBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
                     </svg>
                     Import File
                 </button>
-                <button class="tab-btn" data-tab="manual">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                    Manual Entry
-                </button>
             </div>
             
-            <!-- File Import Tab -->
-            <div class="tab-content active" id="fileTab">
+            <!-- Collapsible File Import Area -->
+            <div class="file-import-area" id="fileImportArea" style="display: none;">
                 <div class="file-drop-zone" id="dropZone">
                     <div class="drop-icon">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -219,8 +211,8 @@
                 </div>
             </div>
             
-            <!-- Manual Entry Tab -->
-            <div class="tab-content" id="manualTab">
+            <!-- Manual Entry (always visible) -->
+            <div id="manualTab">
                 <!-- Project Metadata -->
                 <div class="form-section">
                     <h3 class="form-section-title">Project Settings</h3>
@@ -332,7 +324,7 @@
                 Output Options
             </h2>
             <div class="output-options">
-                <div class="option-group">
+                <div class="option-group" id="htmlOptionGroup">
                     <label class="checkbox-label">
                         <input type="checkbox" id="exportHtml" checked>
                         <span class="checkbox-custom"></span>
@@ -342,13 +334,23 @@
                         </span>
                     </label>
                 </div>
-                <div class="option-group">
+                <div class="option-group" id="pngOptionGroup">
                     <label class="checkbox-label">
                         <input type="checkbox" id="exportPng">
                         <span class="checkbox-custom"></span>
                         <span class="option-text">
                             <strong>PNG</strong>
-                            <span class="option-desc">High-resolution image (1920x1080)</span>
+                            <span class="option-desc">Hi-res (for 16:9 PPTX)</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="option-group" id="dropShadowOptionGroup">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="pngDropShadow" checked>
+                        <span class="checkbox-custom"></span>
+                        <span class="option-text">
+                            <strong>Drop Shadow</strong>
+                            <span class="option-desc">Add subtle shadow</span>
                         </span>
                     </label>
                 </div>

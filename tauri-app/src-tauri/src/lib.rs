@@ -27,6 +27,7 @@ pub struct GenerateOptions {
     pub output_path: Option<String>,
     pub palette: String,
     pub export_png: bool,
+    pub png_drop_shadow: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -381,6 +382,11 @@ async fn generate_gantt(
         args.push("--png".to_string());
     } else {
         args.push("--no-png".to_string());
+    }
+    
+    // Add drop shadow flag if enabled
+    if options.png_drop_shadow {
+        args.push("--drop-shadow".to_string());
     }
 
     let _ = window.emit(
