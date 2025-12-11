@@ -639,9 +639,14 @@ function switchTab(tabId) {
     elements.fileTab.classList.toggle('active', tabId === 'file');
     elements.manualTab.classList.toggle('active', tabId === 'manual');
     
-    // Clear file selection when switching to manual
+    // When switching to manual tab, populate UI if we have data
     if (tabId === 'manual') {
-        state.inputFile = null;
+        // Don't clear the file - user might want to switch back
+        // Populate UI fields from manualData if we have populated data
+        if (state.manualData.tasks.length > 0 || state.manualData.title !== 'PROJECT TIMELINE' || 
+            state.manualData.timelineStart || state.manualData.timelineEnd) {
+            populateUIFromManualData();
+        }
     }
     
     updateGenerateButton();
@@ -1389,10 +1394,81 @@ async function handleFileSelection(filePath) {
             }
         }
 
+        // Parse the file and populate manual data for manual entry tab
+        try {
+            const fileContent = await invoke('parse_file', { path: filePath });
+            const config = JSON.parse(fileContent);
+            populateManualDataFromConfig(config);
+        } catch (parseError) {
+            console.warn('Could not parse file for manual entry:', parseError);
+            // Don't show error to user - file is still valid for generation
+        }
+
         updateGenerateButton();
     } catch (error) {
         alert(`Invalid file: ${error}`);
     }
+}
+
+function populateManualDataFromConfig(config) {
+    // Populate project metadata
+    if (config.title) {
+        state.manualData.title = config.title;
+    }
+    if (config.timelineStart) {
+        state.manualData.timelineStart = config.timelineStart;
+    }
+    if (config.timelineEnd) {
+        state.manualData.timelineEnd = config.timelineEnd;
+    }
+
+    // Populate tasks
+    if (config.tasks && Array.isArray(config.tasks)) {
+        state.manualData.tasks = config.tasks.map(task => ({
+            name: task.name || '',
+            start: task.start || '',
+            end: task.end || '',
+            hours: task.hours || 0,
+            subtasks: task.subtasks || []
+        }));
+    }
+
+    // Populate milestones
+    if (config.milestones && Array.isArray(config.milestones)) {
+        state.manualData.milestones = config.milestones.map(milestone => ({
+            name: milestone.name || '',
+            date: milestone.date || '',
+            taskIndex: milestone.taskIndex !== undefined ? milestone.taskIndex : null
+        }));
+    }
+
+    // Populate pause periods
+    if (config.pausePeriods && Array.isArray(config.pausePeriods)) {
+        state.manualData.pausePeriods = config.pausePeriods.map(pause => ({
+            start: pause.start || '',
+            end: pause.end || '',
+            label: pause.label || ''
+        }));
+    }
+}
+
+function populateUIFromManualData() {
+    // Populate project metadata fields
+    if (elements.projectTitle) {
+        elements.projectTitle.value = state.manualData.title || '';
+    }
+    if (elements.timelineStart) {
+        elements.timelineStart.value = state.manualData.timelineStart || '';
+    }
+    if (elements.timelineEnd) {
+        elements.timelineEnd.value = state.manualData.timelineEnd || '';
+    }
+
+    // Render tasks, milestones, and pause periods
+    renderTasks();
+    renderMilestones();
+    renderPausePeriods();
+    updateJsonPreview();
 }
 
 function clearFile() {
@@ -1528,7 +1604,15 @@ function showSuccess(result) {
 
     // Show/hide view buttons based on what was generated
     elements.viewHtmlBtn.disabled = !result.html_path;
-    elements.viewPngBtn.disabled = !result.png_path;
+    
+    // For PNG button: enable if png_path exists, or if HTML was generated and PNG export was checked
+    // (PNG should be in same directory as HTML with .png extension)
+    let pngPath = result.png_path;
+    if (!pngPath && result.html_path && elements.exportPng.checked) {
+        // Fallback: construct PNG path from HTML path if PNG export was requested
+        pngPath = result.html_path.replace(/\.html$/, '.png');
+    }
+    elements.viewPngBtn.disabled = !pngPath;
 }
 
 function showError(error) {

@@ -434,7 +434,7 @@ async fn generate_gantt(
         emit_log(&window, "debug", "node", &line);
 
         // Parse output to find generated file paths
-        if line.contains("Generated:") || line.contains("Output:") {
+        if line.contains("Generated:") || line.contains("Output:") || line.contains("Generated PNG") || line.contains("Generated HTML") {
             if line.ends_with(".html") {
                 html_path = Some(line.split_whitespace().last().unwrap_or("").to_string());
                 emit_log(&window, "info", "node", &format!("HTML generated: {}", html_path.as_ref().unwrap_or(&String::new())));
@@ -508,10 +508,26 @@ async fn generate_gantt(
         // Try to extract paths from output if not already found
         if html_path.is_none() {
             for line in &output_lines {
-                if line.ends_with(".html") && (line.contains("output") || line.contains("Output")) {
+                if line.ends_with(".html") && (line.contains("output") || line.contains("Output") || line.contains("Generated HTML") || line.contains("Generated:")) {
                     let parts: Vec<&str> = line.split_whitespace().collect();
                     if let Some(path) = parts.last() {
                         html_path = Some(path.to_string());
+                    }
+                }
+            }
+        }
+
+        // Try to extract PNG path from output if not already found
+        if png_path.is_none() && options.export_png {
+            for line in &output_lines {
+                if line.ends_with(".png") && (line.contains("Generated PNG") || line.contains("Generated:") || line.contains("PNG")) {
+                    let parts: Vec<&str> = line.split_whitespace().collect();
+                    // Look for the path (usually the last word that ends with .png)
+                    for part in parts.iter().rev() {
+                        if part.ends_with(".png") {
+                            png_path = Some(part.to_string());
+                            break;
+                        }
                     }
                 }
             }
@@ -569,6 +585,86 @@ async fn validate_input_file(path: String, window: tauri::Window) -> Result<bool
         }
         _ => {
             let err = format!("Invalid file type: .{}. Expected .json or .xlsx", extension);
+            emit_log(&window, "error", "rust", &err);
+            Err(err)
+        }
+    }
+}
+
+#[tauri::command]
+async fn parse_file(path: String, app_handle: tauri::AppHandle, window: tauri::Window) -> Result<String, String> {
+    let file_path = PathBuf::from(&path);
+    
+    if !file_path.exists() {
+        let err = format!("File does not exist: {}", file_path.display());
+        emit_log(&window, "error", "rust", &err);
+        return Err(err);
+    }
+
+    let extension = file_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    match extension.as_str() {
+        "json" => {
+            // For JSON files, just read and return the content
+            tokio::fs::read_to_string(&path)
+                .await
+                .map_err(|e| {
+                    let err_msg = format!("Failed to read JSON file {}: {}", path, e);
+                    emit_log(&window, "error", "rust", &err_msg);
+                    err_msg
+                })
+        }
+        "xlsx" | "xls" => {
+            // For Excel files, use Node.js to parse
+            let scripts_dir = get_scripts_dir(&app_handle)?;
+            let parse_script = scripts_dir.join("parse-file.js");
+            
+            if !parse_script.exists() {
+                let err = format!("Parse script not found at: {}", parse_script.display());
+                emit_log(&window, "error", "rust", &err);
+                return Err(err);
+            }
+
+            let node = get_node_path(&app_handle)?;
+            
+            let mut cmd = Command::new(&node);
+            cmd.arg(parse_script.to_string_lossy().to_string())
+                .arg(&path)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped());
+
+            // Set NODE_PATH to include user-installed dependencies if available
+            if let Ok(node_modules) = get_node_modules_dir(&app_handle) {
+                cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
+            }
+
+            emit_log(&window, "debug", "rust", &format!("Parsing Excel file: {}", path));
+
+            let output = cmd
+                .output()
+                .await
+                .map_err(|e| {
+                    let err = format!("Failed to run parse script: {}", e);
+                    emit_log(&window, "error", "rust", &err);
+                    err
+                })?;
+
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let err = format!("Failed to parse Excel file: {}", stderr);
+                emit_log(&window, "error", "rust", &err);
+                return Err(err);
+            }
+
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            Ok(stdout.to_string())
+        }
+        _ => {
+            let err = format!("Unsupported file type for parsing: {}", extension);
             emit_log(&window, "error", "rust", &err);
             Err(err)
         }
@@ -1345,6 +1441,7 @@ pub fn run() {
             generate_gantt,
             read_json_file,
             validate_input_file,
+            parse_file,
             get_palette_info,
             check_dependencies,
             install_dependencies,
