@@ -240,3 +240,5 @@ Push to this branch triggers the workflow - check that:
 | `.github/workflows/tauri-build.yml` | Update with signing |
 | `.github/workflows/build-tauri-app.yml` | Delete |
 | `.github/workflows/build-electron-app.yml` | Delete (skip if already removed) |
+
+

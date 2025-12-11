@@ -12,7 +12,7 @@ on:
       force_rebuild:
         description: 'Force full rebuild (clear cache)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
@@ -238,20 +238,6 @@ jobs:
         run: npm ci
         working-directory: tauri-app
 
-      - name: Install ImageMagick (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: brew install imagemagick
-
-      - name: Add padding to macOS icon
-        if: matrix.platform == 'macos-latest'
-        run: |
-          # macOS icons need ~10% padding for proper dock appearance
-          # Resize icon to 80% and center it on a 1024x1024 canvas
-          cd tauri-app/src-tauri/icons
-          magick icon.png -resize 820x820 -gravity center -background none -extent 1024x1024 icon_padded.png
-          mv icon_padded.png icon.png
-          echo "Added padding to macOS icon"
-
       - name: Generate Icons
         run: npm run tauri:icon src-tauri/icons/icon.png
         working-directory: tauri-app
@@ -372,7 +358,7 @@ jobs:
           spctl -a -vv "$APP_PATH" 2>&1 || echo "spctl check failed (expected without notarization)"
 
       - name: Notarize macOS DMG
-        if: matrix.platform == 'macos-latest' && github.event_name != 'pull_request'
+        if: false  # Disabled - notarization is more trouble than it's worth
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -437,9 +423,16 @@ jobs:
 
           echo "Notarization complete!"
 
+      - name: Package macOS zip bundle
+        if: matrix.platform == 'macos-latest'
+        run: |
+          chmod +x scripts/create_mac_zip_bundle.sh
+          ./scripts/create_mac_zip_bundle.sh
+
       - name: Rename macOS artifacts (non-release)
         if: matrix.platform == 'macos-latest' && steps.check-release.outputs.is_release == 'false'
         run: |
+          # Rename DMG files
           cd tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg
           for file in *.dmg; do
             if [ -f "$file" ]; then
@@ -450,13 +443,27 @@ jobs:
               echo "Renamed: $file -> $newname"
             fi
           done
+          
+          # Rename ZIP files
+          cd ../zip
+          for file in *.zip; do
+            if [ -f "$file" ]; then
+              # Extract base name and extension
+              base="${file%.zip}"
+              newname="${base}_${{ steps.check-release.outputs.datetime }}_${{ steps.check-release.outputs.commit }}.zip"
+              mv "$file" "$newname"
+              echo "Renamed: $file -> $newname"
+            fi
+          done
 
-      - name: Upload macOS DMG
+      - name: Upload macOS artifacts
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: GanttGen-${{ matrix.name }}
-          path: tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+          path: |
+            tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/zip/*.zip
           retention-days: 7
           if-no-files-found: warn
 

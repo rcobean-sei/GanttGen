@@ -89,6 +89,20 @@ node scripts/build.js -i input/project.xlsx -p reds_b
 
 > 📖 **See [Excel Template Guide](docs/EXCEL_TEMPLATE_GUIDE.md)** for detailed instructions on using the Excel template, including sheet-by-sheet documentation and examples.
 
+### Regenerating App Icons
+
+```bash
+npm run icons:generate
+```
+
+This script uses the procedural icon generator to create:
+- **macOS PNGs** (no outer drop shadow) copied into `tauri-app/src-tauri/icons/`.
+- **Windows `.ico`** with an OS-style drop shadow (overwrites `icon.ico` only).
+
+Run it whenever the icon artwork changes to keep the Tauri bundle assets in sync.
+
+> ✅ `npm run tauri:build` automatically runs `icons:generate` and, when executed on macOS, also packages the helper `.command` + app bundle into `GanttGen_mac_bundle.zip` so CI can upload both DMG and ZIP artifacts.
+
 ### Output
 
 Each build generates:

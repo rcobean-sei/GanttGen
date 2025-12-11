@@ -1,0 +1,10 @@
+{
+  "layout": {
+    "cardShadow": {
+      "color": "rgba(18, 8, 34, 0.55)",
+      "blur": 70,
+      "offsetX": 0,
+      "offsetY": 45
+    }
+  }
+}

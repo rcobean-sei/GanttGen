@@ -181,9 +181,32 @@ This document outlines the changes needed to `.github/workflows/tauri-build.yml`
             $ext = $_.Extension
             $newname = "${base}_${datetime}_${commit}${ext}"
             $newpath = Join-Path $_.DirectoryName $newname
-            Move-Item $_.FullName $newpath
-            Write-Host "Renamed: $($_.Name) -> $newname"
-          }
+          Move-Item $_.FullName $newpath
+          Write-Host "Renamed: $($_.Name) -> $newname"
+        }
+```
+
+### 8. (New) Package macOS ZIP Bundle
+
+In addition to the DMG, run the new helper script so CI produces a zipped bundle that mirrors the drag-and-drop experience (includes `GanttGen.app`, the `Clear GanttGen Attributes.command` helper, and an `Applications` alias).
+
+Add this step after the macOS build completes (before uploading artifacts):
+
+```yaml
+      - name: Package macOS zip bundle
+        if: matrix.platform == 'macos-latest'
+        run: ./scripts/create_mac_zip_bundle.sh
+```
+
+Then upload the output zip alongside the DMG:
+
+```yaml
+      - name: Upload macOS zip bundle
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-zip
+          path: tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/zip/*.zip
 ```
 
 ## Summary

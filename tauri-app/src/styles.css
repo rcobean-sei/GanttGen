@@ -79,7 +79,7 @@ body {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    padding-top: calc(var(--safe-area-top) + var(--spacing-md));
+    padding-top: var(--safe-area-top);
 }
 
 /* Header */
@@ -787,16 +787,47 @@ body {
     margin: 0;
 }
 
+.form-section-subtext {
+    margin: calc(var(--spacing-xs) * -0.3) 0 var(--spacing-sm);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.form-section-title-with-helper {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    align-items: baseline;
+}
+
+.form-section-title-main {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.form-section-title-desc {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: var(--spacing-md);
 }
 
+.btn.nowrap {
+    white-space: nowrap;
+}
+
 .form-group {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
+}
+
+.form-section-title + .form-grid {
+    margin-top: var(--spacing-sm);
 }
 
 .form-group label {
@@ -843,14 +874,16 @@ body {
 
 /* Task and Milestone Cards */
 .tasks-list,
-.milestones-list {
+.milestones-list,
+.pause-list {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
 }
 
 .task-card,
-.milestone-card {
+.milestone-card,
+.pause-card {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
@@ -859,12 +892,14 @@ body {
 }
 
 .task-card:hover,
-.milestone-card:hover {
+.milestone-card:hover,
+.pause-card:hover {
     border-color: var(--purple-2);
 }
 
 .task-card-header,
-.milestone-card-header {
+.milestone-card-header,
+.pause-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -872,7 +907,8 @@ body {
 }
 
 .task-card-title,
-.milestone-card-title {
+.milestone-card-title,
+.pause-card-title {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
@@ -900,8 +936,37 @@ body {
 }
 
 .task-card .form-grid,
-.milestone-card .form-grid {
+.milestone-card .form-grid,
+.pause-card .form-grid {
     margin-top: var(--spacing-sm);
+}
+
+.pause-card {
+    border-left: 4px solid var(--purple-4);
+    background: linear-gradient(120deg, rgba(208, 200, 200, 0.18), rgba(255, 255, 248, 0.95));
+}
+
+.pause-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--purple-4);
+    color: white;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.pause-card-description {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.pause-form-grid .form-group input {
+    background: white;
 }
 
 .subtasks-section {
@@ -1344,7 +1409,8 @@ body {
 }
 
 /* Milestone date validation warning */
-.milestone-date-warning {
+.milestone-date-warning,
+.pause-warning {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
@@ -1356,7 +1422,8 @@ body {
     color: var(--red-2);
 }
 
-.milestone-date-warning svg {
+.milestone-date-warning svg,
+.pause-warning svg {
     flex-shrink: 0;
     color: var(--red-1);
 }

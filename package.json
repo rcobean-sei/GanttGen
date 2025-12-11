@@ -16,8 +16,9 @@
     "install:mac": "bash scripts/install-mac.sh",
     "tauri": "npm --prefix tauri-app run tauri",
     "tauri:dev": "npm --prefix tauri-app run tauri:dev",
-    "tauri:build": "npm --prefix tauri-app run tauri:build",
-    "tauri:icon": "npm --prefix tauri-app run tauri:icon"
+    "tauri:build": "node scripts/tauri-build.js",
+    "tauri:icon": "npm --prefix tauri-app run tauri:icon",
+    "icons:generate": "node scripts/generate-icons.js"
   },
   "keywords": [
     "gantt",

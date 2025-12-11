@@ -1,0 +1,57 @@
+{
+  "bars": [
+    {
+      "width": 362,
+      "offsetX": -106.93333333333334,
+      "colorStops": [
+        { "offset": 0, "color": "#FF9FAF" },
+        { "offset": 0.03, "color": "#F83A4F" },
+        { "offset": 1, "color": "#C01830" }
+      ]
+    },
+    {
+      "width": 362,
+      "offsetX": -106.93333333333334,
+      "colorStops": [
+        { "offset": 0, "color": "#FF9FAF" },
+        { "offset": 0.03, "color": "#F83A4F" },
+        { "offset": 1, "color": "#C01830" }
+      ]
+    },
+    {
+      "width": 460,
+      "offsetX": 57.933333333333285,
+      "colorStops": [
+        { "offset": 0, "color": "#FFFFFF" },
+        { "offset": 0.03, "color": "#FFFFF8" },
+        { "offset": 1, "color": "#E7DED2" }
+      ],
+      "outlineOverride": {
+        "outerColor": "#D0C8C8",
+        "innerColor": "#FFFFF8"
+      }
+    },
+    {
+      "width": 271.5,
+      "offsetX": -152.18333333333334,
+      "colorStops": [
+        { "offset": 0, "color": "#FF9FAF" },
+        { "offset": 0.03, "color": "#F83A4F" },
+        { "offset": 1, "color": "#C01830" }
+      ]
+    },
+    {
+      "width": 362,
+      "offsetX": 106.93333333333337,
+      "colorStops": [
+        { "offset": 0, "color": "#FFFFFF" },
+        { "offset": 0.03, "color": "#FFFFF8" },
+        { "offset": 1, "color": "#E7DED2" }
+      ],
+      "outlineOverride": {
+        "outerColor": "#D0C8C8",
+        "innerColor": "#FFFFF8"
+      }
+    }
+  ]
+}
