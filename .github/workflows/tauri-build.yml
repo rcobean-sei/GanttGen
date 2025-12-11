@@ -238,20 +238,6 @@ jobs:
         run: npm ci
         working-directory: tauri-app
 
-      - name: Install ImageMagick (macOS)
-        if: matrix.platform == 'macos-latest'
-        run: brew install imagemagick
-
-      - name: Add padding to macOS icon
-        if: matrix.platform == 'macos-latest'
-        run: |
-          # macOS icons need ~10% padding for proper dock appearance
-          # Resize icon to 80% and center it on a 1024x1024 canvas
-          cd tauri-app/src-tauri/icons
-          magick icon.png -resize 820x820 -gravity center -background none -extent 1024x1024 icon_padded.png
-          mv icon_padded.png icon.png
-          echo "Added padding to macOS icon"
-
       - name: Generate Icons
         run: npm run tauri:icon src-tauri/icons/icon.png
         working-directory: tauri-app
