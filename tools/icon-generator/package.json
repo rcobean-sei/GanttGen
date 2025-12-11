@@ -1,0 +1,17 @@
+{
+  "name": "icon-generator",
+  "version": "1.0.0",
+  "description": "Programmatic recreation of SEI-styled Gantt icon for experimentation.",
+  "main": "generate-icon.js",
+  "scripts": {
+    "build": "node generate-icon.js",
+    "start": "node generate-icon.js"
+  },
+  "keywords": [],
+  "author": "SEI",
+  "license": "UNLICENSED",
+  "type": "commonjs",
+  "dependencies": {
+    "canvas": "^3.2.0"
+  }
+}

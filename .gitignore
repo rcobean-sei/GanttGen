@@ -5,6 +5,7 @@ node_modules/
 .DS_Store
 *.swp
 *.swo
+scripts/.version-cache.json
 
 # Excel temporary files (lock files created when Excel is open)
 ~$*.xlsx

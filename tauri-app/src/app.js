@@ -69,8 +69,10 @@ const elements = {
     timelineStart: document.getElementById('timelineStart'),
     timelineEnd: document.getElementById('timelineEnd'),
     tasksList: document.getElementById('tasksList'),
+    pauseList: document.getElementById('pauseList'),
     milestonesList: document.getElementById('milestonesList'),
     addTaskBtn: document.getElementById('addTaskBtn'),
+    addPauseBtn: document.getElementById('addPauseBtn'),
     addMilestoneBtn: document.getElementById('addMilestoneBtn'),
     toggleJsonBtn: document.getElementById('toggleJsonBtn'),
     jsonPreview: document.getElementById('jsonPreview'),
@@ -654,18 +656,21 @@ function setupManualEntry() {
     
     elements.timelineStart.addEventListener('change', (e) => {
         state.manualData.timelineStart = e.target.value;
+        renderPausePeriods();
         updateJsonPreview();
         updateGenerateButton();
     });
     
     elements.timelineEnd.addEventListener('change', (e) => {
         state.manualData.timelineEnd = e.target.value;
+        renderPausePeriods();
         updateJsonPreview();
         updateGenerateButton();
     });
     
-    // Add task/milestone buttons
+    // Add task/milestone/pause buttons
     elements.addTaskBtn.addEventListener('click', addTask);
+    elements.addPauseBtn.addEventListener('click', addPausePeriod);
     elements.addMilestoneBtn.addEventListener('click', addMilestone);
     
     // JSON preview toggle
@@ -675,6 +680,7 @@ function setupManualEntry() {
     
     // Initialize with empty state message
     renderTasks();
+    renderPausePeriods();
     renderMilestones();
 }
 
@@ -734,7 +740,7 @@ function renderTasks() {
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                <p>No tasks yet. Click "Add Task" to create your first task.</p>
+                <p>Each task will be one bar in the Gantt chart.</p>
             </div>
         `;
         return;
@@ -779,7 +785,7 @@ function renderTasks() {
                 <div class="subtasks-container">
                     <div class="subtasks-list" data-task-index="${index}">
                         ${task.subtasks.length === 0 
-                            ? '<span class="subtasks-empty">No subtasks added</span>'
+                            ? '<span class="subtasks-empty">Subtasks will appear as bullets (in order of entry) under a task.</span>'
                             : task.subtasks.map((subtask, subIndex) => `
                                 <span class="subtask-chip" data-task-index="${index}" data-subtask-index="${subIndex}">
                                     ${escapeHtml(subtask)}
@@ -876,6 +882,166 @@ function removeSubtask(taskIndex, subtaskIndex) {
     state.manualData.tasks[taskIndex].subtasks.splice(subtaskIndex, 1);
     renderTasks();
     updateJsonPreview();
+}
+
+function addPausePeriod() {
+    const baseline = state.manualData.timelineStart
+        ? new Date(state.manualData.timelineStart)
+        : new Date();
+    const startDate = formatDateForInput(baseline);
+
+    const tentativeEnd = new Date(baseline);
+    tentativeEnd.setDate(tentativeEnd.getDate() + 7);
+
+    let finalEnd = tentativeEnd;
+    if (state.manualData.timelineEnd) {
+        const timelineEnd = new Date(state.manualData.timelineEnd);
+        if (timelineEnd < tentativeEnd) {
+            finalEnd = timelineEnd < baseline ? baseline : timelineEnd;
+        }
+    }
+
+    state.manualData.pausePeriods.push({
+        start: startDate,
+        end: formatDateForInput(finalEnd)
+    });
+
+    renderPausePeriods();
+    updateJsonPreview();
+}
+
+function removePausePeriod(index) {
+    state.manualData.pausePeriods.splice(index, 1);
+    renderPausePeriods();
+    updateJsonPreview();
+}
+
+function updatePausePeriod(index, field, value) {
+    if (!state.manualData.pausePeriods[index]) return;
+    state.manualData.pausePeriods[index][field] = value;
+    validatePausePeriod(index);
+    updateJsonPreview();
+}
+
+function validatePausePeriod(index) {
+    const pause = state.manualData.pausePeriods[index];
+    if (!pause) return;
+
+    const pauseCard = elements.pauseList?.querySelector(`.pause-card[data-index="${index}"]`);
+    if (!pauseCard) return;
+
+    const startInput = pauseCard.querySelector('.pause-start-input');
+    const endInput = pauseCard.querySelector('.pause-end-input');
+    const existingWarning = pauseCard.querySelector('.pause-warning');
+
+    if (existingWarning) existingWarning.remove();
+    if (startInput) startInput.classList.remove('input-error');
+    if (endInput) endInput.classList.remove('input-error');
+
+    const hasStart = Boolean(pause.start);
+    const hasEnd = Boolean(pause.end);
+    const timelineStart = state.manualData.timelineStart ? new Date(state.manualData.timelineStart) : null;
+    const timelineEnd = state.manualData.timelineEnd ? new Date(state.manualData.timelineEnd) : null;
+
+    let warningMessage = '';
+
+    if (!hasStart) {
+        warningMessage = 'Start date is required.';
+        if (startInput) startInput.classList.add('input-error');
+    } else if (!hasEnd) {
+        warningMessage = 'End date is required.';
+        if (endInput) endInput.classList.add('input-error');
+    } else {
+        const startDate = new Date(pause.start);
+        const endDate = new Date(pause.end);
+
+        if (startDate > endDate) {
+            warningMessage = 'Start date must be on or before the end date.';
+            if (startInput) startInput.classList.add('input-error');
+            if (endInput) endInput.classList.add('input-error');
+        } else if (timelineStart && startDate < timelineStart) {
+            warningMessage = `Start date should be on or after ${formatDateUS(state.manualData.timelineStart)}.`;
+            if (startInput) startInput.classList.add('input-error');
+        } else if (timelineEnd && endDate > timelineEnd) {
+            warningMessage = `End date should be on or before ${formatDateUS(state.manualData.timelineEnd)}.`;
+            if (endInput) endInput.classList.add('input-error');
+        }
+    }
+
+    if (warningMessage) {
+        const warning = document.createElement('div');
+        warning.className = 'pause-warning';
+        warning.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>${warningMessage}</span>
+        `;
+        pauseCard.appendChild(warning);
+    }
+}
+
+function renderPausePeriods() {
+    if (!elements.pauseList) return;
+
+    if (state.manualData.pausePeriods.length === 0) {
+        elements.pauseList.innerHTML = `
+            <div class="empty-state">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M6 2h12"></path>
+                    <path d="M6 22h12"></path>
+                    <path d="M6 2v5a5 5 0 0 0 5 5L11 12a5 5 0 0 0-5 5v5"></path>
+                    <path d="M18 2v5a5 5 0 0 1-5 5l0 0a5 5 0 0 1 5 5v5"></path>
+                </svg>
+                <p>Use pause blocks to mark periods when work should halt. They create a visual indicator of a pause in work.</p>
+            </div>
+        `;
+        return;
+    }
+
+    elements.pauseList.innerHTML = state.manualData.pausePeriods.map((pause, index) => `
+        <div class="pause-card" data-index="${index}">
+            <div class="pause-card-header">
+                <div class="pause-card-title">
+                    <span class="task-number">${index + 1}</span>
+                    <span>Pause Block</span>
+                </div>
+                <button class="btn-icon delete-pause-btn" data-index="${index}" title="Remove pause block">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <p class="pause-card-description">
+                Tasks that span this range will split and show diagonal overlays in the chart.
+            </p>
+            <div class="form-grid pause-form-grid">
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" class="pause-start-input" data-index="${index}" value="${pause.start || ''}">
+                </div>
+                <div class="form-group">
+                    <label>End Date</label>
+                    <input type="date" class="pause-end-input" data-index="${index}" value="${pause.end || ''}">
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    elements.pauseList.querySelectorAll('.pause-start-input').forEach(input => {
+        input.addEventListener('change', (e) => updatePausePeriod(parseInt(e.target.dataset.index), 'start', e.target.value));
+    });
+    elements.pauseList.querySelectorAll('.pause-end-input').forEach(input => {
+        input.addEventListener('change', (e) => updatePausePeriod(parseInt(e.target.dataset.index), 'end', e.target.value));
+    });
+    elements.pauseList.querySelectorAll('.delete-pause-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => removePausePeriod(parseInt(e.currentTarget.dataset.index)));
+    });
+
+    state.manualData.pausePeriods.forEach((_, index) => validatePausePeriod(index));
 }
 
 function addMilestone() {
@@ -977,7 +1143,7 @@ function renderMilestones() {
                     <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path>
                     <line x1="4" y1="22" x2="4" y2="15"></line>
                 </svg>
-                <p>No milestones yet. Click "Add Milestone" to mark important dates.</p>
+                <p>Use to call out special dates, deliverables, or other notable points in the timeline.</p>
             </div>
         `;
         return;
@@ -1361,8 +1527,8 @@ function showSuccess(result) {
     elements.resultFiles.innerHTML = filesHtml || '<p>Files generated successfully!</p>';
 
     // Show/hide view buttons based on what was generated
-    elements.viewHtmlBtn.style.display = result.html_path ? 'inline-flex' : 'none';
-    elements.viewPngBtn.style.display = result.png_path ? 'inline-flex' : 'none';
+    elements.viewHtmlBtn.disabled = !result.html_path;
+    elements.viewPngBtn.disabled = !result.png_path;
 }
 
 function showError(error) {

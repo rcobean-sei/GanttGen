@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "identifier": "com.sei.ganttgen",
   "build": {
-    "frontendDist": "../src",
-    "devUrl": "http://localhost:1420"
+    "frontendDist": "../src"
   },
   "app": {
     "withGlobalTauri": true,
