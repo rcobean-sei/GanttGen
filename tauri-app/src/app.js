@@ -601,6 +601,33 @@ function selectPalette(paletteId) {
     });
 }
 
+function syncViewModeCards(cards) {
+    cards.forEach(card => {
+        const input = card.querySelector('input[name="viewMode"]');
+        card.classList.toggle('selected', input?.checked);
+    });
+}
+
+function initViewModeCards() {
+    const cards = Array.from(document.querySelectorAll('.view-card'));
+    if (!cards.length) return;
+
+    cards.forEach(card => {
+        const input = card.querySelector('input[name="viewMode"]');
+        card.addEventListener('click', () => {
+            if (input) {
+                input.checked = true;
+                syncViewModeCards(cards);
+            }
+        });
+        if (input) {
+            input.addEventListener('change', () => syncViewModeCards(cards));
+        }
+    });
+
+    syncViewModeCards(cards);
+}
+
 function setupEventListeners() {
     // Import file button - toggle file import area
     if (elements.importFileBtn && elements.fileImportArea) {
@@ -629,6 +656,9 @@ function setupEventListeners() {
     if (elements.generateBtn) {
         elements.generateBtn.addEventListener('click', generateGantt);
     }
+
+    // View mode cards
+    initViewModeCards();
 
     // Result actions
     if (elements.openOutputBtn) {

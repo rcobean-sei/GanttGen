@@ -359,14 +359,43 @@
             <div class="view-options" style="margin-bottom: 20px;">
                 <label style="display: block; margin-bottom: 8px; font-weight: 500; color: var(--text-color);">Timeline Resolution:</label>
                 <div class="radio-group" style="display: flex; gap: 15px;">
-                    <label class="radio-label" style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="radio" name="viewMode" value="day" checked style="margin-right: 8px;">
-                        <span class="radio-text">Day View</span>
-                    </label>
-                    <label class="radio-label" style="display: flex; align-items: center; cursor: pointer;">
-                        <input type="radio" name="viewMode" value="week" style="margin-right: 8px;">
-                        <span class="radio-text">Week View</span>
-                    </label>
+                    <div class="view-card-grid" role="radiogroup" aria-label="Timeline Resolution">
+                        <label class="view-card selected" data-view="day">
+                            <input type="radio" name="viewMode" value="day" checked class="sr-only">
+                            <div class="view-card-thumb view-thumb-day">
+                                <div class="thumb-month"></div>
+                                <div class="thumb-row thumb-days">
+                                    <span class="thumb-chip">M</span>
+                                    <span class="thumb-chip">T</span>
+                                    <span class="thumb-chip">W</span>
+                                    <span class="thumb-chip">T</span>
+                                    <span class="thumb-chip">F</span>
+                                    <span class="thumb-chip">S</span>
+                                </div>
+                            </div>
+                            <div class="view-card-text">
+                                <div class="view-card-title">Day View</div>
+                                <div class="view-card-desc">Month header + day ticks</div>
+                            </div>
+                            <div class="view-card-check" aria-hidden="true">✓</div>
+                        </label>
+                        <label class="view-card" data-view="week">
+                            <input type="radio" name="viewMode" value="week" class="sr-only">
+                            <div class="view-card-thumb view-thumb-week">
+                                <div class="thumb-month"></div>
+                                <div class="thumb-row thumb-weeks">
+                                    <span class="thumb-chip">49</span>
+                                    <span class="thumb-chip">50</span>
+                                    <span class="thumb-chip">51</span>
+                                </div>
+                            </div>
+                            <div class="view-card-text">
+                                <div class="view-card-title">Week View</div>
+                                <div class="view-card-desc">Month header + week numbers</div>
+                            </div>
+                            <div class="view-card-check" aria-hidden="true">✓</div>
+                        </label>
+                    </div>
                 </div>
             </div>
 
