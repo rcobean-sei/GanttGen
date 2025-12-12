@@ -457,7 +457,7 @@ body {
 
 #dropShadowOptionGroup .checkbox-label:has(input:checked) {
     border-color: var(--red-1);
-    box-shadow: 0 0 0 3px rgba(240, 24, 64, 0.15), 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 0 0 3px rgba(240, 24, 64, 0.15), 0 6px 20px rgba(0, 0, 0, 0.25);
 }
 
 .option-text {
