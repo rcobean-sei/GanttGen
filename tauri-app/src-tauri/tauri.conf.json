@@ -61,7 +61,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../../scripts": "scripts",
+      "../../scripts/*.js": "scripts/",
+      "../../scripts/*.json": "scripts/",
       "../../templates": "templates"
     },
     "shortDescription": "Build Gantt charts for SEI documents",
