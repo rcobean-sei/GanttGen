@@ -1590,6 +1590,7 @@ async function generateGantt() {
             palette: state.selectedPalette,
             export_png: elements.exportPng ? elements.exportPng.checked : false,
             png_drop_shadow: elements.pngDropShadow ? elements.pngDropShadow.checked : false,
+            view_mode: document.querySelector('input[name="viewMode"]:checked')?.value || 'day'
         };
 
         const result = await invoke('generate_gantt', { options });

@@ -532,7 +532,7 @@ async function exportPNG(htmlPath, pngPath, options = {}) {
 }
 
 // Main function
-// Options: { palette: 'reds' | 'purples' | 'alternating' | null, exportPng: boolean, dropShadow: boolean }
+// Options: { palette: 'reds' | 'purples' | 'alternating' | null, exportPng: boolean, dropShadow: boolean, viewMode: 'day' | 'week' }
 async function build(inputPath, outputPath, options = {}) {
     const inputExt = path.extname(inputPath).toLowerCase();
     const isExcel = inputExt === '.xlsx' || inputExt === '.xls';
@@ -611,13 +611,15 @@ async function build(inputPath, outputPath, options = {}) {
     const templatePath = path.join(__dirname, '..', 'templates', 'gantt_template.html');
     const resolvedTemplatePath = path.resolve(templatePath);
     const paletteSuffix = options.palette ? `_${options.palette.toLowerCase()}` : '';
+    const viewModeSuffix = options.viewMode && options.viewMode === 'week' ? '_week' : '';
     const htmlOutputPath = outputPath || (() => {
         const inputBasename = path.basename(inputPath, path.extname(inputPath));
-        return path.join(__dirname, '..', 'output', `${inputBasename}_gantt_chart${paletteSuffix}.html`);
+        return path.join(__dirname, '..', 'output', `${inputBasename}_gantt_chart${paletteSuffix}${viewModeSuffix}.html`);
     })();
     
     console.log('✓ Generating HTML...');
     const dropShadow = options.dropShadow !== false; // Default to true if not specified
+    config.viewMode = options.viewMode || 'day'; // Add viewMode to config
     generateHTML(config, resolvedTemplatePath, htmlOutputPath, dropShadow);
     console.log(`✓ Generated HTML at ${htmlOutputPath}`);
     
@@ -665,6 +667,7 @@ if (require.main === module) {
     const inputIndex = args.indexOf('--input') !== -1 ? args.indexOf('--input') : args.indexOf('-i');
     const outputIndex = args.indexOf('--output') !== -1 ? args.indexOf('--output') : args.indexOf('-o');
     const paletteIndex = args.indexOf('--palette') !== -1 ? args.indexOf('--palette') : args.indexOf('-p');
+    const viewModeIndex = args.indexOf('--view-mode') !== -1 ? args.indexOf('--view-mode') : -1;
     const pngFlag = args.includes('--png');
     const noPngFlag = args.includes('--no-png');
     const dropShadowFlag = args.includes('--drop-shadow');
@@ -676,6 +679,7 @@ if (require.main === module) {
         console.error('  --input, -i     Input file (JSON or XLSX) [required]');
         console.error('  --output, -o    Output HTML file (defaults to output/<inputname>_gantt_chart.html)');
         console.error('  --palette, -p   Color palette preset: reds, purples, alternating');
+        console.error('  --view-mode     Timeline view mode: day (default) or week');
         console.error('  --png           Export PNG image (default for CLI)');
         console.error('  --no-png        Skip PNG export');
         console.error('');
@@ -696,12 +700,15 @@ if (require.main === module) {
     const palette = paletteIndex !== -1 && args[paletteIndex + 1]
         ? args[paletteIndex + 1]
         : null;
+    const viewMode = viewModeIndex !== -1 && args[viewModeIndex + 1]
+        ? args[viewModeIndex + 1]
+        : 'day';
     // Default to true for CLI (backwards compatible), but respect --no-png flag
     const exportPng = noPngFlag ? false : true;
     // Default drop shadow to true (backwards compatible - shadows were always on before)
     const dropShadow = dropShadowFlag !== false; // If flag present, it's true; if not present, default to true
     
-    build(inputPath, outputPath, { palette, exportPng, dropShadow }).catch(error => {
+    build(inputPath, outputPath, { palette, exportPng, dropShadow, viewMode }).catch(error => {
         console.error('✗ Error:', error.message);
         process.exit(1);
     });

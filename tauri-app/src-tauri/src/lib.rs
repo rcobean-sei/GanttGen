@@ -28,6 +28,7 @@ pub struct GenerateOptions {
     pub palette: String,
     pub export_png: bool,
     pub png_drop_shadow: bool,
+    pub view_mode: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -338,8 +339,8 @@ async fn generate_gantt(
     window: tauri::Window,
 ) -> Result<GenerateResult, String> {
     emit_log(&window, "info", "rust", "Starting Gantt chart generation...");
-    emit_log(&window, "debug", "rust", &format!("Options: input={}, palette={}, export_png={}",
-        options.input_path, options.palette, options.export_png));
+    emit_log(&window, "debug", "rust", &format!("Options: input={}, palette={}, export_png={}, view_mode={}",
+        options.input_path, options.palette, options.export_png, options.view_mode));
 
     let scripts_dir = get_scripts_dir(&app_handle)?;
     emit_log(&window, "debug", "rust", &format!("Scripts directory: {}", scripts_dir.display()));
@@ -370,6 +371,8 @@ async fn generate_gantt(
         options.input_path.clone(),
         "--palette".to_string(),
         options.palette.clone(),
+        "--view-mode".to_string(),
+        options.view_mode.clone(),
     ];
 
     if let Some(output) = &options.output_path {
