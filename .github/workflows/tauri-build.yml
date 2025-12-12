@@ -277,8 +277,8 @@ jobs:
           IS_RELEASE: ${{ steps.check-release.outputs.is_release }}
         working-directory: tauri-app
         run: |
-          echo "Building unsigned app for PR..."
-          npm run tauri build -- --target aarch64-apple-darwin
+          echo "Building unsigned app for PR (skipping DMG creation due to GitHub Actions limitations)..."
+          npm run tauri build -- --target aarch64-apple-darwin --bundles app
 
       - name: Build Tauri app (Windows)
         if: matrix.platform == 'windows-latest'
@@ -432,29 +432,39 @@ jobs:
       - name: Rename macOS artifacts (non-release)
         if: matrix.platform == 'macos-latest' && steps.check-release.outputs.is_release == 'false'
         run: |
-          # Rename DMG files
-          cd tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg
-          for file in *.dmg; do
-            if [ -f "$file" ]; then
-              # Extract base name and extension
-              base="${file%.dmg}"
-              newname="${base}_${{ steps.check-release.outputs.datetime }}_${{ steps.check-release.outputs.commit }}.dmg"
-              mv "$file" "$newname"
-              echo "Renamed: $file -> $newname"
-            fi
-          done
+          # Rename DMG files (if they exist - PRs skip DMG creation)
+          DMG_DIR="${GITHUB_WORKSPACE}/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg"
+          if [ -d "$DMG_DIR" ]; then
+            cd "$DMG_DIR"
+            for file in *.dmg; do
+              if [ -f "$file" ]; then
+                # Extract base name and extension
+                base="${file%.dmg}"
+                newname="${base}_${{ steps.check-release.outputs.datetime }}_${{ steps.check-release.outputs.commit }}.dmg"
+                mv "$file" "$newname"
+                echo "Renamed: $file -> $newname"
+              fi
+            done
+          else
+            echo "No DMG directory found (skipped for PR builds)"
+          fi
           
           # Rename ZIP files
-          cd ../zip
-          for file in *.zip; do
-            if [ -f "$file" ]; then
-              # Extract base name and extension
-              base="${file%.zip}"
-              newname="${base}_${{ steps.check-release.outputs.datetime }}_${{ steps.check-release.outputs.commit }}.zip"
-              mv "$file" "$newname"
-              echo "Renamed: $file -> $newname"
-            fi
-          done
+          ZIP_DIR="${GITHUB_WORKSPACE}/tauri-app/src-tauri/target/aarch64-apple-darwin/release/bundle/zip"
+          if [ -d "$ZIP_DIR" ]; then
+            cd "$ZIP_DIR"
+            for file in *.zip; do
+              if [ -f "$file" ]; then
+                # Extract base name and extension
+                base="${file%.zip}"
+                newname="${base}_${{ steps.check-release.outputs.datetime }}_${{ steps.check-release.outputs.commit }}.zip"
+                mv "$file" "$newname"
+                echo "Renamed: $file -> $newname"
+              fi
+            done
+          else
+            echo "No ZIP directory found"
+          fi
 
       - name: Upload macOS artifacts
         if: matrix.platform == 'macos-latest'
