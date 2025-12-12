@@ -1,4 +1,4 @@
-name: Tauri Build with Caching
+name: Build
 
 on:
   push:
@@ -20,7 +20,7 @@ env:
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
 permissions:
-  contents: read
+  contents: write  # Write permission needed for auto-committing icon updates
 
 jobs:
   build:
@@ -311,8 +311,6 @@ jobs:
 
       - name: Commit icon and README changes
         if: matrix.platform == 'macos-latest' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        permissions:
-          contents: write
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
