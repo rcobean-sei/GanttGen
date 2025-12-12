@@ -1318,6 +1318,29 @@
         });
     }
     
+    // Adjust task labels if they overflow
+    function adjustTaskLabels() {
+        document.querySelectorAll('.task-bar').forEach((bar, idx) => {
+            // Find the date element - might be direct child or inside .task-bar-content
+            const dateEl = bar.querySelector('.task-bar-date');
+            if (!dateEl) return;
+            
+            // Check if overflowing
+            // Logic: Compare text width (scrollWidth) against Parent Width (bar.clientWidth) minus padding buffer (e.g. 32px for CSS padding + 8px extra safety = 40px)
+            if (dateEl.scrollWidth > (bar.clientWidth - 40)) {
+                const taskIndex = bar.getAttribute('data-task-index');
+                if (taskIndex !== null) {
+                    const task = CONFIG.tasks[taskIndex];
+                    if (task) {
+                        // Switch to numeric format: M/D-M/D
+                        const numericLabel = formatDateRange(task.start, task.end, 'numeric');
+                        dateEl.textContent = numericLabel;
+                    }
+                }
+            }
+        });
+    }
+
     // Debounce resize handler to prevent rapid recalculations during window resize
     let resizeTimeout;
     let resizeRAF;
@@ -1332,13 +1355,20 @@
                 requestAnimationFrame(() => {
                     updatePauseOverlays();
                     updateMilestoneConnectors();
+                    adjustTaskLabels();
                 });
             });
         }, 50); // 50ms debounce
     });
 
     // Initialize on page load
-    document.addEventListener('DOMContentLoaded', renderChart);
+    document.addEventListener('DOMContentLoaded', () => {
+        renderChart();
+        // Run label adjustment after render
+        requestAnimationFrame(() => {
+            adjustTaskLabels();
+        });
+    });
     </script>
 </body>
 </html>
