@@ -485,7 +485,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
-    background: var(--bg-primary);
+    background: white;
     cursor: pointer;
     transition: all var(--transition-fast);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.03);
