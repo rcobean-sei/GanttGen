@@ -502,14 +502,24 @@ body {
     padding: 8px;
     display: grid;
     gap: 6px;
-    min-height: 68px;
+    min-height: 74px;
 }
 
-.thumb-month {
-    height: 12px;
-    border-radius: 6px;
-    background: linear-gradient(90deg, var(--purple-5) 0%, var(--purple-4) 100%);
-    opacity: 0.9;
+.thumb-shell {
+    border: 1px solid rgba(0,0,0,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #0f0c13;
+}
+
+.thumb-header {
+    background: #141018;
+    color: #FFFFF8;
+    padding: 4px 8px;
+    font-weight: 700;
+    font-size: 11px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
 }
 
 .thumb-row {
@@ -517,12 +527,14 @@ body {
     align-items: center;
     gap: 4px;
     font-size: 10px;
-    font-weight: 600;
-    color: var(--purple-3);
+    font-weight: 700;
+    color: #FFFFF8;
+    padding: 4px 6px;
+    background: #1b1620;
 }
 
 .thumb-days {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
 }
 
 .thumb-weeks {
@@ -530,11 +542,11 @@ body {
 }
 
 .thumb-chip {
-    background: rgba(64, 40, 72, 0.08);
+    background: rgba(255,255,255,0.08);
     border-radius: 6px;
-    padding: 3px 4px;
+    padding: 3px 0;
     text-align: center;
-    border: 1px solid rgba(64, 40, 72, 0.12);
+    border: 1px solid rgba(255,255,255,0.12);
 }
 
 .view-card-text .view-card-title {
