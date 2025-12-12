@@ -884,7 +884,7 @@ function renderTasks() {
                         ${task.subtasks.length === 0 
                             ? '<span class="subtasks-empty">Subtasks will appear as bullets (in order of entry) under a task.</span>'
                             : task.subtasks.map((subtask, subIndex) => `
-                                <div class="subtask-chip" draggable="true" data-task-index="${index}" data-subtask-index="${subIndex}">
+                                <div class="subtask-chip" data-task-index="${index}" data-subtask-index="${subIndex}">
                                     <span class="drag-handle" title="Drag to reorder">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -970,13 +970,18 @@ function renderTasks() {
     });
     
     // Subtask drag-and-drop listeners
-    elements.tasksList.querySelectorAll('.subtask-chip').forEach(chip => {
-        chip.addEventListener('dragstart', handleSubtaskDragStart);
-        chip.addEventListener('dragend', handleSubtaskDragEnd);
-        chip.addEventListener('dragover', handleSubtaskDragOver);
-        chip.addEventListener('drop', handleSubtaskDrop);
-        chip.addEventListener('dragleave', handleSubtaskDragLeave);
+    const subtaskChips = elements.tasksList.querySelectorAll('.subtask-chip');
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/b36d543f-0126-41d7-81e4-84958862b6a6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:renderTasks',message:'Attaching drag listeners',data:{subtaskChipCount:subtaskChips.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
+    // #endregion
+    subtaskChips.forEach(chip => {
+        chip.addEventListener('mousedown', handleSubtaskMouseDown);
     });
+    
+    // Global listeners for mouse-based drag
+    document.addEventListener('mousemove', handleSubtaskMouseMove);
+    document.addEventListener('mouseup', handleSubtaskMouseUp);
 }
 
 function addSubtask(taskIndex, subtaskText) {
@@ -997,74 +1002,116 @@ function removeSubtask(taskIndex, subtaskIndex) {
     updateJsonPreview();
 }
 
-// Drag-and-drop handlers for subtask reordering
-let draggedSubtask = null;
+// Mouse-based drag-and-drop for subtask reordering (HTML5 drag not working in Tauri)
+let dragState = {
+    isDragging: false,
+    draggedElement: null,
+    taskIndex: null,
+    subtaskIndex: null,
+    ghostElement: null
+};
 
-function handleSubtaskDragStart(e) {
-    draggedSubtask = {
-        element: e.currentTarget,
-        taskIndex: parseInt(e.currentTarget.dataset.taskIndex),
-        subtaskIndex: parseInt(e.currentTarget.dataset.subtaskIndex)
-    };
-    e.currentTarget.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
+// Mouse-based drag handlers (HTML5 drag-and-drop doesn't work in Tauri)
+function handleSubtaskMouseDown(e) {
+    // Don't start drag if clicking the remove button
+    if (e.target.closest('.remove-subtask')) {
+        return;
+    }
+    
+    dragState.isDragging = true;
+    dragState.draggedElement = e.currentTarget;
+    dragState.taskIndex = parseInt(e.currentTarget.dataset.taskIndex);
+    dragState.subtaskIndex = parseInt(e.currentTarget.dataset.subtaskIndex);
+    
+    // Hide original element (keep space with visibility)
+    e.currentTarget.style.visibility = 'hidden';
+    
+    // Create ghost element
+    const ghost = e.currentTarget.cloneNode(true);
+    ghost.classList.add('subtask-ghost');
+    ghost.style.position = 'fixed';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.zIndex = '10000';
+    ghost.style.opacity = '0.7';
+    ghost.style.width = e.currentTarget.offsetWidth + 'px';
+    ghost.style.left = e.clientX + 'px';
+    ghost.style.top = e.clientY + 'px';
+    ghost.style.transform = 'translate(-50%, -50%)';
+    
+    document.body.appendChild(ghost);
+    dragState.ghostElement = ghost;
+    
+    document.body.style.cursor = 'grabbing';
 }
 
-function handleSubtaskDragEnd(e) {
-    e.currentTarget.classList.remove('dragging');
+function handleSubtaskMouseMove(e) {
+    if (!dragState.isDragging) return;
+    
+    // Update ghost position
+    if (dragState.ghostElement) {
+        dragState.ghostElement.style.left = e.clientX + 'px';
+        dragState.ghostElement.style.top = e.clientY + 'px';
+    }
+    
+    // Find the subtask chip under the mouse
+    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+    const targetChip = elementUnderMouse?.closest('.subtask-chip');
+    
     // Remove all drag-over indicators
     document.querySelectorAll('.subtask-chip.drag-over').forEach(el => {
         el.classList.remove('drag-over');
     });
-    draggedSubtask = null;
+    
+    if (targetChip && targetChip !== dragState.draggedElement) {
+        const targetTaskIndex = parseInt(targetChip.dataset.taskIndex);
+        
+        // Only allow reordering within the same task
+        if (targetTaskIndex === dragState.taskIndex) {
+            targetChip.classList.add('drag-over');
+        }
+    }
 }
 
-function handleSubtaskDragOver(e) {
-    if (!draggedSubtask) return;
+function handleSubtaskMouseUp(e) {
+    if (!dragState.isDragging) return;
     
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    // Find the subtask chip under the mouse
+    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+    const targetChip = elementUnderMouse?.closest('.subtask-chip');
     
-    const targetTaskIndex = parseInt(e.currentTarget.dataset.taskIndex);
-    
-    // Only allow reordering within the same task
-    if (targetTaskIndex !== draggedSubtask.taskIndex) {
-        return;
+    if (targetChip && targetChip !== dragState.draggedElement) {
+        const targetTaskIndex = parseInt(targetChip.dataset.taskIndex);
+        const targetSubtaskIndex = parseInt(targetChip.dataset.subtaskIndex);
+        
+        // Only allow reordering within the same task
+        if (targetTaskIndex === dragState.taskIndex) {
+            // Reorder the subtasks array
+            const task = state.manualData.tasks[targetTaskIndex];
+            const [removed] = task.subtasks.splice(dragState.subtaskIndex, 1);
+            task.subtasks.splice(targetSubtaskIndex, 0, removed);
+            
+            renderTasks();
+            updateJsonPreview();
+        }
     }
     
-    e.currentTarget.classList.add('drag-over');
-}
-
-function handleSubtaskDragLeave(e) {
-    e.currentTarget.classList.remove('drag-over');
-}
-
-function handleSubtaskDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!draggedSubtask) return;
-    
-    const targetTaskIndex = parseInt(e.currentTarget.dataset.taskIndex);
-    const targetSubtaskIndex = parseInt(e.currentTarget.dataset.subtaskIndex);
-    
-    // Only allow reordering within the same task
-    if (targetTaskIndex !== draggedSubtask.taskIndex) {
-        return;
+    // Clean up
+    if (dragState.draggedElement) {
+        dragState.draggedElement.style.visibility = '';
     }
-    
-    // Don't do anything if dropped on itself
-    if (draggedSubtask.subtaskIndex === targetSubtaskIndex) {
-        return;
+    if (dragState.ghostElement) {
+        dragState.ghostElement.remove();
     }
+    document.querySelectorAll('.subtask-chip.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+    });
+    document.body.style.cursor = '';
     
-    // Reorder the subtasks array
-    const task = state.manualData.tasks[targetTaskIndex];
-    const [removed] = task.subtasks.splice(draggedSubtask.subtaskIndex, 1);
-    task.subtasks.splice(targetSubtaskIndex, 0, removed);
-    
-    renderTasks();
-    updateJsonPreview();
+    dragState.isDragging = false;
+    dragState.draggedElement = null;
+    dragState.ghostElement = null;
+    dragState.taskIndex = null;
+    dragState.subtaskIndex = null;
 }
 
 function addPausePeriod() {

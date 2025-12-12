@@ -1320,15 +1320,37 @@ body {
     transition: all var(--transition-fast);
     cursor: grab;
     user-select: none;
+    -webkit-user-select: none;
 }
 
-.subtask-chip.dragging {
-    opacity: 0.5;
+.subtask-chip:active {
     cursor: grabbing;
 }
 
+.subtask-chip.dragging {
+    opacity: 0.3;
+    cursor: grabbing;
+}
+
+.subtask-ghost {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    cursor: grabbing !important;
+}
+
 .subtask-chip.drag-over {
-    border-top: 2px solid var(--red-1);
+    position: relative;
+}
+
+.subtask-chip.drag-over::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--red-1);
+    border-radius: 2px;
+    z-index: 10;
 }
 
 .subtask-chip .drag-handle {
@@ -1336,6 +1358,7 @@ body {
     align-items: center;
     color: var(--text-muted);
     cursor: grab;
+    pointer-events: none;
 }
 
 .subtask-chip:active .drag-handle {
@@ -1344,6 +1367,11 @@ body {
 
 .subtask-chip .subtask-text {
     flex: 1;
+    pointer-events: none;
+}
+
+.subtask-chip .remove-subtask {
+    pointer-events: auto;
 }
 
 .subtask-chip:hover {
