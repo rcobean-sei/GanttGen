@@ -1,9 +1,13 @@
-# GanttGen
+<div align="center">
+  <img src="tauri-app/src-tauri/icons/icon.png" alt="GanttGen Icon" width="128" height="128">
 
-[![Tests](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml/badge.svg)](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml)
-[![Coverage](https://codecov.io/gh/rcobean-sei/GanttGen/branch/main/graph/badge.svg)](https://codecov.io/gh/rcobean-sei/GanttGen)
+  # GanttGen
 
-A data-driven Gantt chart generator with brand color palettes, configurable tasks, milestones, and pause periods. Generates presentation-ready HTML and PNG outputs.
+  [![Tests](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml/badge.svg)](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml)
+  [![Coverage](https://codecov.io/gh/rcobean-sei/GanttGen/branch/main/graph/badge.svg)](https://codecov.io/gh/rcobean-sei/GanttGen)
+
+  A data-driven Gantt chart generator with brand color palettes, configurable tasks, milestones, and pause periods. Generates presentation-ready HTML and PNG outputs.
+</div>
 
 ## Features
 
