@@ -399,6 +399,7 @@ body {
     padding: var(--spacing-md);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
+    background: white;
     transition: all var(--transition-fast);
 }
 
