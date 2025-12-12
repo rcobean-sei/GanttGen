@@ -537,6 +537,18 @@ body {
     grid-template-columns: repeat(7, 1fr);
 }
 
+.thumb-days.thumb-days-numbers .thumb-chip {
+    background: transparent;
+    border: none;
+    color: #FFFFF8;
+    font-weight: 700;
+    padding: 0;
+}
+
+.thumb-days.thumb-days-numbers .thumb-chip.muted {
+    opacity: 0.25;
+}
+
 .thumb-weeks {
     grid-template-columns: repeat(3, 1fr);
 }
