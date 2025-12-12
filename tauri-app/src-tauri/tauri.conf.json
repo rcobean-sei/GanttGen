@@ -35,6 +35,9 @@
     "active": true,
     "targets": "all",
     "macOS": {
+      "minimumSystemVersion": "10.13",
+      "entitlements": "entitlements.plist",
+      "signingIdentity": null,
       "dmg": {
         "appPosition": {
           "x": 180,

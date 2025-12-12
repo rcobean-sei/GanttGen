@@ -601,6 +601,33 @@ function selectPalette(paletteId) {
     });
 }
 
+function syncViewModeCards(cards) {
+    cards.forEach(card => {
+        const input = card.querySelector('input[name="viewMode"]');
+        card.classList.toggle('selected', input?.checked);
+    });
+}
+
+function initViewModeCards() {
+    const cards = Array.from(document.querySelectorAll('.view-card'));
+    if (!cards.length) return;
+
+    cards.forEach(card => {
+        const input = card.querySelector('input[name="viewMode"]');
+        card.addEventListener('click', () => {
+            if (input) {
+                input.checked = true;
+                syncViewModeCards(cards);
+            }
+        });
+        if (input) {
+            input.addEventListener('change', () => syncViewModeCards(cards));
+        }
+    });
+
+    syncViewModeCards(cards);
+}
+
 function setupEventListeners() {
     // Import file button - toggle file import area
     if (elements.importFileBtn && elements.fileImportArea) {
@@ -629,6 +656,34 @@ function setupEventListeners() {
     if (elements.generateBtn) {
         elements.generateBtn.addEventListener('click', generateGantt);
     }
+
+    // Log thumbnail sizing for debug mode
+    const thumb = document.getElementById('viewThumbDay');
+    if (thumb) {
+        setTimeout(() => {
+            try {
+                const rect = thumb.getBoundingClientRect();
+                fetch('http://127.0.0.1:7242/ingest/b36d543f-0126-41d7-81e4-84958862b6a6', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location: 'index.html:viewThumbDay',
+                        message: 'Thumb sizing',
+                        data: {
+                            width: rect.width,
+                            height: rect.height
+                        },
+                        timestamp: Date.now(),
+                        sessionId: 'debug-session',
+                        hypothesisId: 'thumb'
+                    })
+                }).catch(()=>{});
+            } catch(e) {}
+        }, 300);
+    }
+
+    // View mode cards
+    initViewModeCards();
 
     // Result actions
     if (elements.openOutputBtn) {
@@ -1590,6 +1645,7 @@ async function generateGantt() {
             palette: state.selectedPalette,
             export_png: elements.exportPng ? elements.exportPng.checked : false,
             png_drop_shadow: elements.pngDropShadow ? elements.pngDropShadow.checked : false,
+            view_mode: document.querySelector('input[name="viewMode"]:checked')?.value || 'day'
         };
 
         const result = await invoke('generate_gantt', { options });

@@ -1,3 +1,13 @@
+.view-card-thumb {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    display: grid;
+    gap: 4px;
+    min-height: 120px; /* taller to fit month + weekday + two number rows */
+    min-width: 200px;
+}
 /* ========================================
    GanttGen Desktop App - SEI Brand Styling
    ======================================== */
@@ -456,6 +466,245 @@ body {
 .option-desc {
     font-size: 0.8125rem;
     color: var(--text-secondary);
+}
+
+/* Timeline Resolution Cards */
+.view-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.view-card {
+    position: relative;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: var(--spacing-md);
+    align-items: center;
+    background: var(--bg-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.03);
+}
+
+.view-card:hover {
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.08);
+}
+
+.view-card.selected {
+    border-color: var(--red-1);
+    box-shadow: 0 14px 30px rgba(240, 24, 64, 0.12);
+}
+
+.view-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.view-card-thumb {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 6px;
+    min-height: 90px;
+}
+
+/* Day View Thumbnail - matches actual header */
+.thumb-shell-day {
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.thumb-month {
+    background: #141018;
+    color: #FFFFF8;
+    padding: 6px 8px;
+    font-weight: 600;
+    font-size: 11px;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+.thumb-numbers-row {
+    background: #141018;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    font-size: 9px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    padding: 2px 0;
+}
+
+.thumb-numbers-row span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 12px;
+}
+
+.thumb-weekdays {
+    background: #141018;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    font-size: 9px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    padding: 2px 0;
+}
+
+.thumb-weekdays span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 14px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+.thumb-weekdays span:last-child {
+    border-right: none;
+}
+
+.thumb-weekdays span.wknd {
+    color: #888;
+}
+
+.thumb-canvas {
+    background: #FFFFF8;
+    height: 20px;
+    position: relative;
+}
+
+.thumb-gridlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+}
+
+.thumb-gridlines::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(100% / 9);
+    width: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent calc(100% / 9 - 1px),
+        rgba(0,0,0,0.08) calc(100% / 9 - 1px),
+        rgba(0,0,0,0.08) calc(100% / 9)
+    );
+}
+
+/* Week View Thumbnail */
+.thumb-shell-week {
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.thumb-weeknums {
+    background: #141018;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    font-size: 10px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    padding: 4px 0;
+}
+
+.thumb-weeknums span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+.thumb-weeknums span:last-child {
+    border-right: none;
+}
+
+.thumb-canvas-week {
+    height: 24px;
+}
+
+.thumb-gridlines-week {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent calc(100% / 3 - 1px),
+        rgba(0,0,0,0.12) calc(100% / 3 - 1px),
+        rgba(0,0,0,0.12) calc(100% / 3)
+    );
+}
+
+.view-card-text .view-card-title {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.view-card-text .view-card-desc {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+}
+
+.view-card-check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--red-1);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--red-1);
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.view-card.selected .view-card-check {
+    opacity: 1;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* PNG Options */
