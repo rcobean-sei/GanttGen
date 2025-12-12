@@ -363,32 +363,21 @@
                         <label class="view-card selected" data-view="day">
                             <input type="radio" name="viewMode" value="day" checked class="sr-only">
                             <div class="view-card-thumb view-thumb-day" id="viewThumbDay">
-                                <div class="thumb-shell">
-                                    <div class="thumb-header">Feb 2026</div>
-                                    <div class="thumb-divider"></div>
-                                    <div class="thumb-row thumb-days thumb-days-numbers thumb-days-nine thumb-numbers-row">
-                                        <span class="thumb-chip muted">&nbsp;</span>
-                                        <span class="thumb-chip">2</span>
-                                        <span class="thumb-chip muted">&nbsp;</span>
-                                        <span class="thumb-chip muted">&nbsp;</span>
-                                        <span class="thumb-chip muted">&nbsp;</span>
-                                        <span class="thumb-chip muted">&nbsp;</span>
-                                        <span class="thumb-chip muted">&nbsp;</span>
-                                        <span class="thumb-chip">9</span>
-                                        <span class="thumb-chip muted">&nbsp;</span>
+                                <div class="thumb-shell-day">
+                                    <!-- Month header -->
+                                    <div class="thumb-month">Feb 2026</div>
+                                    <!-- Numbers row (only Mondays have numbers) -->
+                                    <div class="thumb-numbers-row">
+                                        <span></span><span>2</span><span></span><span></span><span></span><span></span><span></span><span>9</span><span></span>
                                     </div>
-                                    <div class="thumb-row thumb-days thumb-days-nine">
-                                        <span class="thumb-chip">S</span>
-                                        <span class="thumb-chip">M</span>
-                                        <span class="thumb-chip">T</span>
-                                        <span class="thumb-chip">W</span>
-                                        <span class="thumb-chip">T</span>
-                                        <span class="thumb-chip">F</span>
-                                        <span class="thumb-chip">S</span>
-                                        <span class="thumb-chip">M</span>
-                                        <span class="thumb-chip">T</span>
+                                    <!-- Weekday letters with ticks -->
+                                    <div class="thumb-weekdays">
+                                        <span class="wknd">S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span class="wknd">S</span><span class="wknd">S</span><span>M</span>
                                     </div>
-                                    <div class="thumb-grid thumb-grid-days"></div>
+                                    <!-- Cream canvas with dotted grid -->
+                                    <div class="thumb-canvas">
+                                        <div class="thumb-gridlines"></div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="view-card-text">
@@ -400,15 +389,17 @@
                         <label class="view-card" data-view="week">
                             <input type="radio" name="viewMode" value="week" class="sr-only">
                             <div class="view-card-thumb view-thumb-week">
-                                <div class="thumb-shell">
-                                    <div class="thumb-header">Feb 2026</div>
-                                    <div class="thumb-divider"></div>
-                                    <div class="thumb-row thumb-weeks">
-                                        <span class="thumb-chip">49</span>
-                                        <span class="thumb-chip">50</span>
-                                        <span class="thumb-chip">51</span>
+                                <div class="thumb-shell-week">
+                                    <!-- Month header -->
+                                    <div class="thumb-month">Feb 2026</div>
+                                    <!-- Week numbers row -->
+                                    <div class="thumb-weeknums">
+                                        <span>5</span><span>6</span><span>7</span>
                                     </div>
-                                    <div class="thumb-grid thumb-grid-weeks"></div>
+                                    <!-- Cream canvas with dotted grid -->
+                                    <div class="thumb-canvas thumb-canvas-week">
+                                        <div class="thumb-gridlines-week"></div>
+                                    </div>
                                 </div>
                             </div>
                             <div class="view-card-text">

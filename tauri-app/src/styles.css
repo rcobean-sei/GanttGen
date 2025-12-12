@@ -509,125 +509,155 @@ body {
     background: #fff;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-sm);
-    padding: 8px;
-    display: grid;
-    gap: 6px;
-    min-height: 90px; /* slightly taller to avoid clipping rows */
+    padding: 6px;
+    min-height: 90px;
 }
 
-.thumb-shell {
-    border: 1px solid rgba(0,0,0,0.08);
-    border-radius: 10px;
+/* Day View Thumbnail - matches actual header */
+.thumb-shell-day {
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 6px;
     overflow: hidden;
-    background: #0f0c13;
-    min-height: 90px; /* ensure room for month + weekday + two number rows */
-    display: grid;
-    grid-template-rows: auto auto auto;
+    display: flex;
+    flex-direction: column;
 }
 
-.thumb-divider {
-    height: 1px;
-    background: rgba(255,255,255,0.2);
-}
-
-.thumb-header {
+.thumb-month {
     background: #141018;
     color: #FFFFF8;
-    padding: 3px 8px;
-    font-weight: 700;
+    padding: 6px 8px;
+    font-weight: 600;
     font-size: 11px;
     text-align: center;
-    border-bottom: 1px solid rgba(255,255,255,0.12);
-}
-
-.thumb-row {
-    display: grid;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    font-weight: 700;
-    color: #FFFFF8;
-    padding: 3px 5px;
-    background: #1b1620;
-}
-
-.thumb-days {
-    grid-template-columns: repeat(7, 1fr);
-}
-
-.thumb-days-nine {
-    grid-template-columns: repeat(9, 1fr);
-}
-
-.thumb-grid {
-    height: 12px;
-    background: #FFFFF8;
-    position: relative;
-}
-
-.thumb-grid-days {
-    background: repeating-linear-gradient(
-        to right,
-        rgba(20,16,24,0.16),
-        rgba(20,16,24,0.16) 1px,
-        transparent 1px,
-        transparent calc(100%/9)
-    );
-}
-
-.thumb-grid-weeks {
-    background: repeating-linear-gradient(
-        to right,
-        rgba(20,16,24,0.18),
-        rgba(20,16,24,0.18) 2px,
-        transparent calc(100%/3 - 2px),
-        transparent calc(100%/3)
-    );
+    border-bottom: 1px solid rgba(255,255,255,0.2);
 }
 
 .thumb-numbers-row {
-    border-bottom: 1px solid rgba(255,255,255,0.18);
-    padding-bottom: 2px;
-    margin-bottom: 1px;
-}
-
-.thumb-days.thumb-days-numbers .thumb-chip {
-    background: transparent;
-    border: none;
-    color: #FFFFF8;
-    font-weight: 700;
-    padding: 0;
-}
-
-.thumb-days.thumb-days-numbers .thumb-chip.muted {
-    color: rgba(255,255,255,0.4);
-}
-
-.view-thumb-day .thumb-days-numbers {
-    margin-top: -2px;
-}
-
-.view-thumb-day .thumb-days {
-    margin-top: 2px;
-}
-
-.view-thumb-day .thumb-days-numbers:first-of-type {
-    margin-bottom: -2px;
-}
-
-/* Debug helper placeholder (no-op styles; logs in JS) */
-
-.thumb-weeks {
-    grid-template-columns: repeat(3, 1fr);
-}
-
-.thumb-chip {
-    background: transparent;
-    border: none;
-    padding: 0;
+    background: #141018;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    font-size: 9px;
+    font-weight: 500;
+    color: #fff;
     text-align: center;
-    color: #FFFFF8;
-    font-weight: 700;
+    padding: 2px 0;
+}
+
+.thumb-numbers-row span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 12px;
+}
+
+.thumb-weekdays {
+    background: #141018;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    font-size: 9px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    padding: 2px 0;
+}
+
+.thumb-weekdays span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 14px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+.thumb-weekdays span:last-child {
+    border-right: none;
+}
+
+.thumb-weekdays span.wknd {
+    color: #888;
+}
+
+.thumb-canvas {
+    background: #FFFFF8;
+    height: 20px;
+    position: relative;
+}
+
+.thumb-gridlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+}
+
+.thumb-gridlines::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(100% / 9);
+    width: 100%;
+    background: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent calc(100% / 9 - 1px),
+        rgba(0,0,0,0.08) calc(100% / 9 - 1px),
+        rgba(0,0,0,0.08) calc(100% / 9)
+    );
+}
+
+/* Week View Thumbnail */
+.thumb-shell-week {
+    border: 1px solid rgba(0,0,0,0.12);
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.thumb-weeknums {
+    background: #141018;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    font-size: 10px;
+    font-weight: 500;
+    color: #fff;
+    text-align: center;
+    padding: 4px 0;
+}
+
+.thumb-weeknums span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    border-right: 1px solid rgba(255,255,255,0.15);
+}
+
+.thumb-weeknums span:last-child {
+    border-right: none;
+}
+
+.thumb-canvas-week {
+    height: 24px;
+}
+
+.thumb-gridlines-week {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        to right,
+        transparent,
+        transparent calc(100% / 3 - 1px),
+        rgba(0,0,0,0.12) calc(100% / 3 - 1px),
+        rgba(0,0,0,0.12) calc(100% / 3)
+    );
 }
 
 .view-card-text .view-card-title {
