@@ -884,15 +884,22 @@ function renderTasks() {
                         ${task.subtasks.length === 0 
                             ? '<span class="subtasks-empty">Subtasks will appear as bullets (in order of entry) under a task.</span>'
                             : task.subtasks.map((subtask, subIndex) => `
-                                <span class="subtask-chip" data-task-index="${index}" data-subtask-index="${subIndex}">
-                                    ${escapeHtml(subtask)}
+                                <div class="subtask-chip" draggable="true" data-task-index="${index}" data-subtask-index="${subIndex}">
+                                    <span class="drag-handle" title="Drag to reorder">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                                        </svg>
+                                    </span>
+                                    <span class="subtask-text">${escapeHtml(subtask)}</span>
                                     <button class="remove-subtask" data-task-index="${index}" data-subtask-index="${subIndex}" title="Remove subtask">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <line x1="18" y1="6" x2="6" y2="18"></line>
                                             <line x1="6" y1="6" x2="18" y2="18"></line>
                                         </svg>
                                     </button>
-                                </span>
+                                </div>
                             `).join('')
                         }
                     </div>
@@ -961,6 +968,15 @@ function renderTasks() {
             removeSubtask(taskIndex, subtaskIndex);
         });
     });
+    
+    // Subtask drag-and-drop listeners
+    elements.tasksList.querySelectorAll('.subtask-chip').forEach(chip => {
+        chip.addEventListener('dragstart', handleSubtaskDragStart);
+        chip.addEventListener('dragend', handleSubtaskDragEnd);
+        chip.addEventListener('dragover', handleSubtaskDragOver);
+        chip.addEventListener('drop', handleSubtaskDrop);
+        chip.addEventListener('dragleave', handleSubtaskDragLeave);
+    });
 }
 
 function addSubtask(taskIndex, subtaskText) {
@@ -977,6 +993,76 @@ function addSubtask(taskIndex, subtaskText) {
 
 function removeSubtask(taskIndex, subtaskIndex) {
     state.manualData.tasks[taskIndex].subtasks.splice(subtaskIndex, 1);
+    renderTasks();
+    updateJsonPreview();
+}
+
+// Drag-and-drop handlers for subtask reordering
+let draggedSubtask = null;
+
+function handleSubtaskDragStart(e) {
+    draggedSubtask = {
+        element: e.currentTarget,
+        taskIndex: parseInt(e.currentTarget.dataset.taskIndex),
+        subtaskIndex: parseInt(e.currentTarget.dataset.subtaskIndex)
+    };
+    e.currentTarget.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleSubtaskDragEnd(e) {
+    e.currentTarget.classList.remove('dragging');
+    // Remove all drag-over indicators
+    document.querySelectorAll('.subtask-chip.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+    });
+    draggedSubtask = null;
+}
+
+function handleSubtaskDragOver(e) {
+    if (!draggedSubtask) return;
+    
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const targetTaskIndex = parseInt(e.currentTarget.dataset.taskIndex);
+    
+    // Only allow reordering within the same task
+    if (targetTaskIndex !== draggedSubtask.taskIndex) {
+        return;
+    }
+    
+    e.currentTarget.classList.add('drag-over');
+}
+
+function handleSubtaskDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function handleSubtaskDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!draggedSubtask) return;
+    
+    const targetTaskIndex = parseInt(e.currentTarget.dataset.taskIndex);
+    const targetSubtaskIndex = parseInt(e.currentTarget.dataset.subtaskIndex);
+    
+    // Only allow reordering within the same task
+    if (targetTaskIndex !== draggedSubtask.taskIndex) {
+        return;
+    }
+    
+    // Don't do anything if dropped on itself
+    if (draggedSubtask.subtaskIndex === targetSubtaskIndex) {
+        return;
+    }
+    
+    // Reorder the subtasks array
+    const task = state.manualData.tasks[targetTaskIndex];
+    const [removed] = task.subtasks.splice(draggedSubtask.subtaskIndex, 1);
+    task.subtasks.splice(targetSubtaskIndex, 0, removed);
+    
     renderTasks();
     updateJsonPreview();
 }

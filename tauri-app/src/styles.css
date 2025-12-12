@@ -1303,12 +1303,12 @@ body {
 
 .subtasks-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--spacing-xs);
 }
 
 .subtask-chip {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--spacing-xs);
     padding: var(--spacing-xs) var(--spacing-sm);
@@ -1318,6 +1318,32 @@ body {
     font-size: 0.8125rem;
     color: var(--text-primary);
     transition: all var(--transition-fast);
+    cursor: grab;
+    user-select: none;
+}
+
+.subtask-chip.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.subtask-chip.drag-over {
+    border-top: 2px solid var(--red-1);
+}
+
+.subtask-chip .drag-handle {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    cursor: grab;
+}
+
+.subtask-chip:active .drag-handle {
+    cursor: grabbing;
+}
+
+.subtask-chip .subtask-text {
+    flex: 1;
 }
 
 .subtask-chip:hover {
