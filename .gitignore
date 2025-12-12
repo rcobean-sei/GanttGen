@@ -28,3 +28,7 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# Apple credentials (code signing) - NEVER COMMIT
+tauri-app/.applecreds.json
+.applecreds.json
