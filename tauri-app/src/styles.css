@@ -549,6 +549,14 @@ body {
     opacity: 0.25;
 }
 
+.view-thumb-day .thumb-days {
+    margin-top: 2px;
+}
+
+.view-thumb-day .thumb-days-numbers:first-of-type {
+    margin-bottom: -2px;
+}
+
 .thumb-weeks {
     grid-template-columns: repeat(3, 1fr);
 }
