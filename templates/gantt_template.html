@@ -1332,6 +1332,17 @@
             const dateEl = bar.querySelector('.task-bar-date');
             if (!dateEl) return;
             
+            // Store original text if not already stored
+            if (!dateEl.hasAttribute('data-original-text')) {
+                dateEl.setAttribute('data-original-text', dateEl.textContent);
+            }
+            
+            // Always reset to original text first to check if it fits now
+            const originalText = dateEl.getAttribute('data-original-text');
+            if (dateEl.textContent !== originalText) {
+                dateEl.textContent = originalText;
+            }
+            
             // Check if overflowing
             // Logic: Compare text width (scrollWidth) against Parent Width (bar.clientWidth) minus padding buffer (e.g. 32px for CSS padding + 8px extra safety = 40px)
             if (dateEl.scrollWidth > (bar.clientWidth - 40)) {
