@@ -1,5 +1,7 @@
 # GanttGen
 
+![GanttGen Icon](assets/icon-128.png)
+
 [![Tests](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml/badge.svg)](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml)
 [![Coverage](https://codecov.io/gh/rcobean-sei/GanttGen/branch/main/graph/badge.svg)](https://codecov.io/gh/rcobean-sei/GanttGen)
 

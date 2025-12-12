@@ -238,6 +238,97 @@ jobs:
         run: npm ci
         working-directory: tauri-app
 
+      - name: Generate Windows icon for README
+        if: matrix.platform == 'macos-latest'
+        run: |
+          echo "▶ Generating Windows icon for README..."
+          
+          # Install icon generator dependencies
+          cd tools/icon-generator
+          npm ci
+          
+          # Generate Windows icon (1024x1024 with drop shadow)
+          node generate-icon.js --config configs/windows.json --output output/icon-windows.png
+          echo "✅ Windows icon generated"
+          
+          # Install sharp for image resizing (from root, it's in optionalDependencies)
+          cd ../..
+          npm install sharp --no-save || npm install sharp
+          
+          # Resize to 128x128
+          node -e "
+            const sharp = require('sharp');
+            const fs = require('fs');
+            const path = require('path');
+            
+            // Ensure assets directory exists
+            const assetsDir = 'assets';
+            if (!fs.existsSync(assetsDir)) {
+              fs.mkdirSync(assetsDir, { recursive: true });
+            }
+            
+            sharp('tools/icon-generator/output/icon-windows.png')
+              .resize(128, 128, {
+                fit: 'contain',
+                background: { r: 255, g: 255, b: 248, alpha: 0 } // Transparent background
+              })
+              .toFile('assets/icon-128.png')
+              .then(() => {
+                console.log('✅ Icon resized to 128x128 and saved to assets/icon-128.png');
+                // Verify file was created
+                if (fs.existsSync('assets/icon-128.png')) {
+                  const stats = fs.statSync('assets/icon-128.png');
+                  console.log(\`   File size: \${(stats.size / 1024).toFixed(2)} KB\`);
+                }
+              })
+              .catch(err => {
+                console.error('Error resizing icon:', err);
+                process.exit(1);
+              });
+          "
+
+      - name: Verify icon and README
+        if: matrix.platform == 'macos-latest'
+        run: |
+          echo "▶ Verifying icon generation and README reference..."
+          
+          # Verify icon file was created
+          if [ -f "assets/icon-128.png" ]; then
+            echo "✅ Icon file exists: assets/icon-128.png"
+            ls -lh assets/icon-128.png
+          else
+            echo "⚠️ Icon file not found: assets/icon-128.png"
+            exit 1
+          fi
+          
+          # Verify README has icon reference
+          if grep -q "assets/icon-128.png" README.md; then
+            echo "✅ README contains icon reference"
+          else
+            echo "⚠️ Warning: README does not contain icon reference"
+            echo "The icon reference should be in README.md but was not found"
+          fi
+
+      - name: Commit icon and README changes
+        if: matrix.platform == 'macos-latest' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        permissions:
+          contents: write
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Stage the icon and README
+          git add assets/icon-128.png README.md 2>/dev/null || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes to commit (icon and README are up to date)"
+          else
+            echo "▶ Committing icon and README updates..."
+            git commit -m "chore: update icon and README [skip ci]" || exit 0
+            git push || echo "⚠️ Failed to push changes, but continuing workflow"
+          fi
+
       - name: Generate Icons
         run: npm run tauri:icon src-tauri/icons/icon.png
         working-directory: tauri-app
