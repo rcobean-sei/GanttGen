@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="tauri-app/src-tauri/icons/icon.png" alt="GanttGen Icon" width="128" height="128">
+  <img src="tools/icon-generator/output/icon-windows.png" alt="GanttGen Icon" width="128" height="128">
 
   # GanttGen
 
