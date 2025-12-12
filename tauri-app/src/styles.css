@@ -1,3 +1,12 @@
+.view-card-thumb {
+    background: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 8px;
+    display: grid;
+    gap: 4px;
+    min-height: 110px; /* taller to fit month + weekday + two number rows at ~166px width */
+}
 /* ========================================
    GanttGen Desktop App - SEI Brand Styling
    ======================================== */
@@ -502,7 +511,7 @@ body {
     padding: 8px;
     display: grid;
     gap: 6px;
-    min-height: 74px;
+    min-height: 90px; /* slightly taller to avoid clipping rows */
 }
 
 .thumb-shell {
@@ -510,12 +519,15 @@ body {
     border-radius: 10px;
     overflow: hidden;
     background: #0f0c13;
+    min-height: 90px; /* ensure room for month + weekday + two number rows */
+    display: grid;
+    grid-template-rows: auto auto auto;
 }
 
 .thumb-header {
     background: #141018;
     color: #FFFFF8;
-    padding: 4px 8px;
+    padding: 3px 8px;
     font-weight: 700;
     font-size: 11px;
     text-align: center;
@@ -525,11 +537,11 @@ body {
 .thumb-row {
     display: grid;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
     font-size: 10px;
     font-weight: 700;
     color: #FFFFF8;
-    padding: 4px 6px;
+    padding: 3px 5px;
     background: #1b1620;
 }
 
@@ -549,6 +561,10 @@ body {
     opacity: 0.25;
 }
 
+.view-thumb-day .thumb-days-numbers {
+    margin-top: -2px;
+}
+
 .view-thumb-day .thumb-days {
     margin-top: 2px;
 }
@@ -556,6 +572,8 @@ body {
 .view-thumb-day .thumb-days-numbers:first-of-type {
     margin-bottom: -2px;
 }
+
+/* Debug helper placeholder (no-op styles; logs in JS) */
 
 .thumb-weeks {
     grid-template-columns: repeat(3, 1fr);

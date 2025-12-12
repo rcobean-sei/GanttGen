@@ -657,6 +657,31 @@ function setupEventListeners() {
         elements.generateBtn.addEventListener('click', generateGantt);
     }
 
+    // Log thumbnail sizing for debug mode
+    const thumb = document.getElementById('viewThumbDay');
+    if (thumb) {
+        setTimeout(() => {
+            try {
+                const rect = thumb.getBoundingClientRect();
+                fetch('http://127.0.0.1:7242/ingest/b36d543f-0126-41d7-81e4-84958862b6a6', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        location: 'index.html:viewThumbDay',
+                        message: 'Thumb sizing',
+                        data: {
+                            width: rect.width,
+                            height: rect.height
+                        },
+                        timestamp: Date.now(),
+                        sessionId: 'debug-session',
+                        hypothesisId: 'thumb'
+                    })
+                }).catch(()=>{});
+            } catch(e) {}
+        }, 300);
+    }
+
     // View mode cards
     initViewModeCards();
 
