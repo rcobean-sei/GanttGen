@@ -1,4 +1,8 @@
 {
+  "title": "PROJECT TIMELINE",
+  "timelineStart": "2025-12-01",
+  "timelineEnd": "2026-02-14",
+  "showMilestones": true,
   "palette": [
     "#F01840",
     "#402848",
@@ -7,77 +11,93 @@
     "#901226",
     "#2A1C30"
   ],
-  "title": "PROJECT TIMELINE",
-  "timelineStart": "2025-01-01",
-  "timelineEnd": "2025-03-31",
-  "showMilestones": true,
   "tasks": [
     {
-      "name": "Phase 1: Discovery",
-      "start": "2025-01-06",
-      "end": "2025-01-24",
-      "hours": 40,
+      "name": "Planning & Preparation",
+      "start": "2025-12-02",
+      "end": "2025-12-14",
+      "hours": 20,
       "subtasks": [
-        "Stakeholder interviews",
-        "Requirements gathering",
-        "Initial assessment"
+        "Define scope: URLs/Domains to audit; discovery and interviews",
+        "Determine test personas/scenarios",
+        "Baseline environment setup, any special access required"
       ],
+      "colorIndex": 0,
       "color": "#F01840"
     },
     {
-      "name": "Phase 2: Planning",
-      "start": "2025-01-27",
-      "end": "2025-02-14",
-      "hours": 30,
+      "name": "Initial Site Scans – Tracking System",
+      "start": "2025-12-15",
+      "end": "2026-01-11",
+      "hours": 20,
       "subtasks": [
-        "Define project scope",
-        "Create project plan",
-        "Resource allocation"
+        "Scan site and mobile app",
+        "Capture all tracking artifacts (cookies, storage, third party scripts, beacons/pixels)",
+        "Log and classify by purpose/category"
       ],
+      "colorIndex": 1,
       "color": "#402848"
     },
     {
-      "name": "Phase 3: Execution",
-      "start": "2025-02-17",
-      "end": "2025-03-14",
-      "hours": 60,
+      "name": "Consent Mechanism Testing",
+      "start": "2026-01-12",
+      "end": "2026-01-25",
+      "hours": 20,
       "subtasks": [
-        "Implementation tasks",
-        "Quality assurance",
-        "Progress tracking"
+        "Opt out of all cookies, verify deactivation across user journeys",
+        "Audit site/app data flow compliance and messaging for GPC/DNSS signals"
       ],
+      "colorIndex": 2,
       "color": "#C01830"
     },
     {
-      "name": "Phase 4: Delivery",
-      "start": "2025-03-17",
-      "end": "2025-03-28",
+      "name": "Analysis and Documentation",
+      "start": "2026-01-26",
+      "end": "2026-02-04",
       "hours": 20,
       "subtasks": [
-        "Final deliverables",
-        "Documentation",
-        "Handoff and training"
+        "Analyze risks and compliance gaps, especially with CCPA and other applicable regulations"
       ],
+      "colorIndex": 3,
       "color": "#705E74"
+    },
+    {
+      "name": "Final Report and Recommendations",
+      "start": "2026-02-05",
+      "end": "2026-02-13",
+      "hours": 20,
+      "subtasks": [
+        "Compile, present, and deliver findings with prioritized remediation items by risk and impact.",
+        "Inventory artifacts with suggested categories",
+        "Revisions and clarifications as needed"
+      ],
+      "colorIndex": 4,
+      "color": "#901226"
     }
   ],
   "milestones": [
     {
       "name": "Project Kickoff",
-      "date": "2025-01-06",
+      "date": "2025-12-02",
       "taskIndex": 0
     },
     {
-      "name": "Planning Complete",
-      "date": "2025-02-14",
-      "taskIndex": 1
+      "name": "Testing Complete",
+      "date": "2026-01-25",
+      "taskIndex": 2
     },
     {
-      "name": "Final Delivery",
-      "date": "2025-03-28",
-      "taskIndex": 3
+      "name": "Deliver Final Report",
+      "date": "2026-02-13",
+      "taskIndex": 4
     }
   ],
-  "pausePeriods": [],
-  "palettePreset": "alternating"
+  "pausePeriods": [
+    {
+      "start": "2025-12-23",
+      "end": "2026-01-04"
+    }
+  ],
+  "viewMode": "day",
+  "dropShadow": false
 }
