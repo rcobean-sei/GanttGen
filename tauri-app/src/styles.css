@@ -1329,7 +1329,6 @@ body {
 
 .subtask-chip.dragging {
     opacity: 0.3;
-    cursor: grabbing;
 }
 
 .subtask-ghost {

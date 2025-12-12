@@ -972,9 +972,6 @@ function renderTasks() {
     // Subtask drag-and-drop listeners
     const subtaskChips = elements.tasksList.querySelectorAll('.subtask-chip');
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/b36d543f-0126-41d7-81e4-84958862b6a6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app.js:renderTasks',message:'Attaching drag listeners',data:{subtaskChipCount:subtaskChips.length},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'H3'})}).catch(()=>{});
-    // #endregion
     subtaskChips.forEach(chip => {
         chip.addEventListener('mousedown', handleSubtaskMouseDown);
     });
@@ -1023,16 +1020,17 @@ function handleSubtaskMouseDown(e) {
     dragState.taskIndex = parseInt(e.currentTarget.dataset.taskIndex);
     dragState.subtaskIndex = parseInt(e.currentTarget.dataset.subtaskIndex);
     
-    // Hide original element (keep space with visibility)
-    e.currentTarget.style.visibility = 'hidden';
+    // Make original element semi-transparent
+    e.currentTarget.classList.add('dragging');
     
     // Create ghost element
     const ghost = e.currentTarget.cloneNode(true);
+    ghost.classList.remove('dragging');
     ghost.classList.add('subtask-ghost');
     ghost.style.position = 'fixed';
     ghost.style.pointerEvents = 'none';
     ghost.style.zIndex = '10000';
-    ghost.style.opacity = '0.7';
+    ghost.style.opacity = '1';
     ghost.style.width = e.currentTarget.offsetWidth + 'px';
     ghost.style.left = e.clientX + 'px';
     ghost.style.top = e.clientY + 'px';
@@ -1097,7 +1095,7 @@ function handleSubtaskMouseUp(e) {
     
     // Clean up
     if (dragState.draggedElement) {
-        dragState.draggedElement.style.visibility = '';
+        dragState.draggedElement.classList.remove('dragging');
     }
     if (dragState.ghostElement) {
         dragState.ghostElement.remove();
