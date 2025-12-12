@@ -84,7 +84,7 @@ body {
 
 /* Header */
 .header {
-    background-color: var(--black);
+    background-color: #2A1C30;
     color: var(--cream);
     padding: var(--spacing-md) var(--spacing-xl);
     box-shadow: var(--shadow-md);
@@ -108,7 +108,7 @@ body {
 }
 
 .sei-logo {
-    height: 56px;
+    height: 68px;
     width: auto;
     flex-shrink: 0;
 }
@@ -117,10 +117,7 @@ body {
     font-size: 1.75rem;
     font-weight: 700;
     letter-spacing: -0.5px;
-    background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #FFFFF8;
 }
 
 .tagline {
@@ -504,7 +501,8 @@ body {
 
 .path-input-group input:focus {
     outline: none;
-    border-color: var(--purple-3);
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
 /* Buttons */
@@ -532,15 +530,16 @@ body {
     background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 100%);
     color: white;
     box-shadow: var(--shadow-sm);
+    border: 1px solid transparent;
 }
 
 .btn-primary:hover:not(:disabled) {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-1px);
+    border: 1px solid var(--red-1);
+    box-shadow: var(--shadow-md), 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
 .btn-primary:active:not(:disabled) {
-    transform: translateY(0);
+    box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary {
@@ -551,7 +550,8 @@ body {
 
 .btn-secondary:hover:not(:disabled) {
     background: var(--bg-secondary);
-    border-color: var(--purple-3);
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
 .btn-tertiary {
@@ -561,8 +561,10 @@ body {
 }
 
 .btn-tertiary:hover:not(:disabled) {
-    border-color: var(--purple-4);
+    border-color: var(--red-1);
+    border-style: solid;
     background: rgba(112, 94, 116, 0.1);
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
 .btn-large {
@@ -572,7 +574,7 @@ body {
 
 .btn-icon {
     background: transparent;
-    border: none;
+    border: 1px solid transparent;
     padding: var(--spacing-xs);
     cursor: pointer;
     color: var(--text-muted);
@@ -583,6 +585,8 @@ body {
 .btn-icon:hover {
     color: var(--red-1);
     background: rgba(240, 24, 64, 0.1);
+    border: 1px solid var(--red-1);
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
 /* Generate Section */
@@ -912,7 +916,8 @@ body {
 .form-group textarea:focus,
 .form-group select:focus {
     outline: none;
-    border-color: var(--purple-3);
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
 /* Task and Milestone Cards */
@@ -1090,6 +1095,12 @@ body {
     border: 1px solid var(--border-color);
 }
 
+.subtask-add-form input:focus {
+    outline: none;
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
+}
+
 .subtask-add-form .btn {
     height: 32px;
     padding: var(--spacing-xs) var(--spacing-sm);
@@ -1122,7 +1133,8 @@ body {
 }
 
 .json-preview textarea:focus {
-    outline: none;
+    outline: 2px solid var(--red-1);
+    outline-offset: 2px;
 }
 
 .json-actions {
