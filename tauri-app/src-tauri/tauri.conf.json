@@ -4,16 +4,19 @@
   "version": "1.0.0",
   "identifier": "com.sei.ganttgen",
   "build": {
-    "frontendDist": "../src"
+    "frontendDist": "../src",
+    "beforeDevCommand": "npx http-server src -p 1420 -c-1 --cors",
+    "devUrl": "http://localhost:1420"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
         "title": "GanttGen - Gantt Chart Generator",
-        "width": 1100,
+        "width": 900,
         "height": 750,
         "minWidth": 900,
+        "maxWidth": 900,
         "minHeight": 600,
         "resizable": true,
         "fullscreen": false,
