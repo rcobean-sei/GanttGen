@@ -525,6 +525,11 @@ body {
     grid-template-rows: auto auto auto;
 }
 
+.thumb-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.2);
+}
+
 .thumb-header {
     background: #141018;
     color: #FFFFF8;
@@ -555,16 +560,16 @@ body {
 }
 
 .thumb-grid {
-    height: 10px;
-    background: #0f0c13;
+    height: 12px;
+    background: #FFFFF8;
     position: relative;
 }
 
 .thumb-grid-days {
     background: repeating-linear-gradient(
         to right,
-        rgba(255,255,255,0.18),
-        rgba(255,255,255,0.18) 1px,
+        rgba(20,16,24,0.16),
+        rgba(20,16,24,0.16) 1px,
         transparent 1px,
         transparent calc(100%/9)
     );
@@ -573,8 +578,8 @@ body {
 .thumb-grid-weeks {
     background: repeating-linear-gradient(
         to right,
-        rgba(255,255,255,0.22),
-        rgba(255,255,255,0.22) 2px,
+        rgba(20,16,24,0.18),
+        rgba(20,16,24,0.18) 2px,
         transparent calc(100%/3 - 2px),
         transparent calc(100%/3)
     );
