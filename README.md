@@ -1,6 +1,10 @@
 <div align="center">
   <img src="tools/icon-generator/output/icon-windows.png" alt="GanttGen Icon" width="128" height="128">
 
+![GanttGen Icon](assets/icon-128.png)
+
+[![Tests](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml/badge.svg)](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml)
+[![Coverage](https://codecov.io/gh/rcobean-sei/GanttGen/branch/main/graph/badge.svg)](https://codecov.io/gh/rcobean-sei/GanttGen)
   # GanttGen
 
   [![Tests](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml/badge.svg)](https://github.com/rcobean-sei/GanttGen/actions/workflows/test.yml)
