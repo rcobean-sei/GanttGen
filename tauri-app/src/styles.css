@@ -404,7 +404,13 @@ body {
 }
 
 .checkbox-label:hover {
-    background: var(--bg-secondary);
+    border-color: var(--purple-3);
+    box-shadow: var(--shadow-sm);
+}
+
+.checkbox-label:has(input:checked) {
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 3px rgba(240, 24, 64, 0.15);
 }
 
 .checkbox-label input {
@@ -450,7 +456,8 @@ body {
 }
 
 #dropShadowOptionGroup .checkbox-label:has(input:checked) {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-color: var(--red-1);
+    box-shadow: 0 0 0 3px rgba(240, 24, 64, 0.15), 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .option-text {
@@ -492,12 +499,13 @@ body {
 }
 
 .view-card:hover {
-    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.08);
+    border-color: var(--purple-3);
+    box-shadow: var(--shadow-sm);
 }
 
 .view-card.selected {
     border-color: var(--red-1);
-    box-shadow: 0 14px 30px rgba(240, 24, 64, 0.12);
+    box-shadow: 0 0 0 3px rgba(240, 24, 64, 0.15);
 }
 
 .view-card input[type="radio"] {
