@@ -1,5 +1,10 @@
 {
   "layout": {
-    "cardShadow": null
+    "cardScale": 1.0,
+    "cardCornerRadius": 0,
+    "cardShadow": null,
+    "gridTopOffset": 155,
+    "gridBottomOffset": 155,
+    "gridHorizontalInsetFactor": 0.15
   }
 }
