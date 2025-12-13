@@ -14,19 +14,18 @@ const setupElements = {
     statusView: document.getElementById('setupStatusView'),
     installingView: document.getElementById('setupInstallingView'),
     completeView: document.getElementById('setupCompleteView'),
-    reqNode: document.getElementById('reqNode'),
-    reqNodeStatus: document.getElementById('reqNodeStatus'),
-    reqNpm: document.getElementById('reqNpm'),
-    reqNpmStatus: document.getElementById('reqNpmStatus'),
-    reqDeps: document.getElementById('reqDeps'),
-    reqDepsStatus: document.getElementById('reqDepsStatus'),
-    reqBrowser: document.getElementById('reqBrowser'),
-    reqBrowserStatus: document.getElementById('reqBrowserStatus'),
-    recheckBtn: document.getElementById('recheckDepsBtn'),
-    // Inline install buttons
-    installNodeBtn: document.getElementById('installNodeBtn'),
-    installDepsInlineBtn: document.getElementById('installDepsInlineBtn'),
-    installBrowserInlineBtn: document.getElementById('installBrowserInlineBtn'),
+    installAllBtn: document.getElementById('installAllBtn'),
+    installStepDetail: document.getElementById('installStepDetail'),
+    setupSummary: document.getElementById('setupSummary'),
+    summaryNode: document.getElementById('summaryNode'),
+    summaryNpm: document.getElementById('summaryNpm'),
+    summaryDeps: document.getElementById('summaryDeps'),
+    summaryBrowser: document.getElementById('summaryBrowser'),
+    completeSummary: document.getElementById('completeSummary'),
+    completeNode: document.getElementById('completeNode'),
+    completeNpm: document.getElementById('completeNpm'),
+    completeDeps: document.getElementById('completeDeps'),
+    completeBrowser: document.getElementById('completeBrowser'),
     setupError: document.getElementById('setupError'),
     setupErrorText: document.getElementById('setupErrorText'),
     installStage: document.getElementById('installStage'),
@@ -105,17 +104,12 @@ const elements = {
 let installProgressUnlisten = null;
 let appInitialized = false;
 
-// Initialize the app
+// Initialize the app (restored after refactor)
 async function init() {
-    // First check dependencies
     const depsReady = await checkAndSetupDependencies();
-
     if (!depsReady) {
-        // Show setup screen and wait for user to install
         return;
     }
-
-    // Dependencies are ready, initialize the main app
     await initializeMainApp();
 }
 
@@ -164,87 +158,25 @@ function showSetupScreen(status) {
     setupElements.installingView.style.display = 'none';
     setupElements.completeView.style.display = 'none';
 
-    // Update Node.js status and show/hide install button
-    updateRequirementStatus(
-        setupElements.reqNode,
-        setupElements.reqNodeStatus,
-        status.node_available,
-        status.node_available ? (status.node_version || 'Installed') : ''
-    );
-    
-    // Show Node.js install button if not available
-    if (setupElements.installNodeBtn) {
-        setupElements.installNodeBtn.style.display = status.node_available ? 'none' : 'inline-flex';
-        setupElements.installNodeBtn.disabled = false;
+    // Hide legacy summary until we complete
+    if (setupElements.setupSummary) setupElements.setupSummary.style.display = 'none';
+
+    // Single install button
+    if (setupElements.installAllBtn) {
+        setupElements.installAllBtn.disabled = false;
+        setupElements.installAllBtn.onclick = installAll;
     }
 
-    // Update npm status (npm comes with Node.js, so no separate install button)
-    updateRequirementStatus(
-        setupElements.reqNpm,
-        setupElements.reqNpmStatus,
-        status.npm_available,
-        status.npm_available ? (status.npm_version || 'Installed') : (status.node_available ? 'Checking...' : '')
-    );
-
-    // Update dependencies status and show/hide install button
-    updateRequirementStatus(
-        setupElements.reqDeps,
-        setupElements.reqDepsStatus,
-        status.dependencies_installed,
-        status.dependencies_installed ? 'Installed' : ''
-    );
-    
-    // Show deps install button when Node/npm available but deps not installed
-    if (setupElements.installDepsInlineBtn) {
-        const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
-        setupElements.installDepsInlineBtn.style.display = canInstallDeps ? 'inline-flex' : 'none';
-        setupElements.installDepsInlineBtn.disabled = false;
-    }
-
-    // Update browser runtime status and show/hide install button
+    // If everything is already installed, go straight to app
     const browserInstalled = Boolean(status.browser_installed);
-
-    if (setupElements.reqBrowser) {
-        updateRequirementStatus(
-            setupElements.reqBrowser,
-            setupElements.reqBrowserStatus,
-            browserInstalled,
-            browserInstalled ? 'Installed' : ''
-        );
-    }
-    
-    // Show browser install button when deps installed but browser not
-    if (setupElements.installBrowserInlineBtn) {
-        const canInstallBrowser = status.node_available && status.npm_available && status.dependencies_installed && !browserInstalled;
-        setupElements.installBrowserInlineBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
-        setupElements.installBrowserInlineBtn.disabled = false;
-    }
-
-    // Show error if Node.js or npm is not available (but hide if install button is shown)
-    if (!status.node_available) {
-        hideSetupError(); // Hide error since we have an install button
-    } else if (status.dependencies_installed && browserInstalled) {
-        // All dependencies AND browser are installed, close setup and initialize
+    if (status.node_available && status.npm_available && status.dependencies_installed && browserInstalled) {
         hideSetupScreen();
         initializeMainApp();
-    } else {
-        hideSetupError();
+        return;
     }
 
-    // Set up button handlers
-    setupElements.recheckBtn.onclick = recheckDependencies;
-    
-    // Inline install button handlers
-    if (setupElements.installNodeBtn) {
-        setupElements.installNodeBtn.onclick = installNodeJS;
-    }
-    if (setupElements.installDepsInlineBtn) {
-        setupElements.installDepsInlineBtn.onclick = installDependencies;
-    }
-    if (setupElements.installBrowserInlineBtn) {
-        setupElements.installBrowserInlineBtn.onclick = installBrowserRuntime;
-    }
-    
+    hideSetupError();
+
     setupElements.startAppBtn.onclick = () => {
         hideSetupScreen();
         initializeMainApp();
@@ -254,41 +186,60 @@ function showSetupScreen(status) {
     setupInstallProgressListener();
 }
 
-// Re-check dependencies (called when user clicks Re-check button)
-async function recheckDependencies() {
-    // Reset status icons to loading state
-    resetRequirementToLoading(setupElements.reqNode, setupElements.reqNodeStatus);
-    resetRequirementToLoading(setupElements.reqNpm, setupElements.reqNpmStatus);
-    resetRequirementToLoading(setupElements.reqDeps, setupElements.reqDepsStatus);
-    if (setupElements.reqBrowser) {
-        resetRequirementToLoading(setupElements.reqBrowser, setupElements.reqBrowserStatus);
-    }
-
-    // Disable buttons during check
-    setupElements.recheckBtn.disabled = true;
-    setupElements.installBtn.disabled = true;
-    if (setupElements.installBrowserBtn) {
-        setupElements.installBrowserBtn.disabled = true;
-    }
-    hideSetupError();
+// Single install flow
+async function installAll() {
+    if (state.isInstallingAll) return;
+    state.isInstallingAll = true;
+    if (setupElements.installAllBtn) setupElements.installAllBtn.disabled = true;
+    beginInstallView('Preparing installation...');
 
     try {
-        const status = await invoke('check_dependencies');
+        // Install Node.js
+        setupElements.installStage.textContent = 'Installing Node.js...';
+        if (setupElements.installStepDetail) setupElements.installStepDetail.textContent = 'Setting up runtime';
+        setupElements.setupProgressBar.style.width = '15%';
+        await invoke('install_node');
 
-        // If all dependencies AND browser are now installed, close setup and start app
+        // Refresh status
+        let status = await invoke('check_dependencies');
+
+        // Install dependencies
+        setupElements.installStage.textContent = 'Installing libraries...';
+        if (setupElements.installStepDetail) setupElements.installStepDetail.textContent = 'exceljs, playwright, sharp';
+        setupElements.setupProgressBar.style.width = '45%';
+        await invoke('install_dependencies');
+        status = await invoke('check_dependencies');
+
+        // Install browser runtime
+        setupElements.installStage.textContent = 'Installing internal Chromium (PNG export)...';
+        if (setupElements.installStepDetail) setupElements.installStepDetail.textContent = 'Playwright chromium';
+        setupElements.setupProgressBar.style.width = '75%';
+        await invoke('install_browser_runtime');
+        status = await invoke('check_dependencies');
+
         if (status.node_available && status.npm_available && status.dependencies_installed && status.browser_installed) {
-            hideSetupScreen();
-            await initializeMainApp();
-            return;
-        }
+            setupElements.installingView.style.display = 'none';
+            setupElements.completeView.style.display = 'block';
+            if (setupElements.installStepDetail) setupElements.installStepDetail.textContent = '';
 
-        // Update the display with new status
-        showSetupScreen(status);
+            // Populate summary
+            if (setupElements.completeNode) setupElements.completeNode.textContent = status.node_version || 'Installed';
+            if (setupElements.completeNpm) setupElements.completeNpm.textContent = status.npm_version || 'Installed';
+            if (setupElements.completeDeps) setupElements.completeDeps.textContent = status.dependencies_installed ? 'Installed' : 'Missing';
+            if (setupElements.completeBrowser) setupElements.completeBrowser.textContent = status.browser_installed ? 'Installed' : 'Missing';
+        } else {
+            setupElements.installingView.style.display = 'none';
+            setupElements.statusView.style.display = 'block';
+            showSetupError('Installation incomplete. Please try again.');
+        }
     } catch (error) {
-        console.error('Failed to re-check dependencies:', error);
-        showSetupError(`Failed to check dependencies: ${error}`);
+        setupElements.installingView.style.display = 'none';
+        setupElements.statusView.style.display = 'block';
+        setupElements.setupProgressBar.style.width = '0%';
+        showSetupError(`Installation failed: ${error}`);
     } finally {
-        setupElements.recheckBtn.disabled = false;
+        state.isInstallingAll = false;
+        if (setupElements.installAllBtn) setupElements.installAllBtn.disabled = false;
     }
 }
 
@@ -354,6 +305,7 @@ function beginInstallView(message) {
     setupElements.completeView.style.display = 'none';
     setupElements.installStage.textContent = message;
     setupElements.setupProgressBar.style.width = '5%';
+    if (setupElements.installStepDetail) setupElements.installStepDetail.textContent = '';
     hideSetupError();
 }
 
@@ -430,11 +382,6 @@ async function installDependencies() {
 }
 
 async function installBrowserRuntime() {
-    if (!setupElements.installBrowserBtn || setupElements.installBrowserBtn.disabled) {
-        return;
-    }
-
-    setupElements.installBrowserBtn.disabled = true;
     beginInstallView('Installing internal browser for PNG export...');
 
     try {
@@ -450,8 +397,6 @@ async function installBrowserRuntime() {
         setupElements.statusView.style.display = 'block';
         setupElements.installingView.style.display = 'none';
         showSetupError(`Browser install failed: ${error}`);
-    } finally {
-        setupElements.installBrowserBtn.disabled = false;
     }
 }
 

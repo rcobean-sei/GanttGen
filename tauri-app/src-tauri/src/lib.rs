@@ -1,10 +1,15 @@
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::io;
 use std::panic;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+#[cfg(not(target_os = "windows"))]
+use std::os::unix::fs::PermissionsExt;
 use tauri::{Emitter, Manager};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
+use tempfile::tempdir;
 
 // Include generated build info
 include!(concat!(env!("OUT_DIR"), "/build_info.rs"));
@@ -127,6 +132,141 @@ fn get_dependencies_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
     Ok(data_dir.join("dependencies"))
 }
 
+/// Get the path where the bundled Node.js runtime should live
+fn get_node_install_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let data_dir = get_user_data_dir(app_handle)?;
+    Ok(data_dir.join("node"))
+}
+
+/// Recursively copy a directory
+fn copy_dir_all(src: &Path, dst: &Path) -> io::Result<()> {
+    fs::create_dir_all(dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let dest_path = dst.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_dir_all(&entry.path(), &dest_path)?;
+        } else {
+            fs::copy(entry.path(), dest_path)?;
+        }
+    }
+    Ok(())
+}
+
+/// Download a file to a path
+async fn download_to_path(url: &str, dest: &Path) -> Result<(), String> {
+    let response = reqwest::get(url)
+        .await
+        .map_err(|e| format!("Failed to download {}: {}", url, e))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read download for {}: {}", url, e))?;
+    tokio::fs::write(dest, &bytes)
+        .await
+        .map_err(|e| format!("Failed to write {}: {}", dest.display(), e))?;
+    Ok(())
+}
+
+/// Extract a tar.gz archive to a destination directory
+async fn extract_tar_gz(archive: PathBuf, dest: PathBuf) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        let file = fs::File::open(&archive)
+            .map_err(|e| format!("Failed to open archive {}: {}", archive.display(), e))?;
+        let decompressor = flate2::read::GzDecoder::new(file);
+        let mut archive = tar::Archive::new(decompressor);
+        archive
+            .unpack(&dest)
+            .map_err(|e| format!("Failed to extract archive to {}: {}", dest.display(), e))?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Extraction task failed: {}", e))?
+}
+
+/// Create npm and npx wrapper scripts that call the bundled Node.js
+fn create_npm_wrappers(node_dir: &Path) -> Result<(), String> {
+    let node_bin = if cfg!(target_os = "windows") {
+        node_dir.join("node.exe")
+    } else {
+        node_dir.join("node")
+    };
+
+    let npm_cli = if cfg!(target_os = "windows") {
+        node_dir
+            .join("node_modules")
+            .join("npm")
+            .join("bin")
+            .join("npm-cli.js")
+    } else {
+        node_dir
+            .join("lib")
+            .join("node_modules")
+            .join("npm")
+            .join("bin")
+            .join("npm-cli.js")
+    };
+
+    if !npm_cli.exists() {
+        return Err(format!("npm-cli.js not found at {}", npm_cli.display()));
+    }
+
+    let npm_wrapper = if cfg!(target_os = "windows") {
+        node_dir.join("npm.cmd")
+    } else {
+        node_dir.join("npm")
+    };
+    let npx_wrapper = if cfg!(target_os = "windows") {
+        node_dir.join("npx.cmd")
+    } else {
+        node_dir.join("npx")
+    };
+
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "@echo off\r\n\"{}\" \"{}\" %*\r\n",
+            node_bin.display(),
+            npm_cli.display()
+        );
+        fs::write(&npm_wrapper, script.as_bytes())
+            .map_err(|e| format!("Failed to write {}: {}", npm_wrapper.display(), e))?;
+        let npx_script = format!(
+            "@echo off\r\n\"{}\" \"{}\" --yes npx %*\r\n",
+            node_bin.display(),
+            npm_cli.display()
+        );
+        fs::write(&npx_wrapper, npx_script.as_bytes())
+            .map_err(|e| format!("Failed to write {}: {}", npx_wrapper.display(), e))?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let script = format!(
+            "#!/bin/sh\n\"{}\" \"{}\" \"$@\"\n",
+            node_bin.display(),
+            npm_cli.display()
+        );
+        fs::write(&npm_wrapper, script.as_bytes())
+            .map_err(|e| format!("Failed to write {}: {}", npm_wrapper.display(), e))?;
+        let npx_script = format!(
+            "#!/bin/sh\n\"{}\" \"{}\" --yes npx \"$@\"\n",
+            node_bin.display(),
+            npm_cli.display()
+        );
+        fs::write(&npx_wrapper, npx_script.as_bytes())
+            .map_err(|e| format!("Failed to write {}: {}", npx_wrapper.display(), e))?;
+
+        let perm = fs::Permissions::from_mode(0o755);
+        fs::set_permissions(&npm_wrapper, perm.clone())
+            .map_err(|e| format!("Failed to chmod {}: {}", npm_wrapper.display(), e))?;
+        fs::set_permissions(&npx_wrapper, perm)
+            .map_err(|e| format!("Failed to chmod {}: {}", npx_wrapper.display(), e))?;
+    }
+
+    Ok(())
+}
 /// Check if dependencies are installed in the user data directory
 fn check_dependencies_installed(app_handle: &tauri::AppHandle) -> bool {
     if let Ok(deps_dir) = get_dependencies_dir(app_handle) {
@@ -144,23 +284,6 @@ fn npm_version_from_command(command: &str) -> Option<String> {
     }
 
     let output = std::process::Command::new(command)
-        .arg("--version")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .output()
-        .ok()?;
-
-    if !output.status.success() {
-        return None;
-    }
-
-    Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
-#[cfg(not(target_os = "windows"))]
-fn npm_version_via_node(node_bin: &str, npm_cli: &Path) -> Option<String> {
-    let output = std::process::Command::new(node_bin)
-        .arg(npm_cli.to_string_lossy().to_string())
         .arg("--version")
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -261,118 +384,18 @@ fn get_browser_install_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
 
 /// Get Node.js executable path
 fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    // First check for bundled Node.js in the resource directory
-    if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        let bundled_node = if cfg!(target_os = "windows") {
-            resource_dir.join("node-bundle").join("node.exe")
-        } else {
-            resource_dir.join("node-bundle").join("node")
-        };
-
-        if bundled_node.exists() {
-            return Ok(bundled_node.to_string_lossy().to_string());
-        }
-    }
-
-    // Check if NODE_PATH environment variable is set
-    if let Ok(path) = std::env::var("NODE_PATH") {
-        if std::path::Path::new(&path).exists() {
-            return Ok(path);
-        }
-    }
-
-    // Build list of common node locations
-    let home = std::env::var("HOME").unwrap_or_default();
-
-    // For nvm, we need to find the actual version directory
-    #[cfg(not(target_os = "windows"))]
-    {
-        // Check nvm versions directory for installed node versions
-        let nvm_versions_dir = format!("{}/.nvm/versions/node", home);
-        if let Ok(entries) = std::fs::read_dir(&nvm_versions_dir) {
-            // Get the latest version (sort by name descending)
-            let mut versions: Vec<_> = entries
-                .filter_map(|e| e.ok())
-                .filter(|e| e.path().is_dir())
-                .collect();
-            versions.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
-            
-            if let Some(latest) = versions.first() {
-                let node_path = latest.path().join("bin").join("node");
-                if node_path.exists() {
-                    return Ok(node_path.to_string_lossy().to_string());
-                }
-            }
-        }
-    }
-
-    let common_paths: Vec<String> = if cfg!(target_os = "windows") {
-        vec![
-            "node.exe".to_string(),
-            "C:\\Program Files\\nodejs\\node.exe".to_string(),
-            "C:\\Program Files (x86)\\nodejs\\node.exe".to_string(),
-        ]
+    let node_dir = get_node_install_dir(app_handle)?;
+    let node_bin = if cfg!(target_os = "windows") {
+        node_dir.join("node.exe")
     } else {
-        vec![
-            "/usr/local/bin/node".to_string(),
-            "/opt/homebrew/bin/node".to_string(),
-            "/usr/bin/node".to_string(),
-            "/opt/local/bin/node".to_string(),
-            // NVM default/current symlink
-            format!("{}/.nvm/current/bin/node", home),
-            // Volta paths
-            format!("{}/.volta/bin/node", home),
-        ]
+        node_dir.join("node")
     };
 
-    // Try each path
-    for path in &common_paths {
-        if std::path::Path::new(path).exists() {
-            return Ok(path.clone());
-        }
+    if node_bin.exists() {
+        Ok(node_bin.to_string_lossy().to_string())
+    } else {
+        Err("Node.js not installed. Please click Install to download it.".to_string())
     }
-
-    // Try using 'which' command on Unix systems to find node
-    #[cfg(not(target_os = "windows"))]
-    {
-        // First try sourcing nvm and then finding node
-        let nvm_find = format!(
-            r#"
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 2>/dev/null
-            which node 2>/dev/null || command -v node 2>/dev/null
-            "#
-        );
-        
-        if let Ok(output) = std::process::Command::new("bash")
-            .args(["-c", &nvm_find])
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() && std::path::Path::new(&path).exists() {
-                    return Ok(path);
-                }
-            }
-        }
-        
-        // Fallback to simple which
-        if let Ok(output) = std::process::Command::new("sh")
-            .args(["-c", "which node 2>/dev/null || command -v node 2>/dev/null"])
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() && std::path::Path::new(&path).exists() {
-                    return Ok(path);
-                }
-            }
-        }
-    }
-
-    // Last resort: try 'node' and hope it's in PATH
-    // This won't work in Tauri bundled app without a login shell
-    Err("Node.js not found. Please install Node.js and ensure it's in your PATH, or set the NODE_PATH environment variable.".to_string())
 }
 
 #[tauri::command]
@@ -921,98 +944,11 @@ async fn check_dependencies(app_handle: tauri::AppHandle) -> Result<DependencySt
         }
     }
 
-    // Check npm (look for it relative to node or in PATH)
-    let npm_cmd = if cfg!(target_os = "windows") {
-        "npm.cmd"
-    } else {
-        "npm"
-    };
-
-    // Try common npm locations
-    let home = std::env::var("HOME").unwrap_or_default();
-    let npm_paths: Vec<String> = if cfg!(target_os = "windows") {
-        vec![
-            npm_cmd.to_string(),
-            "C:\\Program Files\\nodejs\\npm.cmd".to_string(),
-        ]
-    } else {
-        vec![
-            "/usr/local/bin/npm".to_string(),
-            "/opt/homebrew/bin/npm".to_string(),
-            "/usr/bin/npm".to_string(),
-            format!("{}/.nvm/current/bin/npm", home),
-            format!("{}/.volta/bin/npm", home),
-        ]
-    };
-
-    for npm_path in &npm_paths {
-        if let Some(version) = npm_version_from_command(npm_path) {
+    // Check npm (app-local)
+    if let Ok(npm_path) = find_npm_path(&app_handle) {
+        if let Some(version) = npm_version_from_command(&npm_path) {
             status.npm_available = true;
             status.npm_version = Some(version);
-            break;
-        }
-    }
-
-    // If npm still isn't resolved, look relative to the detected Node.js binary
-    if !status.npm_available {
-        if let Ok(node_path) = get_node_path(&app_handle) {
-            if let Some(node_dir) = Path::new(&node_path).parent() {
-                let candidate = node_dir.join(npm_cmd);
-                let candidate_str = candidate.to_string_lossy().to_string();
-                if let Some(version) = npm_version_from_command(&candidate_str) {
-                    status.npm_available = true;
-                    status.npm_version = Some(version);
-                } else {
-                    // For installs like nvm, npm may live under ../lib/node_modules/npm/bin/npm-cli.js
-                    #[cfg(not(target_os = "windows"))]
-                    {
-                        if let Some(grandparent) = node_dir.parent() {
-                            let npm_cli = grandparent
-                                .join("lib")
-                                .join("node_modules")
-                                .join("npm")
-                                .join("bin")
-                                .join("npm-cli.js");
-                            if npm_cli.exists() {
-                                if let Some(version) = npm_version_via_node(&node_path, &npm_cli) {
-                                    status.npm_available = true;
-                                    status.npm_version = Some(version);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Also try which/where to find npm
-    if !status.npm_available {
-        #[cfg(not(target_os = "windows"))]
-        {
-            if let Ok(output) = std::process::Command::new("sh")
-                .args(["-c", "which npm 2>/dev/null || command -v npm 2>/dev/null"])
-                .output()
-            {
-                if output.status.success() {
-                    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                    if !path.is_empty() {
-                        if let Ok(ver_output) = std::process::Command::new(&path)
-                            .arg("--version")
-                            .output()
-                        {
-                            if ver_output.status.success() {
-                                status.npm_available = true;
-                                status.npm_version = Some(
-                                    String::from_utf8_lossy(&ver_output.stdout)
-                                        .trim()
-                                        .to_string(),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -1099,7 +1035,7 @@ async fn install_dependencies(
     }
 
     // Find npm and node
-    let npm_cmd = find_npm_path()?;
+    let npm_cmd = find_npm_path(&app_handle)?;
     let node_path = get_node_path(&app_handle)?;
     let node_dir = std::path::Path::new(&node_path)
         .parent()
@@ -1242,7 +1178,7 @@ async fn install_playwright_runtime(
         .args(["exec", "playwright", "install", "chromium"])
         .current_dir(deps_dir)
         .env("PLAYWRIGHT_BROWSERS_PATH", &browser_dir)
-        .stdout(Stdio::piped())
+        .stdout(Stdio::null())
         .stderr(Stdio::piped());
 
     if cfg!(target_os = "linux") {
@@ -1270,30 +1206,10 @@ async fn install_playwright_runtime(
         .spawn()
         .map_err(|e| format!("Failed to start Playwright install: {}", e))?;
 
-    let browser_stdout = browser_child
-        .stdout
-        .take()
-        .ok_or("Failed to capture browser install stdout")?;
     let browser_stderr = browser_child
         .stderr
         .take()
         .ok_or("Failed to capture browser install stderr")?;
-
-    let mut browser_stdout_reader = BufReader::new(browser_stdout).lines();
-    while let Ok(Some(line)) = browser_stdout_reader.next_line().await {
-        if !line.trim().is_empty() {
-            let _ = window.emit(
-                "install-progress",
-                InstallProgress {
-                    stage: "Installing".to_string(),
-                    message: line,
-                    progress: 95,
-                    complete: false,
-                    error: None,
-                },
-            );
-        }
-    }
 
     let browser_status = browser_child
         .wait()
@@ -1343,7 +1259,7 @@ async fn install_browser_runtime(
     }
 
     let deps_dir = get_dependencies_dir(&app_handle)?;
-    let npm_cmd = find_npm_path()?;
+    let npm_cmd = find_npm_path(&app_handle)?;
     let node_path = get_node_path(&app_handle)?;
 
     install_playwright_runtime(&app_handle, &window, &npm_cmd, &node_path, &deps_dir).await?;
@@ -1365,183 +1281,159 @@ async fn install_browser_runtime(
 /// Install Node.js via nvm (macOS/Linux) or Chocolatey (Windows)
 #[tauri::command]
 async fn install_node(
+    app_handle: tauri::AppHandle,
     window: tauri::Window,
 ) -> Result<bool, String> {
     let _ = window.emit(
         "install-progress",
         InstallProgress {
             stage: "Installing".to_string(),
-            message: "Installing Node.js...".to_string(),
+            message: "Downloading Node.js to Application Support...".to_string(),
             progress: 10,
             complete: false,
             error: None,
         },
     );
 
+    let node_dir = get_node_install_dir(&app_handle)?;
+    if node_dir.exists() {
+        fs::remove_dir_all(&node_dir)
+            .map_err(|e| format!("Failed to clear existing Node.js install: {}", e))?;
+    }
+    fs::create_dir_all(&node_dir)
+        .map_err(|e| format!("Failed to create {}: {}", node_dir.display(), e))?;
+
+    let temp_dir = tempdir().map_err(|e| format!("Failed to create temp dir: {}", e))?;
+
+    #[cfg(target_os = "macos")]
+    let (node_url, archive_name) = {
+        let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+        let filename = format!("node-v24.12.0-darwin-{}.tar.gz", arch);
+        (
+            format!("https://nodejs.org/dist/v24.12.0/{}", filename),
+            filename,
+        )
+    };
+
+    #[cfg(target_os = "windows")]
+    let (node_url, archive_name) = {
+        let filename = "node-v24.12.0-win-x64.zip".to_string();
+        (
+            format!("https://nodejs.org/dist/v24.12.0/{}", filename),
+            filename,
+        )
+    };
+
+    let archive_path = temp_dir.path().join(&archive_name);
+
+    download_to_path(&node_url, &archive_path).await?;
+
+    let extract_dir = temp_dir.path().join("extract");
+    fs::create_dir_all(&extract_dir)
+        .map_err(|e| format!("Failed to create extract dir: {}", e))?;
+
+    #[cfg(target_os = "macos")]
+    {
+        extract_tar_gz(archive_path.clone(), extract_dir.clone()).await?;
+    }
     #[cfg(target_os = "windows")]
     {
-        // Windows: Use Chocolatey to install Node.js
-        let _ = window.emit(
-            "install-progress",
-            InstallProgress {
-                stage: "Installing".to_string(),
-                message: "Installing Chocolatey package manager...".to_string(),
-                progress: 20,
-                complete: false,
-                error: None,
-            },
-        );
+        extract_zip(archive_path.clone(), extract_dir.clone()).await?;
+    }
 
-        // First, install Chocolatey if not present
-        let choco_check = std::process::Command::new("powershell")
-            .args(["-Command", "Get-Command choco -ErrorAction SilentlyContinue"])
-            .output();
-
-        let choco_installed = choco_check.map(|o| o.status.success()).unwrap_or(false);
-
-        if !choco_installed {
-            let choco_install = Command::new("powershell")
-                .args(["-ExecutionPolicy", "Bypass", "-Command", 
-                    "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn();
-
-            match choco_install {
-                Ok(mut child) => {
-                    let status = child.wait().await.map_err(|e| format!("Failed to install Chocolatey: {}", e))?;
-                    if !status.success() {
-                        return Err("Chocolatey installation failed. Please run as administrator.".to_string());
-                    }
-                }
-                Err(e) => return Err(format!("Failed to start Chocolatey installer: {}", e)),
-            }
+    // Locate extracted root
+    let mut extracted_root: Option<PathBuf> = None;
+    for entry in fs::read_dir(&extract_dir)
+        .map_err(|e| format!("Failed to read extract dir: {}", e))?
+    {
+        let entry = entry.map_err(|e| format!("Extract dir entry error: {}", e))?;
+        if entry.file_type().map_err(|e| format!("{}", e))?.is_dir() {
+            extracted_root = Some(entry.path());
+            break;
         }
+    }
+    let extracted_root =
+        extracted_root.ok_or_else(|| "Failed to find extracted Node.js directory".to_string())?;
 
-        let _ = window.emit(
-            "install-progress",
-            InstallProgress {
-                stage: "Installing".to_string(),
-                message: "Installing Node.js via Chocolatey...".to_string(),
-                progress: 50,
-                complete: false,
-                error: None,
-            },
-        );
+    let target_node = node_dir.join(if cfg!(target_os = "windows") {
+        "node.exe"
+    } else {
+        "node"
+    });
 
-        // Install Node.js via Chocolatey
-        let mut node_install = Command::new("choco")
-            .args(["install", "nodejs", "--version=24.12.0", "-y"])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start Node.js installation: {}", e))?;
-
-        let status = node_install.wait().await.map_err(|e| format!("Node.js installation failed: {}", e))?;
-        
-        if !status.success() {
-            return Err("Node.js installation via Chocolatey failed. Please run as administrator.".to_string());
-        }
+    #[cfg(target_os = "windows")]
+    {
+        // Windows layout: node.exe and node_modules/npm at root
+        copy_dir_all(&extracted_root, &node_dir)
+            .map_err(|e| format!("Failed to copy Node.js files: {}", e))?;
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        // macOS/Linux: Use nvm to install Node.js
-        let home = std::env::var("HOME").unwrap_or_default();
-        let nvm_dir = format!("{}/.nvm", home);
-        
-        // Check if nvm is already installed
-        let nvm_exists = std::path::Path::new(&nvm_dir).exists();
-        
-        if !nvm_exists {
-            let _ = window.emit(
-                "install-progress",
-                InstallProgress {
-                    stage: "Installing".to_string(),
-                    message: "Downloading nvm (Node Version Manager)...".to_string(),
-                    progress: 20,
-                    complete: false,
-                    error: None,
-                },
-            );
+        // Copy node binary (macOS)
+        let source_node = extracted_root.join("bin").join("node");
+        let target_node = node_dir.join("node");
+        fs::copy(&source_node, &target_node)
+            .map_err(|e| format!("Failed to copy node binary: {}", e))?;
 
-            // Download and install nvm
-            let nvm_install = Command::new("sh")
-                .args(["-c", "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash"])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn();
+        // Copy npm (macOS layout under lib/node_modules)
+        let source_npm = extracted_root
+            .join("lib")
+            .join("node_modules")
+            .join("npm");
+        let target_npm = node_dir
+            .join("lib")
+            .join("node_modules")
+            .join("npm");
+        copy_dir_all(&source_npm, &target_npm)
+            .map_err(|e| format!("Failed to copy npm: {}", e))?;
+    }
 
-            match nvm_install {
-                Ok(mut child) => {
-                    let status = child.wait().await.map_err(|e| format!("Failed to install nvm: {}", e))?;
-                    if !status.success() {
-                        return Err("nvm installation failed. Please check your internet connection.".to_string());
-                    }
-                }
-                Err(e) => return Err(format!("Failed to start nvm installer: {}", e)),
-            }
-        }
+    // Create npm/npx wrappers
+    create_npm_wrappers(&node_dir)?;
 
-        let _ = window.emit(
-            "install-progress",
-            InstallProgress {
-                stage: "Installing".to_string(),
-                message: "Installing Node.js v24 via nvm...".to_string(),
-                progress: 50,
-                complete: false,
-                error: None,
-            },
-        );
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Installing".to_string(),
+            message: "Verifying Node.js...".to_string(),
+            progress: 80,
+            complete: false,
+            error: None,
+        },
+    );
 
-        // Source nvm and install Node.js 24
-        let nvm_script = format!(
-            r#"
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            nvm install 24
-            nvm use 24
-            nvm alias default 24
-            "#
-        );
+    // Verify
+    let node_bin_str = target_node.to_string_lossy().to_string();
+    let npm_bin = if cfg!(target_os = "windows") {
+        node_dir.join("npm.cmd")
+    } else {
+        node_dir.join("npm")
+    };
 
-        let mut node_install = Command::new("bash")
-            .args(["-c", &nvm_script])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start Node.js installation: {}", e))?;
+    let node_version = Command::new(&node_bin_str)
+        .arg("--version")
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run node --version: {}", e))?;
+    if !node_version.status.success() {
+        return Err("Node.js verification failed".to_string());
+    }
 
-        let stdout = node_install.stdout.take().ok_or("Failed to capture stdout")?;
-        let mut stdout_reader = BufReader::new(stdout).lines();
-
-        while let Ok(Some(line)) = stdout_reader.next_line().await {
-            if !line.trim().is_empty() {
-                let _ = window.emit(
-                    "install-progress",
-                    InstallProgress {
-                        stage: "Installing".to_string(),
-                        message: line,
-                        progress: 70,
-                        complete: false,
-                        error: None,
-                    },
-                );
-            }
-        }
-
-        let status = node_install.wait().await.map_err(|e| format!("Node.js installation failed: {}", e))?;
-        
-        if !status.success() {
-            return Err("Node.js installation via nvm failed.".to_string());
-        }
+    let npm_version = Command::new(&npm_bin)
+        .arg("--version")
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run npm --version: {}", e))?;
+    if !npm_version.status.success() {
+        return Err("npm verification failed".to_string());
     }
 
     let _ = window.emit(
         "install-progress",
         InstallProgress {
             stage: "Complete".to_string(),
-            message: "Node.js installed successfully!".to_string(),
+            message: "Node.js installed to Application Support.".to_string(),
             progress: 100,
             complete: true,
             error: None,
@@ -1551,48 +1443,20 @@ async fn install_node(
     Ok(true)
 }
 
-/// Find npm executable path
-fn find_npm_path() -> Result<String, String> {
-    let home = std::env::var("HOME").unwrap_or_default();
-
-    let npm_paths: Vec<String> = if cfg!(target_os = "windows") {
-        vec![
-            "npm.cmd".to_string(),
-            "C:\\Program Files\\nodejs\\npm.cmd".to_string(),
-        ]
+/// Find npm executable path (prefers app-specific install)
+fn find_npm_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    let node_dir = get_node_install_dir(app_handle)?;
+    let npm_path = if cfg!(target_os = "windows") {
+        node_dir.join("npm.cmd")
     } else {
-        vec![
-            "/usr/local/bin/npm".to_string(),
-            "/opt/homebrew/bin/npm".to_string(),
-            "/usr/bin/npm".to_string(),
-            format!("{}/.nvm/current/bin/npm", home),
-            format!("{}/.volta/bin/npm", home),
-        ]
+        node_dir.join("npm")
     };
 
-    for path in &npm_paths {
-        if std::path::Path::new(path).exists() {
-            return Ok(path.clone());
-        }
+    if npm_path.exists() {
+        Ok(npm_path.to_string_lossy().to_string())
+    } else {
+        Err("npm not found in Application Support. Please install Node.js.".to_string())
     }
-
-    // Try using which command
-    #[cfg(not(target_os = "windows"))]
-    {
-        if let Ok(output) = std::process::Command::new("sh")
-            .args(["-c", "which npm 2>/dev/null || command -v npm 2>/dev/null"])
-            .output()
-        {
-            if output.status.success() {
-                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !path.is_empty() && std::path::Path::new(&path).exists() {
-                    return Ok(path);
-                }
-            }
-        }
-    }
-
-    Err("npm not found. Please install Node.js (which includes npm) from https://nodejs.org".to_string())
 }
 
 /// Get the path where dependencies will be installed (for UI display)

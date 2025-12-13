@@ -1744,6 +1744,12 @@ body {
 
 .setup-actions {
     margin-top: var(--spacing-md);
+    display: flex;
+    justify-content: center;
+}
+
+.setup-actions.single .btn {
+    min-width: 220px;
 }
 
 .setup-actions .btn {
@@ -1851,6 +1857,25 @@ body {
 
 .setup-actions .btn-large {
     min-width: 160px;
+}
+
+/* Summary alignment */
+.setup-summary .requirement-item,
+#completeSummary .requirement-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs) 0;
+}
+.setup-summary .requirement-text,
+#completeSummary .requirement-text {
+    text-align: left;
+}
+.setup-summary .requirement-status,
+#completeSummary .requirement-status {
+    margin-left: auto;
+    text-align: right;
+    color: var(--text-secondary);
 }
 
 /* Input validation error state */
