@@ -1,5 +1,7 @@
 {
   "layout": {
+    "cardScale": 1.0,
+    "cardCornerRadius": 0,
     "cardShadow": null
   }
 }

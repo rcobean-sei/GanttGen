@@ -56,13 +56,25 @@
             flex-direction: column;
         }
         
-        h1 {
-            font-size: 44px;
-            font-weight: bold;
-            color: var(--black);
+        .chart-title-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             margin: 0 0 15px 0;
-            letter-spacing: -1px;
-            display: none; /* Hidden for PNG export */
+        }
+        
+        .chart-title-logo {
+            height: 28px;
+            width: auto;
+            flex-shrink: 0;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--black);
+            margin: 0;
+            letter-spacing: -0.5px;
         }
         
         .gantt-wrapper {
@@ -525,7 +537,12 @@
 </head>
 <body>
     <div class="gantt-container">
-        <h1 id="chart-title">PROJECT TIMELINE</h1>
+        <div class="chart-title-container">
+            <svg class="chart-title-logo" viewBox="0 0 1200 1200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill="#f01840" fill-rule="evenodd" d="M543.11,302.12c-174.64,0-344.13,141.38-344.13,370.01,0,284,214.56,412.46,242.76,427.87h0c-196-68.74-341.74-258.57-341.74-460.28,0-267.44,212.84-464.16,443.11-464.16s378.06,170.55,378.06,349.48c0,155.75-120.97,289.75-221.76,297.9,0,0,145.16-65.97,145.16-243.7,0-148.44-134.78-277.11-301.46-277.11ZM355.43,620.76c0-177.73,145.16-243.7,145.16-243.7-100.79,8.15-221.76,142.14-221.76,297.9,0,178.93,146.52,349.48,378.06,349.48s443.11-196.72,443.11-464.16c0-201.71-145.74-391.54-341.74-460.28h0c28.19,15.41,242.76,143.87,242.76,427.87,0,228.63-169.5,370.01-344.13,370.01s-301.46-128.67-301.46-277.11Z"/>
+            </svg>
+            <h1 id="chart-title">PROJECT TIMELINE</h1>
+        </div>
         <div class="gantt-wrapper">
             <div id="gantt-chart" class="gantt-chart"></div>
             <div id="milestone-section"></div>

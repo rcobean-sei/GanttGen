@@ -55,6 +55,7 @@ let state = {
 const elements = {
     // File import
     importFileBtn: document.getElementById('importFileBtn'),
+    resetFieldsBtn: document.getElementById('resetFieldsBtn'),
     fileImportArea: document.getElementById('fileImportArea'),
     dropZone: document.getElementById('dropZone'),
     browseBtn: document.getElementById('browseBtn'),
@@ -628,6 +629,11 @@ function setupEventListeners() {
         });
     }
 
+    // Reset fields button
+    if (elements.resetFieldsBtn) {
+        elements.resetFieldsBtn.addEventListener('click', resetFields);
+    }
+
     // Browse button
     if (elements.browseBtn) {
         elements.browseBtn.addEventListener('click', openFileDialog);
@@ -853,11 +859,11 @@ function renderTasks() {
                     </button>
                 </div>
             </div>
-            <div class="form-grid">
-                <div class="form-group" style="grid-column: span 2;">
-                    <label>Task Name</label>
-                    <input type="text" class="task-name-input" data-index="${index}" value="${escapeHtml(task.name)}" placeholder="Enter task name">
-                </div>
+            <div class="form-group task-name-row">
+                <label>Task Name</label>
+                <input type="text" class="task-name-input" data-index="${index}" value="${escapeHtml(task.name)}" placeholder="Enter task name">
+            </div>
+            <div class="form-grid task-dates-row">
                 <div class="form-group">
                     <label>Start Date</label>
                     <input type="date" class="task-start-input" data-index="${index}" value="${task.start}">
@@ -1742,6 +1748,39 @@ function clearFile() {
     updateGenerateButton();
 }
 
+function resetFields() {
+    // Reset input file
+    state.inputFile = null;
+    elements.selectedFile.style.display = 'none';
+    elements.dropZone.style.display = 'block';
+    elements.fileImportArea.style.display = 'none';
+
+    // Reset manual data to initial state
+    state.manualData = {
+        title: 'PROJECT TIMELINE',
+        timelineStart: '',
+        timelineEnd: '',
+        tasks: [],
+        milestones: [],
+        pausePeriods: []
+    };
+
+    // Re-initialize default dates
+    initializeDefaultDates();
+
+    // Update UI fields
+    if (elements.projectTitle) {
+        elements.projectTitle.value = state.manualData.title;
+    }
+
+    // Re-render all lists
+    renderTasks();
+    renderMilestones();
+    renderPausePeriods();
+    updateJsonPreview();
+    updateGenerateButton();
+}
+
 async function selectOutputDirectory() {
     try {
         const selected = await open({
@@ -1957,7 +1996,7 @@ const debugElements = {
     log: document.getElementById('debugLog'),
     count: document.getElementById('debugCount'),
     toggleBtn: document.getElementById('toggleDebugBtn'),
-    clearBtn: document.getElementById('clearLogsBtn'),
+    copyBtn: document.getElementById('copyLogsBtn'),
     exportBtn: document.getElementById('exportLogsBtn'),
     filterInfo: document.getElementById('filterInfo'),
     filterDebug: document.getElementById('filterDebug'),
@@ -2045,16 +2084,39 @@ function setupGlobalErrorHandlers() {
     };
 }
 
+// Copy logs to clipboard
+async function copyLogs() {
+    try {
+        const logContent = debugState.logs.map(log => {
+            const stackTrace = log.stack ? `\nStack: ${log.stack}` : '';
+            return `[${log.timestamp}] [${log.source}] [${log.level.toUpperCase()}] ${log.message}${stackTrace}`;
+        }).join('\n');
+        
+        await navigator.clipboard.writeText(logContent);
+        
+        // Brief visual feedback
+        const originalTitle = debugElements.copyBtn.title;
+        debugElements.copyBtn.title = 'Copied!';
+        setTimeout(() => {
+            debugElements.copyBtn.title = originalTitle;
+        }, 1500);
+    } catch (error) {
+        console.error('Failed to copy logs:', error);
+    }
+}
+
 // Initialize debug console
 function initDebugConsole() {
     // Toggle console
     debugElements.header.addEventListener('click', toggleDebugConsole);
 
-    // Clear logs
-    debugElements.clearBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        clearLogs();
-    });
+    // Copy logs
+    if (debugElements.copyBtn) {
+        debugElements.copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            copyLogs();
+        });
+    }
     
     // Export logs button
     if (debugElements.exportBtn) {

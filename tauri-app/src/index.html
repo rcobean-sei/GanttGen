@@ -142,14 +142,23 @@
                     <span class="step-number">1</span>
                     Project Data
                 </h2>
-                <button class="btn btn-secondary btn-sm" id="importFileBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    Import File
-                </button>
+                <div class="section-header-buttons">
+                    <button class="btn btn-secondary btn-sm" id="importFileBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Import File
+                    </button>
+                    <button class="btn btn-secondary btn-sm" id="resetFieldsBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                        </svg>
+                        Reset Fields
+                    </button>
+                </div>
             </div>
             
             <!-- Collapsible File Import Area -->
@@ -455,10 +464,10 @@
             </span>
             <div class="debug-controls">
                 <span class="debug-count" id="debugCount">0 entries</span>
-                <button class="btn-icon" id="clearLogsBtn" title="Clear logs">
+                <button class="btn-icon" id="copyLogsBtn" title="Copy logs to clipboard">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                     </svg>
                 </button>
                 <button class="btn-icon" id="toggleDebugBtn" title="Toggle console">

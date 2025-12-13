@@ -167,6 +167,11 @@ body {
     margin-bottom: 0;
 }
 
+.section-header-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
 .section-title {
     font-size: 1.25rem;
     font-weight: 600;
@@ -1010,7 +1015,6 @@ body {
     padding: var(--spacing-md) var(--spacing-xl);
     color: var(--text-muted);
     font-size: 0.75rem;
-    border-top: 1px solid var(--border-color);
 }
 
 /* Animations */
@@ -1224,6 +1228,20 @@ body {
     box-shadow: 0 0 0 2px rgba(240, 24, 64, 0.2);
 }
 
+/* Number input - larger spinner controls */
+.form-group input[type="number"] {
+    min-width: 100px;
+}
+
+.form-group input[type="number"]::-webkit-inner-spin-button,
+.form-group input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: inner-spin-button;
+    opacity: 1;
+    height: 36px;
+    width: 20px;
+    cursor: pointer;
+}
+
 /* Task and Milestone Cards */
 .tasks-list,
 .milestones-list,
@@ -1297,6 +1315,19 @@ body {
 .milestone-card .form-grid,
 .pause-card .form-grid {
     margin-top: var(--spacing-sm);
+}
+
+/* Task card layout - name on row 1, dates/hours on row 2 */
+.task-name-row {
+    margin-bottom: var(--spacing-sm);
+}
+
+.task-dates-row {
+    grid-template-columns: 1fr 1fr auto;
+}
+
+.task-dates-row .form-group:last-child {
+    min-width: 120px;
 }
 
 .pause-card {
