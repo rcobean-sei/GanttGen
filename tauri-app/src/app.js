@@ -23,13 +23,14 @@ const setupElements = {
     reqBrowser: document.getElementById('reqBrowser'),
     reqBrowserStatus: document.getElementById('reqBrowserStatus'),
     recheckBtn: document.getElementById('recheckDepsBtn'),
-    installBtn: document.getElementById('installDepsBtn'),
-    installBrowserBtn: document.getElementById('installBrowserBtn'),
+    // Inline install buttons
+    installNodeBtn: document.getElementById('installNodeBtn'),
+    installDepsInlineBtn: document.getElementById('installDepsInlineBtn'),
+    installBrowserInlineBtn: document.getElementById('installBrowserInlineBtn'),
     setupError: document.getElementById('setupError'),
     setupErrorText: document.getElementById('setupErrorText'),
     installStage: document.getElementById('installStage'),
     setupProgressBar: document.getElementById('setupProgressBar'),
-    installLog: document.getElementById('installLog'),
     startAppBtn: document.getElementById('startAppBtn')
 };
 
@@ -162,31 +163,44 @@ function showSetupScreen(status) {
     setupElements.installingView.style.display = 'none';
     setupElements.completeView.style.display = 'none';
 
-    // Update Node.js status
+    // Update Node.js status and show/hide install button
     updateRequirementStatus(
         setupElements.reqNode,
         setupElements.reqNodeStatus,
         status.node_available,
-        status.node_version || 'Not found'
+        status.node_available ? (status.node_version || 'Installed') : ''
     );
+    
+    // Show Node.js install button if not available
+    if (setupElements.installNodeBtn) {
+        setupElements.installNodeBtn.style.display = status.node_available ? 'none' : 'inline-flex';
+        setupElements.installNodeBtn.disabled = false;
+    }
 
-    // Update npm status
+    // Update npm status (npm comes with Node.js, so no separate install button)
     updateRequirementStatus(
         setupElements.reqNpm,
         setupElements.reqNpmStatus,
         status.npm_available,
-        status.npm_version || 'Not found'
+        status.npm_available ? (status.npm_version || 'Installed') : (status.node_available ? 'Checking...' : '')
     );
 
-    // Update dependencies status
+    // Update dependencies status and show/hide install button
     updateRequirementStatus(
         setupElements.reqDeps,
         setupElements.reqDepsStatus,
         status.dependencies_installed,
-        status.dependencies_installed ? 'Installed' : 'Not installed'
+        status.dependencies_installed ? 'Installed' : ''
     );
+    
+    // Show deps install button when Node/npm available but deps not installed
+    if (setupElements.installDepsInlineBtn) {
+        const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
+        setupElements.installDepsInlineBtn.style.display = canInstallDeps ? 'inline-flex' : 'none';
+        setupElements.installDepsInlineBtn.disabled = false;
+    }
 
-    // Update browser runtime status
+    // Update browser runtime status and show/hide install button
     const browserInstalled = Boolean(status.browser_installed);
 
     if (setupElements.reqBrowser) {
@@ -194,29 +208,20 @@ function showSetupScreen(status) {
             setupElements.reqBrowser,
             setupElements.reqBrowserStatus,
             browserInstalled,
-            browserInstalled ? 'Installed' : 'Not installed'
+            browserInstalled ? 'Installed' : ''
         );
     }
-
-    // Enable/disable install button based on whether Node.js and npm are available
-    const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
-    setupElements.installBtn.disabled = !canInstallDeps;
-    // Hide install deps button if dependencies are already installed
-    setupElements.installBtn.style.display = status.dependencies_installed ? 'none' : 'inline-flex';
-
-    if (setupElements.installBrowserBtn) {
-        // Show browser install button when:
-        // - Node/npm are available
-        // - Dependencies are installed (or being installed)
-        // - Browser is NOT installed
+    
+    // Show browser install button when deps installed but browser not
+    if (setupElements.installBrowserInlineBtn) {
         const canInstallBrowser = status.node_available && status.npm_available && status.dependencies_installed && !browserInstalled;
-        setupElements.installBrowserBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
-        setupElements.installBrowserBtn.disabled = !canInstallBrowser;
+        setupElements.installBrowserInlineBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
+        setupElements.installBrowserInlineBtn.disabled = false;
     }
 
-    // Show error if Node.js or npm is not available
-    if (!status.node_available || !status.npm_available) {
-        showSetupError('Node.js and npm are required. Please install Node.js from https://nodejs.org');
+    // Show error if Node.js or npm is not available (but hide if install button is shown)
+    if (!status.node_available) {
+        hideSetupError(); // Hide error since we have an install button
     } else if (status.dependencies_installed && browserInstalled) {
         // All dependencies AND browser are installed, close setup and initialize
         hideSetupScreen();
@@ -227,10 +232,18 @@ function showSetupScreen(status) {
 
     // Set up button handlers
     setupElements.recheckBtn.onclick = recheckDependencies;
-    setupElements.installBtn.onclick = installDependencies;
-    if (setupElements.installBrowserBtn) {
-        setupElements.installBrowserBtn.onclick = installBrowserRuntime;
+    
+    // Inline install button handlers
+    if (setupElements.installNodeBtn) {
+        setupElements.installNodeBtn.onclick = installNodeJS;
     }
+    if (setupElements.installDepsInlineBtn) {
+        setupElements.installDepsInlineBtn.onclick = installDependencies;
+    }
+    if (setupElements.installBrowserInlineBtn) {
+        setupElements.installBrowserInlineBtn.onclick = installBrowserRuntime;
+    }
+    
     setupElements.startAppBtn.onclick = () => {
         hideSetupScreen();
         initializeMainApp();
@@ -340,8 +353,48 @@ function beginInstallView(message) {
     setupElements.completeView.style.display = 'none';
     setupElements.installStage.textContent = message;
     setupElements.setupProgressBar.style.width = '5%';
-    setupElements.installLog.innerHTML = '';
     hideSetupError();
+}
+
+// Install Node.js via nvm (Mac) or Chocolatey (Windows)
+async function installNodeJS() {
+    if (!setupElements.installNodeBtn) return;
+    
+    setupElements.installNodeBtn.disabled = true;
+    setupElements.installNodeBtn.classList.add('installing');
+    setupElements.installNodeBtn.innerHTML = `
+        <svg class="spinner" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+        </svg>
+        Installing...
+    `;
+    
+    beginInstallView('Installing Node.js...');
+
+    try {
+        await invoke('install_node');
+        // Success - re-check status
+        const status = await invoke('check_dependencies');
+        showSetupScreen(status);
+    } catch (error) {
+        // Error - go back to status view with error
+        setupElements.installingView.style.display = 'none';
+        setupElements.statusView.style.display = 'block';
+        showSetupError(`Node.js installation failed: ${error}`);
+        
+        // Reset button
+        setupElements.installNodeBtn.disabled = false;
+        setupElements.installNodeBtn.classList.remove('installing');
+        setupElements.installNodeBtn.innerHTML = `
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Retry
+        `;
+    }
 }
 
 async function installDependencies() {
@@ -412,18 +465,10 @@ async function setupInstallProgressListener() {
         // Update progress bar
         setupElements.setupProgressBar.style.width = `${progress}%`;
 
-        // Update stage text
+        // Update stage text (single line status)
         setupElements.installStage.textContent = message;
 
-        // Add to install log panel
-        if (message && message.trim()) {
-            const logLine = document.createElement('div');
-            logLine.textContent = message;
-            setupElements.installLog.appendChild(logLine);
-            setupElements.installLog.scrollTop = setupElements.installLog.scrollHeight;
-        }
-
-        // Also log to debug console
+        // Log to debug console (stdout goes there instead of install-log panel)
         if (message && message.trim()) {
             const level = error ? 'error' : (stage === 'Error' ? 'error' : 'info');
             addLogEntry({
@@ -884,15 +929,22 @@ function renderTasks() {
                         ${task.subtasks.length === 0 
                             ? '<span class="subtasks-empty">Subtasks will appear as bullets (in order of entry) under a task.</span>'
                             : task.subtasks.map((subtask, subIndex) => `
-                                <span class="subtask-chip" data-task-index="${index}" data-subtask-index="${subIndex}">
-                                    ${escapeHtml(subtask)}
+                                <div class="subtask-chip" data-task-index="${index}" data-subtask-index="${subIndex}">
+                                    <span class="drag-handle" title="Drag to reorder">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                                        </svg>
+                                    </span>
+                                    <span class="subtask-text">${escapeHtml(subtask)}</span>
                                     <button class="remove-subtask" data-task-index="${index}" data-subtask-index="${subIndex}" title="Remove subtask">
                                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                             <line x1="18" y1="6" x2="6" y2="18"></line>
                                             <line x1="6" y1="6" x2="18" y2="18"></line>
                                         </svg>
                                     </button>
-                                </span>
+                                </div>
                             `).join('')
                         }
                     </div>
@@ -961,6 +1013,17 @@ function renderTasks() {
             removeSubtask(taskIndex, subtaskIndex);
         });
     });
+    
+    // Subtask drag-and-drop listeners
+    const subtaskChips = elements.tasksList.querySelectorAll('.subtask-chip');
+    
+    subtaskChips.forEach(chip => {
+        chip.addEventListener('mousedown', handleSubtaskMouseDown);
+    });
+    
+    // Global listeners for mouse-based drag
+    document.addEventListener('mousemove', handleSubtaskMouseMove);
+    document.addEventListener('mouseup', handleSubtaskMouseUp);
 }
 
 function addSubtask(taskIndex, subtaskText) {
@@ -979,6 +1042,119 @@ function removeSubtask(taskIndex, subtaskIndex) {
     state.manualData.tasks[taskIndex].subtasks.splice(subtaskIndex, 1);
     renderTasks();
     updateJsonPreview();
+}
+
+// Mouse-based drag-and-drop for subtask reordering (HTML5 drag not working in Tauri)
+let dragState = {
+    isDragging: false,
+    draggedElement: null,
+    taskIndex: null,
+    subtaskIndex: null,
+    ghostElement: null
+};
+
+// Mouse-based drag handlers (HTML5 drag-and-drop doesn't work in Tauri)
+function handleSubtaskMouseDown(e) {
+    // Don't start drag if clicking the remove button
+    if (e.target.closest('.remove-subtask')) {
+        return;
+    }
+    
+    dragState.isDragging = true;
+    dragState.draggedElement = e.currentTarget;
+    dragState.taskIndex = parseInt(e.currentTarget.dataset.taskIndex);
+    dragState.subtaskIndex = parseInt(e.currentTarget.dataset.subtaskIndex);
+    
+    // Make original element semi-transparent
+    e.currentTarget.classList.add('dragging');
+    
+    // Create ghost element
+    const ghost = e.currentTarget.cloneNode(true);
+    ghost.classList.remove('dragging');
+    ghost.classList.add('subtask-ghost');
+    ghost.style.position = 'fixed';
+    ghost.style.pointerEvents = 'none';
+    ghost.style.zIndex = '10000';
+    ghost.style.opacity = '1';
+    ghost.style.width = e.currentTarget.offsetWidth + 'px';
+    ghost.style.left = e.clientX + 'px';
+    ghost.style.top = e.clientY + 'px';
+    ghost.style.transform = 'translate(-50%, -50%)';
+    
+    document.body.appendChild(ghost);
+    dragState.ghostElement = ghost;
+    
+    document.body.style.cursor = 'grabbing';
+}
+
+function handleSubtaskMouseMove(e) {
+    if (!dragState.isDragging) return;
+    
+    // Update ghost position
+    if (dragState.ghostElement) {
+        dragState.ghostElement.style.left = e.clientX + 'px';
+        dragState.ghostElement.style.top = e.clientY + 'px';
+    }
+    
+    // Find the subtask chip under the mouse
+    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+    const targetChip = elementUnderMouse?.closest('.subtask-chip');
+    
+    // Remove all drag-over indicators
+    document.querySelectorAll('.subtask-chip.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+    });
+    
+    if (targetChip && targetChip !== dragState.draggedElement) {
+        const targetTaskIndex = parseInt(targetChip.dataset.taskIndex);
+        
+        // Only allow reordering within the same task
+        if (targetTaskIndex === dragState.taskIndex) {
+            targetChip.classList.add('drag-over');
+        }
+    }
+}
+
+function handleSubtaskMouseUp(e) {
+    if (!dragState.isDragging) return;
+    
+    // Find the subtask chip under the mouse
+    const elementUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+    const targetChip = elementUnderMouse?.closest('.subtask-chip');
+    
+    if (targetChip && targetChip !== dragState.draggedElement) {
+        const targetTaskIndex = parseInt(targetChip.dataset.taskIndex);
+        const targetSubtaskIndex = parseInt(targetChip.dataset.subtaskIndex);
+        
+        // Only allow reordering within the same task
+        if (targetTaskIndex === dragState.taskIndex) {
+            // Reorder the subtasks array
+            const task = state.manualData.tasks[targetTaskIndex];
+            const [removed] = task.subtasks.splice(dragState.subtaskIndex, 1);
+            task.subtasks.splice(targetSubtaskIndex, 0, removed);
+            
+            renderTasks();
+            updateJsonPreview();
+        }
+    }
+    
+    // Clean up
+    if (dragState.draggedElement) {
+        dragState.draggedElement.classList.remove('dragging');
+    }
+    if (dragState.ghostElement) {
+        dragState.ghostElement.remove();
+    }
+    document.querySelectorAll('.subtask-chip.drag-over').forEach(el => {
+        el.classList.remove('drag-over');
+    });
+    document.body.style.cursor = '';
+    
+    dragState.isDragging = false;
+    dragState.draggedElement = null;
+    dragState.ghostElement = null;
+    dragState.taskIndex = null;
+    dragState.subtaskIndex = null;
 }
 
 function addPausePeriod() {

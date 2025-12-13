@@ -284,6 +284,28 @@ fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
     // Build list of common node locations
     let home = std::env::var("HOME").unwrap_or_default();
 
+    // For nvm, we need to find the actual version directory
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Check nvm versions directory for installed node versions
+        let nvm_versions_dir = format!("{}/.nvm/versions/node", home);
+        if let Ok(entries) = std::fs::read_dir(&nvm_versions_dir) {
+            // Get the latest version (sort by name descending)
+            let mut versions: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .filter(|e| e.path().is_dir())
+                .collect();
+            versions.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+            
+            if let Some(latest) = versions.first() {
+                let node_path = latest.path().join("bin").join("node");
+                if node_path.exists() {
+                    return Ok(node_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
     let common_paths: Vec<String> = if cfg!(target_os = "windows") {
         vec![
             "node.exe".to_string(),
@@ -296,9 +318,8 @@ fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
             "/opt/homebrew/bin/node".to_string(),
             "/usr/bin/node".to_string(),
             "/opt/local/bin/node".to_string(),
-            // NVM paths
+            // NVM default/current symlink
             format!("{}/.nvm/current/bin/node", home),
-            format!("{}/.nvm/versions/node/*/bin/node", home), // Common NVM structure
             // Volta paths
             format!("{}/.volta/bin/node", home),
         ]
@@ -314,6 +335,28 @@ fn get_node_path(app_handle: &tauri::AppHandle) -> Result<String, String> {
     // Try using 'which' command on Unix systems to find node
     #[cfg(not(target_os = "windows"))]
     {
+        // First try sourcing nvm and then finding node
+        let nvm_find = format!(
+            r#"
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 2>/dev/null
+            which node 2>/dev/null || command -v node 2>/dev/null
+            "#
+        );
+        
+        if let Ok(output) = std::process::Command::new("bash")
+            .args(["-c", &nvm_find])
+            .output()
+        {
+            if output.status.success() {
+                let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !path.is_empty() && std::path::Path::new(&path).exists() {
+                    return Ok(path);
+                }
+            }
+        }
+        
+        // Fallback to simple which
         if let Ok(output) = std::process::Command::new("sh")
             .args(["-c", "which node 2>/dev/null || command -v node 2>/dev/null"])
             .output()
@@ -1260,6 +1303,196 @@ async fn install_browser_runtime(
 
     Ok(true)
 }
+
+/// Install Node.js via nvm (macOS/Linux) or Chocolatey (Windows)
+#[tauri::command]
+async fn install_node(
+    window: tauri::Window,
+) -> Result<bool, String> {
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Installing".to_string(),
+            message: "Installing Node.js...".to_string(),
+            progress: 10,
+            complete: false,
+            error: None,
+        },
+    );
+
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: Use Chocolatey to install Node.js
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Installing".to_string(),
+                message: "Installing Chocolatey package manager...".to_string(),
+                progress: 20,
+                complete: false,
+                error: None,
+            },
+        );
+
+        // First, install Chocolatey if not present
+        let choco_check = std::process::Command::new("powershell")
+            .args(["-Command", "Get-Command choco -ErrorAction SilentlyContinue"])
+            .output();
+
+        let choco_installed = choco_check.map(|o| o.status.success()).unwrap_or(false);
+
+        if !choco_installed {
+            let choco_install = Command::new("powershell")
+                .args(["-ExecutionPolicy", "Bypass", "-Command", 
+                    "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))"])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn();
+
+            match choco_install {
+                Ok(mut child) => {
+                    let status = child.wait().await.map_err(|e| format!("Failed to install Chocolatey: {}", e))?;
+                    if !status.success() {
+                        return Err("Chocolatey installation failed. Please run as administrator.".to_string());
+                    }
+                }
+                Err(e) => return Err(format!("Failed to start Chocolatey installer: {}", e)),
+            }
+        }
+
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Installing".to_string(),
+                message: "Installing Node.js via Chocolatey...".to_string(),
+                progress: 50,
+                complete: false,
+                error: None,
+            },
+        );
+
+        // Install Node.js via Chocolatey
+        let mut node_install = Command::new("choco")
+            .args(["install", "nodejs", "--version=24.12.0", "-y"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start Node.js installation: {}", e))?;
+
+        let status = node_install.wait().await.map_err(|e| format!("Node.js installation failed: {}", e))?;
+        
+        if !status.success() {
+            return Err("Node.js installation via Chocolatey failed. Please run as administrator.".to_string());
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // macOS/Linux: Use nvm to install Node.js
+        let home = std::env::var("HOME").unwrap_or_default();
+        let nvm_dir = format!("{}/.nvm", home);
+        
+        // Check if nvm is already installed
+        let nvm_exists = std::path::Path::new(&nvm_dir).exists();
+        
+        if !nvm_exists {
+            let _ = window.emit(
+                "install-progress",
+                InstallProgress {
+                    stage: "Installing".to_string(),
+                    message: "Downloading nvm (Node Version Manager)...".to_string(),
+                    progress: 20,
+                    complete: false,
+                    error: None,
+                },
+            );
+
+            // Download and install nvm
+            let nvm_install = Command::new("sh")
+                .args(["-c", "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash"])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn();
+
+            match nvm_install {
+                Ok(mut child) => {
+                    let status = child.wait().await.map_err(|e| format!("Failed to install nvm: {}", e))?;
+                    if !status.success() {
+                        return Err("nvm installation failed. Please check your internet connection.".to_string());
+                    }
+                }
+                Err(e) => return Err(format!("Failed to start nvm installer: {}", e)),
+            }
+        }
+
+        let _ = window.emit(
+            "install-progress",
+            InstallProgress {
+                stage: "Installing".to_string(),
+                message: "Installing Node.js v24 via nvm...".to_string(),
+                progress: 50,
+                complete: false,
+                error: None,
+            },
+        );
+
+        // Source nvm and install Node.js 24
+        let nvm_script = format!(
+            r#"
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            nvm install 24
+            nvm use 24
+            nvm alias default 24
+            "#
+        );
+
+        let mut node_install = Command::new("bash")
+            .args(["-c", &nvm_script])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to start Node.js installation: {}", e))?;
+
+        let stdout = node_install.stdout.take().ok_or("Failed to capture stdout")?;
+        let mut stdout_reader = BufReader::new(stdout).lines();
+
+        while let Ok(Some(line)) = stdout_reader.next_line().await {
+            if !line.trim().is_empty() {
+                let _ = window.emit(
+                    "install-progress",
+                    InstallProgress {
+                        stage: "Installing".to_string(),
+                        message: line,
+                        progress: 70,
+                        complete: false,
+                        error: None,
+                    },
+                );
+            }
+        }
+
+        let status = node_install.wait().await.map_err(|e| format!("Node.js installation failed: {}", e))?;
+        
+        if !status.success() {
+            return Err("Node.js installation via nvm failed.".to_string());
+        }
+    }
+
+    let _ = window.emit(
+        "install-progress",
+        InstallProgress {
+            stage: "Complete".to_string(),
+            message: "Node.js installed successfully!".to_string(),
+            progress: 100,
+            complete: true,
+            error: None,
+        },
+    );
+
+    Ok(true)
+}
+
 /// Find npm executable path
 fn find_npm_path() -> Result<String, String> {
     let home = std::env::var("HOME").unwrap_or_default();
@@ -1455,6 +1688,7 @@ pub fn run() {
             check_dependencies,
             install_dependencies,
             install_browser_runtime,
+            install_node,
             get_dependencies_path,
             open_file,
             open_folder,

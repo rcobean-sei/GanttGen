@@ -1303,12 +1303,12 @@ body {
 
 .subtasks-list {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--spacing-xs);
 }
 
 .subtask-chip {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--spacing-xs);
     padding: var(--spacing-xs) var(--spacing-sm);
@@ -1318,6 +1318,59 @@ body {
     font-size: 0.8125rem;
     color: var(--text-primary);
     transition: all var(--transition-fast);
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.subtask-chip:active {
+    cursor: grabbing;
+}
+
+.subtask-chip.dragging {
+    opacity: 0.3;
+}
+
+.subtask-ghost {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    cursor: grabbing !important;
+}
+
+.subtask-chip.drag-over {
+    position: relative;
+}
+
+.subtask-chip.drag-over::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--red-1);
+    border-radius: 2px;
+    z-index: 10;
+}
+
+.subtask-chip .drag-handle {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    cursor: grab;
+    pointer-events: none;
+}
+
+.subtask-chip:active .drag-handle {
+    cursor: grabbing;
+}
+
+.subtask-chip .subtask-text {
+    flex: 1;
+    pointer-events: none;
+}
+
+.subtask-chip .remove-subtask {
+    pointer-events: auto;
 }
 
 .subtask-chip:hover {
@@ -1481,12 +1534,12 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: calc(var(--safe-area-top) + var(--spacing-xl)) var(--spacing-xl) var(--spacing-xl);
+    padding: calc(var(--safe-area-top) + var(--spacing-md)) var(--spacing-md) var(--spacing-md);
 }
 
 .setup-container {
     width: 100%;
-    max-width: 500px;
+    max-width: 420px;
     background: white;
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
@@ -1495,19 +1548,19 @@ body {
 
 .setup-header {
     background: var(--black);
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md);
     display: flex;
     align-items: center;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
 }
 
 .setup-logo {
-    height: 48px;
+    height: 36px;
     width: auto;
 }
 
 .setup-title {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 100%);
     -webkit-background-clip: text;
@@ -1516,7 +1569,7 @@ body {
 }
 
 .setup-content {
-    padding: var(--spacing-xl);
+    padding: var(--spacing-md);
 }
 
 .setup-view {
@@ -1524,8 +1577,13 @@ body {
 }
 
 .setup-icon {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
     color: var(--purple-4);
+}
+
+.setup-icon svg {
+    width: 48px;
+    height: 48px;
 }
 
 .setup-icon.success {
@@ -1537,30 +1595,30 @@ body {
 }
 
 .setup-view h2 {
-    font-size: 1.25rem;
-    margin-bottom: var(--spacing-sm);
+    font-size: 1.125rem;
+    margin-bottom: var(--spacing-xs);
     color: var(--text-primary);
 }
 
 .setup-description {
     color: var(--text-secondary);
-    font-size: 0.9375rem;
-    margin-bottom: var(--spacing-lg);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-md);
 }
 
 .setup-requirements {
     background: var(--bg-secondary);
     border-radius: var(--radius-md);
-    padding: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
     text-align: left;
 }
 
 .requirement-item {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) 0;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) 0;
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1569,12 +1627,17 @@ body {
 }
 
 .requirement-icon {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+}
+
+.requirement-icon svg {
+    width: 16px;
+    height: 16px;
 }
 
 .requirement-icon.success {
@@ -1588,16 +1651,52 @@ body {
 .requirement-text {
     flex: 1;
     font-weight: 500;
+    font-size: 0.875rem;
     color: var(--text-primary);
 }
 
 .requirement-status {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     color: var(--text-secondary);
 }
 
+/* Inline install button for requirement items */
+.requirement-install-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.requirement-install-btn:hover:not(:disabled) {
+    box-shadow: var(--shadow-sm), 0 0 0 2px rgba(240, 24, 64, 0.2);
+}
+
+.requirement-install-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.requirement-install-btn svg {
+    width: 10px;
+    height: 10px;
+}
+
+.requirement-install-btn.installing {
+    background: var(--purple-3);
+}
+
 .setup-actions {
-    margin-top: var(--spacing-lg);
+    margin-top: var(--spacing-md);
 }
 
 .setup-actions .btn {
@@ -1605,59 +1704,49 @@ body {
 }
 
 .setup-error {
-    margin-top: var(--spacing-lg);
-    padding: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+    padding: var(--spacing-sm);
     background: rgba(240, 24, 64, 0.08);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     border: 1px solid rgba(240, 24, 64, 0.2);
     display: flex;
     align-items: flex-start;
-    gap: var(--spacing-sm);
+    gap: var(--spacing-xs);
     text-align: left;
 }
 
 .setup-error svg {
     color: var(--red-1);
     flex-shrink: 0;
-    margin-top: 2px;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
 }
 
 .setup-error p {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     color: var(--red-2);
     margin: 0;
 }
 
 .setup-progress {
-    height: 8px;
+    height: 6px;
     background: var(--bg-secondary);
-    border-radius: 4px;
+    border-radius: 3px;
     overflow: hidden;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
 }
 
 .setup-progress-bar {
     height: 100%;
     background: linear-gradient(90deg, var(--red-1) 0%, var(--red-2) 100%);
-    border-radius: 4px;
+    border-radius: 3px;
     width: 0%;
     transition: width var(--transition-normal);
 }
 
+/* Hide the install-log terminal output */
 .install-log {
-    max-height: 120px;
-    overflow-y: auto;
-    background: var(--black);
-    border-radius: var(--radius-sm);
-    padding: var(--spacing-sm);
-    font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
-    font-size: 0.75rem;
-    color: var(--purple-2);
-    text-align: left;
-    margin-top: var(--spacing-md);
-}
-
-.install-log:empty {
     display: none;
 }
 
@@ -1701,7 +1790,7 @@ body {
 /* Setup actions button layout */
 .setup-actions {
     display: flex;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
@@ -1709,10 +1798,12 @@ body {
 
 .setup-actions .btn {
     min-width: auto;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.875rem;
 }
 
 .setup-actions .btn-large {
-    min-width: 200px;
+    min-width: 160px;
 }
 
 /* Input validation error state */
