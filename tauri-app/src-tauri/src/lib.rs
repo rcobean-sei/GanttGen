@@ -514,8 +514,9 @@ async fn generate_gantt(
         .stderr(Stdio::piped());
 
     // Set NODE_PATH to include user-installed dependencies if available
+    // NODE_PATH should point directly to the node_modules directory for require() to work
     if let Ok(node_modules) = get_node_modules_dir(&app_handle) {
-        cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
+        cmd.env("NODE_PATH", &node_modules);
     }
 
     if let Some(browser_dir) = get_browser_install_dir(&app_handle) {
@@ -753,8 +754,9 @@ async fn parse_file(path: String, app_handle: tauri::AppHandle, window: tauri::W
                 .stderr(Stdio::piped());
 
             // Set NODE_PATH to include user-installed dependencies if available
+            // NODE_PATH should point directly to the node_modules directory for require() to work
             if let Ok(node_modules) = get_node_modules_dir(&app_handle) {
-                cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
+                cmd.env("NODE_PATH", &node_modules);
             }
 
             emit_log(&window, "debug", "rust", &format!("Parsing Excel file: {}", path));
@@ -817,8 +819,9 @@ async fn export_to_excel(
         .stderr(Stdio::piped());
 
     // Set NODE_PATH to include user-installed dependencies if available
+    // NODE_PATH should point directly to the node_modules directory for require() to work
     if let Ok(node_modules) = get_node_modules_dir(&app_handle) {
-        cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
+        cmd.env("NODE_PATH", &node_modules);
     }
 
     emit_log(&window, "debug", "rust", &format!("Running: {} {} --input {} --output {}",
