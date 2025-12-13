@@ -43,19 +43,41 @@ function drawRoundedRect(ctx, x, y, width, height, radius) {
 }
 
 function drawCard(ctx, config) {
-  const { canvasSize, cardScale, cardCornerRadius, cardGradient, cardShadow } = config;
-  const size = canvasSize * cardScale;
+  const {
+    canvasSize,
+    cardScale,
+    artScale,
+    cardCornerRadius,
+    cardGradient,
+    cardShadow,
+    fullBleed
+  } = config;
+
+  // Optional full-bleed background fill (no shadow, full canvas)
+  if (fullBleed) {
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, canvasSize);
+    bgGradient.addColorStop(0, cardGradient.top);
+    bgGradient.addColorStop(1, cardGradient.bottom);
+    ctx.save();
+    drawRoundedRect(ctx, 0, 0, canvasSize, canvasSize, 0);
+    ctx.fillStyle = bgGradient;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Render the card at the art scale (keeps dot/bar positions unchanged)
+  const scale = fullBleed ? artScale : cardScale;
+  const size = canvasSize * scale;
   const inset = (canvasSize - size) / 2;
   const x = inset;
   const y = inset;
 
-  // Card gradient fill
   const gradient = ctx.createLinearGradient(0, y, 0, y + size);
   gradient.addColorStop(0, cardGradient.top);
   gradient.addColorStop(1, cardGradient.bottom);
 
   ctx.save();
-  if (cardShadow) {
+  if (cardShadow && !fullBleed) {
     ctx.shadowColor = cardShadow.color || 'rgba(0,0,0,0.4)';
     ctx.shadowBlur = cardShadow.blur ?? 40;
     ctx.shadowOffsetX = cardShadow.offsetX ?? 0;
@@ -70,7 +92,7 @@ function drawCard(ctx, config) {
 function drawGrid(ctx, config) {
   const {
     canvasSize,
-    cardScale,
+    artScale,
     cardCornerRadius,
     gridHorizontalInsetFactor,
     gridColumns,
@@ -81,7 +103,7 @@ function drawGrid(ctx, config) {
     gridBottomOffset,
     gridOffsetX
   } = config;
-  const size = canvasSize * cardScale;
+  const size = canvasSize * artScale;
   const inset = (canvasSize - size) / 2;
   const cardLeft = inset;
   const cardTop = inset;
@@ -113,7 +135,7 @@ function drawGrid(ctx, config) {
 function drawBars(ctx, config, bars) {
   const {
     canvasSize,
-    cardScale,
+    artScale,
     barHeight: desiredBarHeight,
     barCornerRadiusRatio,
     barMarginDots,
@@ -123,7 +145,7 @@ function drawBars(ctx, config, bars) {
     barShadow,
     barOutline
   } = config;
-  const size = canvasSize * cardScale;
+  const size = canvasSize * artScale;
   const inset = (canvasSize - size) / 2;
   const cardLeft = inset;
   const cardTop = inset;
@@ -217,7 +239,15 @@ function ensureOutputDir(outputPath) {
 function main() {
   const { configPath, outputPath } = parseArgs();
   const overrides = loadConfig(configPath);
-  const config = mergeConfig(LAYOUT, overrides.layout || {});
+  const merged = mergeConfig(LAYOUT, overrides.layout || {});
+
+  // Preserve original layout for art while allowing full-bleed background
+  const config = {
+    ...merged,
+    artScale: merged.artScale || merged.cardScale || LAYOUT.cardScale,
+    fullBleed: Boolean(merged.fullBleed)
+  };
+
   const bars = overrides.bars || BARS;
   const size = config.canvasSize;
 

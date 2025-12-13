@@ -1,7 +1,9 @@
 {
   "layout": {
+    "fullBleed": true,
     "cardScale": 1.0,
-    "cardCornerRadius": 0,
+    "artScale": 0.9,
+    "cardCornerRadius": 200,
     "cardShadow": null
   }
 }

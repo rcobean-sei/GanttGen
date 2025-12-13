@@ -32,8 +32,15 @@ try {
   process.exit(1);
 }
 
-// Validate required fields
-const required = ['APPLE_SIGNING_IDENTITY', 'APPLE_ID', 'APPLE_PASSWORD', 'APPLE_TEAM_ID'];
+// Validate required fields (all six used in workflow)
+const required = [
+  'APPLE_CERTIFICATE',
+  'APPLE_CERT_PASSWORD',
+  'APPLE_SIGNING_IDENTITY',
+  'APPLE_ID',
+  'APPLE_PASSWORD',
+  'APPLE_TEAM_ID'
+];
 const missing = required.filter(key => !creds[key]);
 if (missing.length > 0) {
   console.error('❌ Error: Missing required credentials in .applecreds.json:');
@@ -44,6 +51,8 @@ if (missing.length > 0) {
 // Set environment variables
 const env = {
   ...process.env,
+  APPLE_CERTIFICATE: creds.APPLE_CERTIFICATE,
+  APPLE_CERT_PASSWORD: creds.APPLE_CERT_PASSWORD,
   APPLE_SIGNING_IDENTITY: creds.APPLE_SIGNING_IDENTITY,
   APPLE_ID: creds.APPLE_ID,
   APPLE_PASSWORD: creds.APPLE_PASSWORD,
@@ -51,6 +60,8 @@ const env = {
 };
 
 console.log('🔐 Loaded Apple credentials from .applecreds.json');
+console.log(`   P12 (base64) present: ${Boolean(creds.APPLE_CERTIFICATE)}`);
+console.log(`   P12 password present: ${Boolean(creds.APPLE_CERT_PASSWORD)}`);
 console.log(`   Signing Identity: ${creds.APPLE_SIGNING_IDENTITY}`);
 console.log(`   Apple ID: ${creds.APPLE_ID}`);
 console.log(`   Team ID: ${creds.APPLE_TEAM_ID}`);

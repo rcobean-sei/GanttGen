@@ -16,3 +16,9 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Apple credentials (local only, never commit)
+.applecreds.json
+
+# Apple credentials (local only, never commit)
+.applecreds.json
