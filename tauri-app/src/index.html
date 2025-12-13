@@ -30,81 +30,28 @@
                         GanttGen needs to install some dependencies to work properly.
                         This is a one-time process.
                     </p>
-
-                    <div class="setup-requirements">
-                        <div class="requirement-item" id="reqNode">
-                            <span class="requirement-icon loading">
-                                <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
-                                </svg>
-                            </span>
+                    <div class="setup-summary" id="setupSummary" style="display: none;">
+                        <div class="requirement-item">
                             <span class="requirement-text">Node.js</span>
-                            <span class="requirement-status" id="reqNodeStatus">Checking...</span>
-                            <button class="requirement-install-btn" id="installNodeBtn" style="display: none;">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                Install
-                            </button>
+                            <span class="requirement-status" id="summaryNode"></span>
                         </div>
-                        <div class="requirement-item" id="reqNpm">
-                            <span class="requirement-icon loading">
-                                <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
-                                </svg>
-                            </span>
+                        <div class="requirement-item">
                             <span class="requirement-text">npm</span>
-                            <span class="requirement-status" id="reqNpmStatus">Checking...</span>
+                            <span class="requirement-status" id="summaryNpm"></span>
                         </div>
-                        <div class="requirement-item" id="reqDeps">
-                            <span class="requirement-icon loading">
-                                <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
-                                </svg>
-                            </span>
-                            <span class="requirement-text">Dependencies</span>
-                            <span class="requirement-status" id="reqDepsStatus">Checking...</span>
-                            <button class="requirement-install-btn" id="installDepsInlineBtn" style="display: none;">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                Install
-                            </button>
+                        <div class="requirement-item">
+                            <span class="requirement-text">Libraries</span>
+                            <span class="requirement-status" id="summaryDeps"></span>
                         </div>
-                        <div class="requirement-item" id="reqBrowser">
-                            <span class="requirement-icon loading">
-                                <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
-                                    <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
-                                </svg>
-                            </span>
-                            <span class="requirement-text">Browser (PNG)</span>
-                            <span class="requirement-status" id="reqBrowserStatus">Checking...</span>
-                            <button class="requirement-install-btn" id="installBrowserInlineBtn" style="display: none;">
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="7 10 12 15 17 10"></polyline>
-                                    <line x1="12" y1="15" x2="12" y2="3"></line>
-                                </svg>
-                                Install
-                            </button>
+                        <div class="requirement-item">
+                            <span class="requirement-text">Internal Chromium</span>
+                            <span class="requirement-status" id="summaryBrowser"></span>
                         </div>
                     </div>
 
-                    <div class="setup-actions">
-                        <button class="btn btn-secondary btn-large" id="recheckDepsBtn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="23 4 23 10 17 10"></polyline>
-                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                            </svg>
-                            Re-check
+                    <div class="setup-actions single">
+                        <button class="btn btn-primary btn-large" id="installAllBtn">
+                            Install dependencies
                         </button>
                     </div>
 
@@ -131,6 +78,7 @@
                     <div class="setup-progress">
                         <div class="setup-progress-bar" id="setupProgressBar"></div>
                     </div>
+                    <p class="setup-description" id="installStepDetail" style="margin-top: 8px;"></p>
                 </div>
 
                 <!-- Complete View -->
@@ -143,6 +91,24 @@
                     </div>
                     <h2>Setup Complete!</h2>
                     <p class="setup-description">GanttGen is ready to use.</p>
+                    <div class="setup-summary" id="completeSummary">
+                        <div class="requirement-item">
+                            <span class="requirement-text">Node.js</span>
+                            <span class="requirement-status" id="completeNode"></span>
+                        </div>
+                        <div class="requirement-item">
+                            <span class="requirement-text">npm</span>
+                            <span class="requirement-status" id="completeNpm"></span>
+                        </div>
+                        <div class="requirement-item">
+                            <span class="requirement-text">Libraries</span>
+                            <span class="requirement-status" id="completeDeps"></span>
+                        </div>
+                        <div class="requirement-item">
+                            <span class="requirement-text">Internal Chromium</span>
+                            <span class="requirement-status" id="completeBrowser"></span>
+                        </div>
+                    </div>
                     <div class="setup-actions">
                         <button class="btn btn-primary btn-large" id="startAppBtn">
                             Get Started
