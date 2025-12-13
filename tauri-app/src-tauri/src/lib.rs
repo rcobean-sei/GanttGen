@@ -170,6 +170,7 @@ async fn download_to_path(url: &str, dest: &Path) -> Result<(), String> {
 }
 
 /// Extract a tar.gz archive to a destination directory
+#[cfg(not(target_os = "windows"))]
 async fn extract_tar_gz(archive: PathBuf, dest: PathBuf) -> Result<(), String> {
     tokio::task::spawn_blocking(move || -> Result<(), String> {
         let file = fs::File::open(&archive)
@@ -199,7 +200,10 @@ async fn extract_zip(archive: PathBuf, dest: PathBuf) -> Result<(), String> {
 
         for i in 0..zip.len() {
             let mut entry = zip.by_index(i).map_err(|e| format!("Zip entry error: {}", e))?;
-            let outpath = dest.join(entry.sanitized_name());
+            let outpath = match entry.enclosed_name() {
+                Some(path) => dest.join(path),
+                None => return Err(format!("Invalid zip entry path: {}", entry.name())),
+            };
 
             if entry.name().ends_with('/') {
                 fs::create_dir_all(&outpath)
