@@ -17,6 +17,7 @@
     "tauri": "npm --prefix tauri-app run tauri",
     "tauri:dev": "npm --prefix tauri-app run tauri:dev",
     "tauri:build": "node scripts/tauri-build.js",
+    "tauri:build_local": "node scripts/tauri-build-local.js",
     "tauri:icon": "npm --prefix tauri-app run tauri:icon",
     "icons:generate": "node scripts/generate-icons.js"
   },
