@@ -78,6 +78,7 @@ const elements = {
     jsonEditor: document.getElementById('jsonEditor'),
     copyJsonBtn: document.getElementById('copyJsonBtn'),
     saveJsonBtn: document.getElementById('saveJsonBtn'),
+    saveXlsxBtn: document.getElementById('saveXlsxBtn'),
     // Palette and output
     paletteGrid: document.getElementById('paletteGrid'),
     exportHtml: document.getElementById('exportHtml'),
@@ -819,7 +820,10 @@ function setupManualEntry() {
     if (elements.saveJsonBtn) {
         elements.saveJsonBtn.addEventListener('click', saveJsonFile);
     }
-    
+    if (elements.saveXlsxBtn) {
+        elements.saveXlsxBtn.addEventListener('click', saveXlsxFile);
+    }
+
     // Initialize with empty state message
     renderTasks();
     renderPausePeriods();
@@ -1550,7 +1554,7 @@ async function copyJson() {
 async function saveJsonFile() {
     const jsonData = getManualDataAsJson();
     const jsonString = JSON.stringify(jsonData, null, 2);
-    
+
     try {
         const filePath = await save({
             filters: [{
@@ -1559,7 +1563,7 @@ async function saveJsonFile() {
             }],
             defaultPath: 'gantt_project.json'
         });
-        
+
         if (filePath) {
             await writeTextFile(filePath, jsonString);
             // Use this saved file as input
@@ -1568,6 +1572,48 @@ async function saveJsonFile() {
         }
     } catch (error) {
         console.error('Failed to save file:', error);
+    }
+}
+
+async function saveXlsxFile() {
+    const jsonData = getManualDataAsJson();
+    const jsonString = JSON.stringify(jsonData, null, 2);
+
+    try {
+        // Prompt user to choose save location for XLSX
+        const filePath = await save({
+            filters: [{
+                name: 'Excel',
+                extensions: ['xlsx']
+            }],
+            defaultPath: 'gantt_project.xlsx'
+        });
+
+        if (filePath) {
+            // Create temp JSON file first
+            const tempDirPath = await tempDir();
+            const timestamp = Date.now();
+            const tempJsonPath = await pathJoin(tempDirPath, `ganttgen_temp_${timestamp}.json`);
+
+            // Write temp JSON file
+            await writeTextFile(tempJsonPath, jsonString);
+
+            // Call backend to convert JSON to Excel
+            await invoke('export_to_excel', {
+                jsonPath: tempJsonPath,
+                excelPath: filePath
+            });
+
+            // Brief visual feedback
+            const originalText = elements.saveXlsxBtn.textContent;
+            elements.saveXlsxBtn.textContent = 'Saved!';
+            setTimeout(() => {
+                elements.saveXlsxBtn.textContent = originalText;
+            }, 1500);
+        }
+    } catch (error) {
+        console.error('Failed to save XLSX file:', error);
+        alert(`Failed to save XLSX file: ${error}`);
     }
 }
 

@@ -856,6 +856,53 @@ body {
     min-width: 250px;
 }
 
+/* Generate Button - refined styling */
+.btn-generate {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    background: var(--purple-5);
+    color: var(--cream);
+    border: 2px solid var(--purple-4);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+    min-width: 280px;
+}
+
+.btn-generate .btn-icon-left,
+.btn-generate .btn-icon-right {
+    transition: transform var(--transition-fast);
+}
+
+.btn-generate:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--red-1) 0%, var(--red-2) 100%);
+    border-color: var(--red-1);
+    box-shadow: var(--shadow-md), 0 0 0 3px rgba(240, 24, 64, 0.15);
+}
+
+.btn-generate:hover:not(:disabled) .btn-icon-right {
+    transform: translateX(3px);
+}
+
+.btn-generate:active:not(:disabled) {
+    box-shadow: var(--shadow-sm);
+    transform: translateY(1px);
+}
+
+.btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: var(--purple-3);
+    border-color: var(--purple-2);
+}
+
 /* Progress Section */
 .progress-section {
     background: var(--cream);

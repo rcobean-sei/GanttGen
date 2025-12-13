@@ -723,6 +723,64 @@ async fn parse_file(path: String, app_handle: tauri::AppHandle, window: tauri::W
     }
 }
 
+/// Export JSON data to Excel format using the json_to_excel.js script
+#[tauri::command]
+async fn export_to_excel(
+    json_path: String,
+    excel_path: String,
+    app_handle: tauri::AppHandle,
+    window: tauri::Window,
+) -> Result<bool, String> {
+    emit_log(&window, "info", "rust", &format!("Exporting to Excel: {}", excel_path));
+
+    let scripts_dir = get_scripts_dir(&app_handle)?;
+    let export_script = scripts_dir.join("json_to_excel.js");
+
+    if !export_script.exists() {
+        let err = format!("Export script not found at: {}", export_script.display());
+        emit_log(&window, "error", "rust", &err);
+        return Err(err);
+    }
+
+    let node = get_node_path(&app_handle)?;
+
+    let mut cmd = Command::new(&node);
+    cmd.arg(export_script.to_string_lossy().to_string())
+        .arg("--input")
+        .arg(&json_path)
+        .arg("--output")
+        .arg(&excel_path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    // Set NODE_PATH to include user-installed dependencies if available
+    if let Ok(node_modules) = get_node_modules_dir(&app_handle) {
+        cmd.env("NODE_PATH", node_modules.parent().unwrap_or(&node_modules));
+    }
+
+    emit_log(&window, "debug", "rust", &format!("Running: {} {} --input {} --output {}",
+        node, export_script.display(), json_path, excel_path));
+
+    let output = cmd
+        .output()
+        .await
+        .map_err(|e| {
+            let err = format!("Failed to run export script: {}", e);
+            emit_log(&window, "error", "rust", &err);
+            err
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let err = format!("Failed to export to Excel: {}", stderr);
+        emit_log(&window, "error", "rust", &err);
+        return Err(err);
+    }
+
+    emit_log(&window, "info", "rust", &format!("Successfully exported to: {}", excel_path));
+    Ok(true)
+}
+
 #[tauri::command]
 fn get_palette_info() -> Vec<PaletteInfo> {
     vec![
@@ -1684,6 +1742,7 @@ pub fn run() {
             read_json_file,
             validate_input_file,
             parse_file,
+            export_to_excel,
             get_palette_info,
             check_dependencies,
             install_dependencies,
