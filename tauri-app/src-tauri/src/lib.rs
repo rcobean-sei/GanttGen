@@ -185,6 +185,42 @@ async fn extract_tar_gz(archive: PathBuf, dest: PathBuf) -> Result<(), String> {
     .map_err(|e| format!("Extraction task failed: {}", e))?
 }
 
+/// Extract a zip archive to a destination directory (Windows)
+#[cfg(target_os = "windows")]
+async fn extract_zip(archive: PathBuf, dest: PathBuf) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || -> Result<(), String> {
+        let file = fs::File::open(&archive)
+            .map_err(|e| format!("Failed to open archive {}: {}", archive.display(), e))?;
+        let mut zip = zip::ZipArchive::new(file)
+            .map_err(|e| format!("Failed to read zip {}: {}", archive.display(), e))?;
+
+        fs::create_dir_all(&dest)
+            .map_err(|e| format!("Failed to create {}: {}", dest.display(), e))?;
+
+        for i in 0..zip.len() {
+            let mut entry = zip.by_index(i).map_err(|e| format!("Zip entry error: {}", e))?;
+            let outpath = dest.join(entry.sanitized_name());
+
+            if entry.name().ends_with('/') {
+                fs::create_dir_all(&outpath)
+                    .map_err(|e| format!("Failed to create dir {}: {}", outpath.display(), e))?;
+            } else {
+                if let Some(parent) = outpath.parent() {
+                    fs::create_dir_all(parent)
+                        .map_err(|e| format!("Failed to create dir {}: {}", parent.display(), e))?;
+                }
+                let mut outfile = fs::File::create(&outpath)
+                    .map_err(|e| format!("Failed to create file {}: {}", outpath.display(), e))?;
+                io::copy(&mut entry, &mut outfile)
+                    .map_err(|e| format!("Failed to write {}: {}", outpath.display(), e))?;
+            }
+        }
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Extraction task failed: {}", e))?
+}
+
 /// Create npm and npx wrapper scripts that call the bundled Node.js
 fn create_npm_wrappers(node_dir: &Path) -> Result<(), String> {
     let node_bin = if cfg!(target_os = "windows") {
