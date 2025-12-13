@@ -23,13 +23,14 @@ const setupElements = {
     reqBrowser: document.getElementById('reqBrowser'),
     reqBrowserStatus: document.getElementById('reqBrowserStatus'),
     recheckBtn: document.getElementById('recheckDepsBtn'),
-    installBtn: document.getElementById('installDepsBtn'),
-    installBrowserBtn: document.getElementById('installBrowserBtn'),
+    // Inline install buttons
+    installNodeBtn: document.getElementById('installNodeBtn'),
+    installDepsInlineBtn: document.getElementById('installDepsInlineBtn'),
+    installBrowserInlineBtn: document.getElementById('installBrowserInlineBtn'),
     setupError: document.getElementById('setupError'),
     setupErrorText: document.getElementById('setupErrorText'),
     installStage: document.getElementById('installStage'),
     setupProgressBar: document.getElementById('setupProgressBar'),
-    installLog: document.getElementById('installLog'),
     startAppBtn: document.getElementById('startAppBtn')
 };
 
@@ -162,31 +163,44 @@ function showSetupScreen(status) {
     setupElements.installingView.style.display = 'none';
     setupElements.completeView.style.display = 'none';
 
-    // Update Node.js status
+    // Update Node.js status and show/hide install button
     updateRequirementStatus(
         setupElements.reqNode,
         setupElements.reqNodeStatus,
         status.node_available,
-        status.node_version || 'Not found'
+        status.node_available ? (status.node_version || 'Installed') : ''
     );
+    
+    // Show Node.js install button if not available
+    if (setupElements.installNodeBtn) {
+        setupElements.installNodeBtn.style.display = status.node_available ? 'none' : 'inline-flex';
+        setupElements.installNodeBtn.disabled = false;
+    }
 
-    // Update npm status
+    // Update npm status (npm comes with Node.js, so no separate install button)
     updateRequirementStatus(
         setupElements.reqNpm,
         setupElements.reqNpmStatus,
         status.npm_available,
-        status.npm_version || 'Not found'
+        status.npm_available ? (status.npm_version || 'Installed') : (status.node_available ? 'Checking...' : '')
     );
 
-    // Update dependencies status
+    // Update dependencies status and show/hide install button
     updateRequirementStatus(
         setupElements.reqDeps,
         setupElements.reqDepsStatus,
         status.dependencies_installed,
-        status.dependencies_installed ? 'Installed' : 'Not installed'
+        status.dependencies_installed ? 'Installed' : ''
     );
+    
+    // Show deps install button when Node/npm available but deps not installed
+    if (setupElements.installDepsInlineBtn) {
+        const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
+        setupElements.installDepsInlineBtn.style.display = canInstallDeps ? 'inline-flex' : 'none';
+        setupElements.installDepsInlineBtn.disabled = false;
+    }
 
-    // Update browser runtime status
+    // Update browser runtime status and show/hide install button
     const browserInstalled = Boolean(status.browser_installed);
 
     if (setupElements.reqBrowser) {
@@ -194,29 +208,20 @@ function showSetupScreen(status) {
             setupElements.reqBrowser,
             setupElements.reqBrowserStatus,
             browserInstalled,
-            browserInstalled ? 'Installed' : 'Not installed'
+            browserInstalled ? 'Installed' : ''
         );
     }
-
-    // Enable/disable install button based on whether Node.js and npm are available
-    const canInstallDeps = status.node_available && status.npm_available && !status.dependencies_installed;
-    setupElements.installBtn.disabled = !canInstallDeps;
-    // Hide install deps button if dependencies are already installed
-    setupElements.installBtn.style.display = status.dependencies_installed ? 'none' : 'inline-flex';
-
-    if (setupElements.installBrowserBtn) {
-        // Show browser install button when:
-        // - Node/npm are available
-        // - Dependencies are installed (or being installed)
-        // - Browser is NOT installed
+    
+    // Show browser install button when deps installed but browser not
+    if (setupElements.installBrowserInlineBtn) {
         const canInstallBrowser = status.node_available && status.npm_available && status.dependencies_installed && !browserInstalled;
-        setupElements.installBrowserBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
-        setupElements.installBrowserBtn.disabled = !canInstallBrowser;
+        setupElements.installBrowserInlineBtn.style.display = canInstallBrowser ? 'inline-flex' : 'none';
+        setupElements.installBrowserInlineBtn.disabled = false;
     }
 
-    // Show error if Node.js or npm is not available
-    if (!status.node_available || !status.npm_available) {
-        showSetupError('Node.js and npm are required. Please install Node.js from https://nodejs.org');
+    // Show error if Node.js or npm is not available (but hide if install button is shown)
+    if (!status.node_available) {
+        hideSetupError(); // Hide error since we have an install button
     } else if (status.dependencies_installed && browserInstalled) {
         // All dependencies AND browser are installed, close setup and initialize
         hideSetupScreen();
@@ -227,10 +232,18 @@ function showSetupScreen(status) {
 
     // Set up button handlers
     setupElements.recheckBtn.onclick = recheckDependencies;
-    setupElements.installBtn.onclick = installDependencies;
-    if (setupElements.installBrowserBtn) {
-        setupElements.installBrowserBtn.onclick = installBrowserRuntime;
+    
+    // Inline install button handlers
+    if (setupElements.installNodeBtn) {
+        setupElements.installNodeBtn.onclick = installNodeJS;
     }
+    if (setupElements.installDepsInlineBtn) {
+        setupElements.installDepsInlineBtn.onclick = installDependencies;
+    }
+    if (setupElements.installBrowserInlineBtn) {
+        setupElements.installBrowserInlineBtn.onclick = installBrowserRuntime;
+    }
+    
     setupElements.startAppBtn.onclick = () => {
         hideSetupScreen();
         initializeMainApp();
@@ -340,8 +353,48 @@ function beginInstallView(message) {
     setupElements.completeView.style.display = 'none';
     setupElements.installStage.textContent = message;
     setupElements.setupProgressBar.style.width = '5%';
-    setupElements.installLog.innerHTML = '';
     hideSetupError();
+}
+
+// Install Node.js via nvm (Mac) or Chocolatey (Windows)
+async function installNodeJS() {
+    if (!setupElements.installNodeBtn) return;
+    
+    setupElements.installNodeBtn.disabled = true;
+    setupElements.installNodeBtn.classList.add('installing');
+    setupElements.installNodeBtn.innerHTML = `
+        <svg class="spinner" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-linecap="round"></path>
+        </svg>
+        Installing...
+    `;
+    
+    beginInstallView('Installing Node.js...');
+
+    try {
+        await invoke('install_node');
+        // Success - re-check status
+        const status = await invoke('check_dependencies');
+        showSetupScreen(status);
+    } catch (error) {
+        // Error - go back to status view with error
+        setupElements.installingView.style.display = 'none';
+        setupElements.statusView.style.display = 'block';
+        showSetupError(`Node.js installation failed: ${error}`);
+        
+        // Reset button
+        setupElements.installNodeBtn.disabled = false;
+        setupElements.installNodeBtn.classList.remove('installing');
+        setupElements.installNodeBtn.innerHTML = `
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Retry
+        `;
+    }
 }
 
 async function installDependencies() {
@@ -412,18 +465,10 @@ async function setupInstallProgressListener() {
         // Update progress bar
         setupElements.setupProgressBar.style.width = `${progress}%`;
 
-        // Update stage text
+        // Update stage text (single line status)
         setupElements.installStage.textContent = message;
 
-        // Add to install log panel
-        if (message && message.trim()) {
-            const logLine = document.createElement('div');
-            logLine.textContent = message;
-            setupElements.installLog.appendChild(logLine);
-            setupElements.installLog.scrollTop = setupElements.installLog.scrollHeight;
-        }
-
-        // Also log to debug console
+        // Log to debug console (stdout goes there instead of install-log panel)
         if (message && message.trim()) {
             const level = error ? 'error' : (stage === 'Error' ? 'error' : 'info');
             addLogEntry({
